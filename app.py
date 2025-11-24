@@ -50,12 +50,15 @@ def fetch_data(symbol, req_type):
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
 
-            low_price = df["Low"].min()
-            high_price = df["High"].max()
-            price_min = low_price - (low_price / 5)
-            price_max = high_price
+            close_min = df["Close"].min()
+            close_max = df["Close"].max()
+            price_range = close_max - close_min
+
+            # Reserve band for volume
+            vol_band_min = close_min - (price_range / 5)
+            vol_band_max = close_min
             vol_max = df["Volume"].max()
-            vol_scale = (low_price / 5) / vol_max if vol_max > 0 else 1
+            vol_scale = (vol_band_max - vol_band_min) / vol_max if vol_max > 0 else 1
 
             fig = go.Figure()
             fig.add_trace(go.Candlestick(
@@ -68,14 +71,14 @@ def fetch_data(symbol, req_type):
             ))
             fig.add_trace(go.Bar(
                 x=df.index,
-                y=df["Volume"] * vol_scale,
+                y=df["Volume"] * vol_scale + vol_band_min,
                 name="Volume",
                 marker_color="lightblue"
             ))
             fig.update_layout(
                 xaxis_title="Date",
                 yaxis_title="Price",
-                yaxis=dict(range=[price_min, price_max]),
+                yaxis=dict(range=[vol_band_min, close_max]),
                 xaxis_rangeslider_visible=False,
                 height=600
             )
@@ -119,12 +122,15 @@ def fetch_data(symbol, req_type):
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
 
-            low_price = df["Low"].min()
-            high_price = df["High"].max()
-            price_min = low_price - (low_price / 5)
-            price_max = high_price
+            close_min = df["Close"].min()
+            close_max = df["Close"].max()
+            price_range = close_max - close_min
+
+            # Reserve band for volume
+            vol_band_min = close_min - (price_range / 5)
+            vol_band_max = close_min
             vol_max = df["Volume"].max()
-            vol_scale = (low_price / 5) / vol_max if vol_max > 0 else 1
+            vol_scale = (vol_band_max - vol_band_min) / vol_max if vol_max > 0 else 1
 
             fig = go.Figure()
             fig.add_trace(go.Candlestick(
@@ -137,14 +143,14 @@ def fetch_data(symbol, req_type):
             ))
             fig.add_trace(go.Bar(
                 x=df.index,
-                y=df["Volume"] * vol_scale,
+                y=df["Volume"] * vol_scale + vol_band_min,
                 name="Volume",
                 marker_color="orange"
             ))
             fig.update_layout(
                 xaxis_title="Time",
                 yaxis_title="Price",
-                yaxis=dict(range=[price_min, price_max]),
+                yaxis=dict(range=[vol_band_min, close_max]),
                 xaxis_rangeslider_visible=False,
                 height=600
             )
