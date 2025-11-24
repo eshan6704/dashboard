@@ -54,10 +54,7 @@ def fetch_data(symbol, req_type):
                 height=600
             )
 
-            # Build HTML table
             table_html = df.tail(30).to_html(classes="dataframe", border=1)
-
-            # Also embed chart HTML if you want frontend injection
             chart_html = fig.to_html(full_html=False)
 
             html_response = f"""
