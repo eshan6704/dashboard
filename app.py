@@ -16,13 +16,19 @@ def fetch_data(symbol, req_type):
     """
     return html_response
 
-# Using Gradio Blocks so we can define the custom API endpoint "/fetch_data"
-with gr.Blocks() as app:
-    # Just a dummy UI for testing (optional)
-    gr.HTML("<h3>Backend Master API</h3>")
 
-# Expose the fetch_data function as the /fetch_data API endpoint
-app.predict(fetch_data, inputs=["text", "text"], outputs="html", api_name="/fetch_data")
+iface=  gr.Interface(
+        fn=fetch_data,
+        inputs=[
+            gr.Textbox(label="Stock Symbol", value='PNB'),
+            gr.Textbox(label="req Type ", value='info')
+        ],
 
+        outputs=gr.JSON(label="Collected Stock Data"),
+        title="Stock Data API (Full)",
+        description="Fetch data fromnse and yfinance",
+    
+        api_name="fetch_data"
+    )
 if __name__ == "__main__":
-    app.launch()
+    iface.launch(server_name="0.0.0.0", server_port=7860)
