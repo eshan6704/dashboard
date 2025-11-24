@@ -14,7 +14,7 @@ def fetch_data(symbol, req_type):
                 for key, value in info.items()
             )
             html_response = f"""
-            <h1>Ticker Info for {symbol}</h1>
+
             <table border="1" cellpadding="5" cellspacing="0">
               {rows}
             </table>
@@ -58,7 +58,7 @@ def fetch_data(symbol, req_type):
             table_html = df.tail(30).to_html(classes="dataframe", border=1)
 
             return f"""
-            <h1>Daily Data for {symbol}</h1>
+   
             {chart_html}
             <h2>Recent Daily Data (last 30 rows)</h2>
             {table_html}
@@ -101,7 +101,7 @@ def fetch_data(symbol, req_type):
             table_html = df.tail(50).to_html(classes="dataframe", border=1)
 
             return f"""
-            <h1>Intraday Data for {symbol}</h1>
+
             {chart_html}
             <h2>Recent Intraday Data (last 50 rows)</h2>
             {table_html}
