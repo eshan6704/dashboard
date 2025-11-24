@@ -1,5 +1,7 @@
 import gradio as gr
 import yfinance as yf
+import plotly.graph_objs as go
+import pandas as pd
 
 def fetch_data(symbol, req_type):
     try:
@@ -7,7 +9,6 @@ def fetch_data(symbol, req_type):
 
         if req_type.lower() == "info":
             info = ticker.info
-            # Build HTML table from info dict
             rows = "".join(
                 f"<tr><td><b>{key}</b></td><td>{value}</td></tr>"
                 for key, value in info.items()
@@ -23,8 +24,111 @@ def fetch_data(symbol, req_type):
               </body>
             </html>
             """
+
+        elif req_type.lower() == "daily":
+            df = yf.download(symbol, period="1y", interval="1d")
+            if df.empty:
+                return f"<html><body><h1>No daily data for {symbol}</h1></body></html>"
+
+            fig = go.Figure()
+
+            # Candlestick
+            fig.add_trace(go.Candlestick(
+                x=df.index,
+                open=df['Open'],
+                high=df['High'],
+                low=df['Low'],
+                close=df['Close'],
+                name="Price"
+            ))
+
+            # Volume as bar chart
+            fig.add_trace(go.Bar(
+                x=df.index,
+                y=df['Volume'],
+                name="Volume",
+                marker_color='lightblue',
+                yaxis="y2"
+            ))
+
+            # Layout with secondary y-axis
+            fig.update_layout(
+                title=f"Daily Candlestick Chart for {symbol}",
+                xaxis_title="Date",
+                yaxis_title="Price",
+                yaxis2=dict(title="Volume", overlaying="y", side="right", showgrid=False),
+                xaxis_rangeslider_visible=False,
+                height=600
+            )
+
+            chart_html = fig.to_html(full_html=False)
+
+            # Data table
+            table_html = df.tail(30).to_html(classes="dataframe", border=1)
+
+            html_response = f"""
+            <html>
+              <head><title>Daily Data for {symbol}</title></head>
+              <body>
+                <h1>Daily Data for {symbol}</h1>
+                {chart_html}
+                <h2>Recent Daily Data (last 30 rows)</h2>
+                {table_html}
+              </body>
+            </html>
+            """
+
+        elif req_type.lower() == "intraday":
+            df = yf.download(symbol, period="1d", interval="5m")
+            if df.empty:
+                return f"<html><body><h1>No intraday data for {symbol}</h1></body></html>"
+
+            fig = go.Figure()
+
+            # Candlestick
+            fig.add_trace(go.Candlestick(
+                x=df.index,
+                open=df['Open'],
+                high=df['High'],
+                low=df['Low'],
+                close=df['Close'],
+                name="Price"
+            ))
+
+            # Volume
+            fig.add_trace(go.Bar(
+                x=df.index,
+                y=df['Volume'],
+                name="Volume",
+                marker_color='orange',
+                yaxis="y2"
+            ))
+
+            fig.update_layout(
+                title=f"Intraday Candlestick Chart for {symbol}",
+                xaxis_title="Time",
+                yaxis_title="Price",
+                yaxis2=dict(title="Volume", overlaying="y", side="right", showgrid=False),
+                xaxis_rangeslider_visible=False,
+                height=600
+            )
+
+            chart_html = fig.to_html(full_html=False)
+            table_html = df.tail(50).to_html(classes="dataframe", border=1)
+
+            html_response = f"""
+            <html>
+              <head><title>Intraday Data for {symbol}</title></head>
+              <body>
+                <h1>Intraday Data for {symbol}</h1>
+                {chart_html}
+                <h2>Recent Intraday Data (last 50 rows)</h2>
+                {table_html}
+              </body>
+            </html>
+            """
+
         else:
-            # Default static response
             html_response = f"""
             <html>
               <head><title>Stock Data for {symbol}</title></head>
@@ -36,6 +140,7 @@ def fetch_data(symbol, req_type):
               </body>
             </html>
             """
+
     except Exception as e:
         html_response = f"<html><body><h1>Error</h1><p>{str(e)}</p></body></html>"
 
