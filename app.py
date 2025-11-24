@@ -73,7 +73,9 @@ def fetch_data(symbol, req_type):
                 x=df.index,
                 y=df["Volume"] * vol_scale + vol_band_min,
                 name="Volume",
-                marker_color="lightblue"
+                marker_color="lightblue",
+                customdata=df["Volume"],
+                hovertemplate="Volume: %{customdata}<extra></extra>"
             ))
             fig.update_layout(
                 xaxis_title="Date",
@@ -145,7 +147,9 @@ def fetch_data(symbol, req_type):
                 x=df.index,
                 y=df["Volume"] * vol_scale + vol_band_min,
                 name="Volume",
-                marker_color="orange"
+                marker_color="orange",
+                customdata=df["Volume"],
+                hovertemplate="Volume: %{customdata}<extra></extra>"
             ))
             fig.update_layout(
                 xaxis_title="Time",
