@@ -26,7 +26,7 @@ def fetch_data(symbol, req_type):
             """
 
         elif req_type.lower() == "daily":
-            df = yf.download(symbol, period="1y", interval="1d")
+            df = yf.download(symbol, period="1y", interval="1d").round(2)
             if df.empty:
                 return f"<html><body><h1>No daily data for {symbol}</h1></body></html>"
 
@@ -78,7 +78,7 @@ def fetch_data(symbol, req_type):
             """
 
         elif req_type.lower() == "intraday":
-            df = yf.download(symbol, period="1d", interval="5m")
+            df = yf.download(symbol, period="1d", interval="5m").round(2)
             if df.empty:
                 return f"<html><body><h1>No intraday data for {symbol}</h1></body></html>"
 
