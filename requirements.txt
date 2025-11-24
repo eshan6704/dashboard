@@ -1,2 +1,4 @@
 gradio
 yfinance
+plotly
+pandas
