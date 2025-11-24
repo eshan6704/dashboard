@@ -63,7 +63,7 @@ def fetch_data(symbol, req_type):
                 yaxis="y2"
             ))
             fig.update_layout(
-                title=f"Daily Candlestick Chart for {symbol}",
+                #title=f"Daily Candlestick Chart for {symbol}",
                 xaxis_title="Date",
                 yaxis_title="Price",
                 yaxis2=dict(title="Volume", overlaying="y", side="right", showgrid=False),
@@ -133,7 +133,7 @@ def fetch_data(symbol, req_type):
                 yaxis="y2"
             ))
             fig.update_layout(
-                title=f"Intraday Candlestick Chart for {symbol}",
+                #title=f"Intraday Candlestick Chart for {symbol}",
                 xaxis_title="Time",
                 yaxis_title="Price",
                 yaxis2=dict(title="Volume", overlaying="y", side="right", showgrid=False),
