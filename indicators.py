@@ -1,215 +1,139 @@
-# indicators.py
+# indicator.py
 import pandas as pd
 import numpy as np
 
 # Try TA-Lib
 try:
     import talib
-    TALIB = True
+    TALIB_AVAILABLE = True
 except:
-    TALIB = False
+    TALIB_AVAILABLE = False
 
 
-# ============================================================
-# BASIC INDICATORS (SMA, EMA, ATR)
-# ============================================================
-
-def sma(series, period):
-    return series.rolling(period).mean()
-
-
-def ema(series, period):
-    return series.ewm(span=period, adjust=False).mean()
-
-
-def atr(high, low, close, period=14):
-    if TALIB and hasattr(talib, "ATR"):
-        return talib.ATR(high, low, close, timeperiod=period)
+# ==============================
+# MACD
+# ==============================
+def calc_macd(df):
+    if TALIB_AVAILABLE:
+        macd, signal, hist = talib.MACD(df["Close"])
     else:
-        tr1 = high - low
-        tr2 = (high - close.shift()).abs()
-        tr3 = (low - close.shift()).abs()
-        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-        return tr.rolling(period).mean()
+        ema12 = df["Close"].ewm(span=12).mean()
+        ema26 = df["Close"].ewm(span=26).mean()
+        macd = ema12 - ema26
+        signal = macd.ewm(span=9).mean()
+        hist = macd - signal
+
+    return pd.DataFrame({
+        "MACD": macd,
+        "Signal": signal,
+        "Histogram": hist
+    })
 
 
-# ============================================================
-# SUPERTREND — TradingView Perfect Replication
-# ============================================================
+# ==============================
+# RSI
+# ==============================
+def calc_rsi(df):
+    if TALIB_AVAILABLE:
+        rsi = talib.RSI(df["Close"], timeperiod=14)
+    else:
+        delta = df["Close"].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
 
-def supertrend(df, period=10, multiplier=3):
-    """
-    Returns:
-    ST: SuperTrend line
-    DIR: Trend direction (True = Uptrend, False = Downtrend)
-    """
-    high = df['High']
-    low = df['Low']
-    close = df['Close']
+    return pd.DataFrame({"RSI": rsi})
 
-    # ATR
-    atr_val = atr(high, low, close, period)
 
-    # Basic bands
-    hl2 = (high + low) / 2
-    upperband = hl2 + multiplier * atr_val
-    lowerband = hl2 - multiplier * atr_val
+# ==============================
+# Supertrend (Custom)
+# ==============================
+def calc_supertrend(df, period=10, multiplier=3):
+    hl2 = (df["High"] + df["Low"]) / 2
+    tr1 = df["High"] - df["Low"]
+    tr2 = abs(df["High"] - df["Close"].shift())
+    tr3 = abs(df["Low"] - df["Close"].shift())
+    tr = tr1.combine(tr2, max).combine(tr3, max)
 
-    final_upper = upperband.copy()
-    final_lower = lowerband.copy()
+    atr = tr.rolling(period).mean()
+    upperband = hl2 + multiplier * atr
+    lowerband = hl2 - multiplier * atr
 
-    for i in range(1, len(df)):
-        # Final upper band
-        if upperband.iloc[i] < final_upper.iloc[i - 1] or close.iloc[i - 1] > final_upper.iloc[i - 1]:
-            final_upper.iloc[i] = upperband.iloc[i]
-        else:
-            final_upper.iloc[i] = final_upper.iloc[i - 1]
-
-        # Final lower band
-        if lowerband.iloc[i] > final_lower.iloc[i - 1] or close.iloc[i - 1] < final_lower.iloc[i - 1]:
-            final_lower.iloc[i] = lowerband.iloc[i]
-        else:
-            final_lower.iloc[i] = final_lower.iloc[i - 1]
-
-    # Supertrend
     st = pd.Series(index=df.index)
-    dir_up = pd.Series(index=df.index, dtype=bool)
+    direction = pd.Series(index=df.index)
+
+    for i in range(len(df)):
+        if i == 0:
+            st.iloc[i] = upperband.iloc[i]
+            direction.iloc[i] = 1
+        else:
+            if df["Close"].iloc[i] > st.iloc[i - 1]:
+                st.iloc[i] = lowerband.iloc[i]
+                direction.iloc[i] = 1
+            else:
+                st.iloc[i] = upperband.iloc[i]
+                direction.iloc[i] = -1
+
+    return pd.DataFrame({
+        "Supertrend": st,
+        "Direction": direction
+    })
+
+
+# ==============================
+# Stochastic
+# ==============================
+def calc_stochastic(df):
+    if TALIB_AVAILABLE:
+        slowk, slowd = talib.STOCH(df["High"], df["Low"], df["Close"])
+    else:
+        low14 = df["Low"].rolling(14).min()
+        high14 = df["High"].rolling(14).max()
+        slowk = (df["Close"] - low14) * 100 / (high14 - low14)
+        slowd = slowk.rolling(3).mean()
+
+    return pd.DataFrame({"STOCH_K": slowk, "STOCH_D": slowd})
+
+
+# ==============================
+# Keltner Channel
+# ==============================
+def calc_keltner(df):
+    typical = (df["High"] + df["Low"] + df["Close"]) / 3
+    ema = typical.ewm(span=20).mean()
+    atr = (df["High"] - df["Low"]).rolling(20).mean()
+
+    upper = ema + 2 * atr
+    lower = ema - 2 * atr
+
+    return pd.DataFrame({"KC_UP": upper, "KC_MID": ema, "KC_LOW": lower})
+
+
+# ==============================
+# ZigZag (simplified)
+# ==============================
+def calc_zigzag(df, pct=3):
+    zigzag = [np.nan] * len(df)
+    last_pivot = df["Close"].iloc[0]
 
     for i in range(1, len(df)):
-        if close.iloc[i] > final_upper.iloc[i - 1]:
-            dir_up.iloc[i] = True
-        elif close.iloc[i] < final_lower.iloc[i - 1]:
-            dir_up.iloc[i] = False
-        else:
-            dir_up.iloc[i] = dir_up.iloc[i - 1]
+        change = (df["Close"].iloc[i] - last_pivot) / last_pivot * 100
+        if abs(change) >= pct:
+            zigzag[i] = df["Close"].iloc[i]
+            last_pivot = df["Close"].iloc[i]
 
-        st.iloc[i] = final_lower.iloc[i] if dir_up.iloc[i] else final_upper.iloc[i]
-
-    return st, dir_up
+    return pd.DataFrame({"ZIGZAG": zigzag})
 
 
-# ============================================================
-# KELTNER CHANNEL — (EMA ± ATR * Mult)
-# ============================================================
+# ==============================
+# Swing High / Low
+# ==============================
+def calc_swings(df, period=5):
+    swing_high = df["High"].rolling(period).max()
+    swing_low = df["Low"].rolling(period).min()
 
-def keltner_channel(df, ema_period=20, atr_period=10, mult=2):
-    close = df['Close']
-    upper = ema(close, ema_period) + mult * atr(df['High'], df['Low'], df['Close'], atr_period)
-    lower = ema(close, ema_period) - mult * atr(df['High'], df['Low'], df['Close'], atr_period)
-    mid = ema(close, ema_period)
-    return mid, upper, lower
-
-
-# ============================================================
-# ZIGZAG — PERCENT BASED
-# ============================================================
-
-def zigzag(series, pct=5):
-    """
-    Returns ZigZag turning points based on percentage move.
-    """
-    zz = pd.Series(index=series.index, dtype=float)
-    last_pivot_price = series.iloc[0]
-    last_pivot_idx = series.index[0]
-    trend = 0  # +1 up, -1 down
-
-    for i in range(1, len(series)):
-        change = (series.iloc[i] - last_pivot_price) / last_pivot_price * 100
-
-        if trend >= 0 and change <= -pct:
-            zz.iloc[i] = series.iloc[i]
-            last_pivot_price = series.iloc[i]
-            trend = -1
-
-        elif trend <= 0 and change >= pct:
-            zz.iloc[i] = series.iloc[i]
-            last_pivot_price = series.iloc[i]
-            trend = +1
-
-    return zz
-
-
-# ============================================================
-# SWING HIGH / SWING LOW
-# ============================================================
-
-def swing_high_low(df, window=5):
-    """
-    Identifies swing high/low using window method.
-    For window=5, center index is 2 (2 left, 2 right)
-    """
-    highs = df['High']
-    lows = df['Low']
-    idx = df.index
-
-    swing_high = pd.Series(np.nan, index=idx)
-    swing_low = pd.Series(np.nan, index=idx)
-
-    half = window // 2
-
-    for i in range(half, len(df) - half):
-        segment_high = highs[i - half: i + half + 1]
-        segment_low = lows[i - half: i + half + 1]
-
-        if highs.iloc[i] == segment_high.max():
-            swing_high.iloc[i] = highs.iloc[i]
-
-        if lows.iloc[i] == segment_low.min():
-            swing_low.iloc[i] = lows.iloc[i]
-
-    return swing_high, swing_low
-
-
-# ============================================================
-# RSI FALLBACK
-# ============================================================
-
-def rsi(series, period=14):
-    if TALIB and hasattr(talib, "RSI"):
-        return talib.RSI(series, timeperiod=period)
-    else:
-        delta = series.diff()
-        up = delta.clip(lower=0)
-        down = -delta.clip(upper=0)
-        ema_up = up.ewm(span=period).mean()
-        ema_down = down.ewm(span=period).mean()
-        rs = ema_up / ema_down
-        return 100 - (100 / (1 + rs))
-
-
-# ============================================================
-# MACD FALLBACK
-# ============================================================
-
-def macd(series, fast=12, slow=26, signal=9):
-    if TALIB and hasattr(talib, "MACD"):
-        macd_line, macd_signal, macd_hist = talib.MACD(series, fastperiod=fast, slowperiod=slow, signalperiod=signal)
-        return macd_line, macd_signal, macd_hist
-    else:
-        ema_fast = ema(series, fast)
-        ema_slow = ema(series, slow)
-        macd_line = ema_fast - ema_slow
-        macd_signal = ema(macd_line, signal)
-        macd_hist = macd_line - macd_signal
-        return macd_line, macd_signal, macd_hist
-
-
-# ============================================================
-# STOCHASTIC FALLBACK
-# ============================================================
-
-def stochastic(df, k_period=14, d_period=3):
-    if TALIB and hasattr(talib, "STOCH"):
-        k, d = talib.STOCH(
-            df['High'], df['Low'], df['Close'],
-            fastk_period=k_period,
-            slowk_period=d_period, slowk_matype=0,
-            slowd_period=d_period, slowd_matype=0
-        )
-        return k, d
-    else:
-        low_min = df['Low'].rolling(k_period).min()
-        high_max = df['High'].rolling(k_period).max()
-        k = (df['Close'] - low_min) * 100 / (high_max - low_min)
-        d = k.rolling(d_period).mean()
-        return k, d
+    return pd.DataFrame({
+        "SWING_HIGH": swing_high,
+        "SWING_LOW": swing_low
+    })
