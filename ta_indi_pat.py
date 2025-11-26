@@ -43,7 +43,11 @@ def indicators(df):
         'volume': df_std.get('volume')
     }
 
-    indicator_list = [f for f in dir(talib) if not f.startswith("CDL") and not f.startswith("_")]
+    #indicator_list = [f for f in dir(talib) if not f.startswith("CDL") and not f.startswith("_")]
+    indicator_list = [
+        f for f in dir(talib)
+        if not f.startswith("CDL") and not f.startswith("_") and f not in ["wraps", "wrapped_func"]
+        ]
 
     df_list = []  # store all indicator columns as separate DataFrames
 
