@@ -82,8 +82,9 @@ STYLE_BLOCK = """
 """
 
 def fetch_data(symbol, req_type):
+    yfsymbol=symbol+".NS"
     try:
-        ticker = yf.Ticker(symbol)
+        ticker = yf.Ticker(yfsymbol)
 
         content_html = ""
 
@@ -160,7 +161,7 @@ def fetch_data(symbol, req_type):
 
         # Daily chart
         elif req_type.lower() == "daily":
-            df = yf.download(symbol, period="1y", interval="1d").round(2)
+            df = yf.download(yfsymbol, period="1y", interval="1d").round(2)
             if df.empty:
                 content_html = f"<h1>No daily data for {symbol}</h1>"
             else:
@@ -198,7 +199,7 @@ def fetch_data(symbol, req_type):
 
         # Intraday chart
         elif req_type.lower() == "intraday":
-            df = yf.download(symbol, period="1d", interval="5m").round(2)
+            df = yf.download(yfsymbol, period="1d", interval="5m").round(2)
             if df.empty:
                 content_html = f"<h1>No intraday data for {symbol}</h1>"
             else:
@@ -288,7 +289,7 @@ def fetch_data(symbol, req_type):
 iface = gr.Interface(
     fn=fetch_data,
     inputs=[
-        gr.Textbox(label="Stock Symbol", value="PNB.NS"),
+        gr.Textbox(label="Stock Symbol", value="PNB"),
         gr.Dropdown(
             label="Request Type",
             choices=[
