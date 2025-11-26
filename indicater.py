@@ -1,72 +1,87 @@
 # indicater.py
 import pandas as pd
-import numpy as np
 import talib
+import numpy as np
 
 def calculate_indicators(df):
     """
-    Calculate various indicators.
-    df: OHLCV dataframe with columns: Open, High, Low, Close, Volume
-    Returns dict of indicator name -> DataFrame
+    Calculate all possible indicators from TA-Lib for a given OHLCV DataFrame.
+    df: DataFrame with columns ['Open','High','Low','Close','Volume']
+    Returns: dict of {indicator_name: Series or DataFrame}
     """
     indicators = {}
-
+    
     close = df['Close']
     high = df['High']
     low = df['Low']
-    volume = df['Volume'] if 'Volume' in df else pd.Series([1]*len(df), index=df.index)
+    open_ = df['Open']
+    volume = df['Volume']
 
-    # --- TA-Lib indicators ---
+    # --- Moving Averages ---
+    indicators['SMA_5'] = talib.SMA(close, timeperiod=5)
+    indicators['SMA_10'] = talib.SMA(close, timeperiod=10)
+    indicators['SMA_20'] = talib.SMA(close, timeperiod=20)
+    indicators['SMA_50'] = talib.SMA(close, timeperiod=50)
+    indicators['EMA_5'] = talib.EMA(close, timeperiod=5)
+    indicators['EMA_10'] = talib.EMA(close, timeperiod=10)
+    indicators['EMA_20'] = talib.EMA(close, timeperiod=20)
+    indicators['EMA_50'] = talib.EMA(close, timeperiod=50)
+
+    # --- Trend Indicators ---
+    indicators['ADX'] = talib.ADX(high, low, close, timeperiod=14)
+    indicators['CCI'] = talib.CCI(high, low, close, timeperiod=14)
+    indicators['AROON_UP'], indicators['AROON_DOWN'] = talib.AROON(high, low, timeperiod=14)
+    indicators['MACD'], indicators['MACD_signal'], indicators['MACD_hist'] = talib.MACD(close)
+    indicators['ATR'] = talib.ATR(high, low, close, timeperiod=14)
+
+    # --- Oscillators ---
+    indicators['RSI'] = talib.RSI(close, timeperiod=14)
+    indicators['STOCH_slowk'], indicators['STOCH_slowd'] = talib.STOCH(high, low, close)
+    indicators['STOCHF_fastk'], indicators['STOCHF_fastd'] = talib.STOCHF(high, low, close)
+    indicators['WILLR'] = talib.WILLR(high, low, close, timeperiod=14)
+
+    # --- Volatility ---
+    indicators['BB_upper'], indicators['BB_middle'], indicators['BB_lower'] = talib.BBANDS(close)
+    indicators['ATR'] = talib.ATR(high, low, close, timeperiod=14)
+
+    # --- Fallback for SuperTrend ---
     try:
-        # Moving averages
-        indicators['SMA20'] = pd.DataFrame({'SMA20': talib.SMA(close, timeperiod=20)}, index=df.index)
-        indicators['SMA50'] = pd.DataFrame({'SMA50': talib.SMA(close, timeperiod=50)}, index=df.index)
-        indicators['EMA20'] = pd.DataFrame({'EMA20': talib.EMA(close, timeperiod=20)}, index=df.index)
-        indicators['EMA50'] = pd.DataFrame({'EMA50': talib.EMA(close, timeperiod=50)}, index=df.index)
-
-        # MACD
-        macd, macdsignal, macdhist = talib.MACD(close)
-        indicators['MACD'] = pd.DataFrame({'MACD': macd, 'Signal': macdsignal, 'Hist': macdhist}, index=df.index)
-
-        # RSI
-        indicators['RSI14'] = pd.DataFrame({'RSI14': talib.RSI(close, timeperiod=14)}, index=df.index)
-
-        # Bollinger Bands
-        upper, middle, lower = talib.BBANDS(close)
-        indicators['BB_upper'] = pd.DataFrame({'BB_upper': upper}, index=df.index)
-        indicators['BB_middle'] = pd.DataFrame({'BB_middle': middle}, index=df.index)
-        indicators['BB_lower'] = pd.DataFrame({'BB_lower': lower}, index=df.index)
-
-        # ADX
-        indicators['ADX14'] = pd.DataFrame({'ADX14': talib.ADX(high, low, close, timeperiod=14)}, index=df.index)
+        indicators['SuperTrend'] = supertrend(df)
     except Exception as e:
-        print("TA-Lib indicators error:", e)
-
-    # --- Custom indicators if not in TA-Lib ---
-    # SuperTrend
-    indicators['SuperTrend'] = calculate_supertrend(df)
+        indicators['SuperTrend'] = pd.Series([np.nan]*len(df), index=df.index)
 
     return indicators
 
-def calculate_supertrend(df, period=10, multiplier=3):
+
+def supertrend(df, period=10, multiplier=3):
     """
-    Basic SuperTrend calculation
+    Compute SuperTrend indicator.
+    Returns a Series same length as df with SuperTrend values.
     """
-    hl2 = (df['High'] + df['Low']) / 2
-    atr = talib.ATR(df['High'], df['Low'], df['Close'], timeperiod=period)
-    st_upper = hl2 + multiplier * atr
-    st_lower = hl2 - multiplier * atr
-    supertrend = pd.Series(index=df.index, dtype=float)
-    trend = True  # True = up, False = down
+    high = df['High']
+    low = df['Low']
+    close = df['Close']
+
+    atr = talib.ATR(high, low, close, timeperiod=period)
+    hl2 = (high + low) / 2
+    upperband = hl2 + multiplier * atr
+    lowerband = hl2 - multiplier * atr
+
+    supertrend = pd.Series(index=df.index)
+    direction = True  # True = bullish
 
     for i in range(len(df)):
         if i == 0:
-            supertrend.iloc[i] = st_upper.iloc[i]
+            supertrend.iloc[i] = hl2.iloc[i]
+            continue
+        if close.iloc[i] > supertrend.iloc[i-1]:
+            direction = True
+        elif close.iloc[i] < supertrend.iloc[i-1]:
+            direction = False
+
+        if direction:
+            supertrend.iloc[i] = lowerband.iloc[i] if lowerband.iloc[i] > supertrend.iloc[i-1] else supertrend.iloc[i-1]
         else:
-            if df['Close'].iloc[i] > supertrend.iloc[i-1]:
-                trend = True
-                supertrend.iloc[i] = st_lower.iloc[i]
-            else:
-                trend = False
-                supertrend.iloc[i] = st_upper.iloc[i]
-    return pd.DataFrame({'SuperTrend': supertrend}, index=df.index)
+            supertrend.iloc[i] = upperband.iloc[i] if upperband.iloc[i] < supertrend.iloc[i-1] else supertrend.iloc[i-1]
+
+    return supertrend
