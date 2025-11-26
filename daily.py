@@ -15,7 +15,7 @@ def fetch_daily(symbol, max_rows=200):
  
         #if isinstance(df.columns, pd.MultiIndex):
                 #df.columns = df.columns.get_level_values(0)
-        df.columns=["Date",	"Close",	"High",	"Low",	"Open",	"Volume"]
+        df.columns=["Close",	"High",	"Low",	"Open",	"Volume"]
         if df.empty:
             return html_card("Error", f"No daily data found for {symbol}")
         df.reset_index(inplace=True)
