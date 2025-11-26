@@ -33,19 +33,24 @@ def fetch_qresult(symbol):
         bs_t = bs.T if bs is not None else None
         cf_t = cf.T if cf is not None else None
 
-        # Format numeric values
+        # ------------------------
         def format_df(df):
             df_formatted = df.copy()
+    
+            # Format numeric columns
             for col in df_formatted.columns:
                 df_formatted[col] = df_formatted[col].apply(
-                    lambda x: format_large_number(x) if isinstance(x, (int, float)) else x
+                    lambda x: format_number(x) if isinstance(x, (int, float)) else x
                 )
-            # Fix date index
+
+            # Fix index (assume index is datetime-like)
             df_formatted.index = [
                 format_timestamp_to_date(i.timestamp()) if hasattr(i, "timestamp") else str(i)
                 for i in df_formatted.index
             ]
+
             return df_formatted
+
 
         q_html = format_df(q_t).to_html(classes="styled-table", border=0)
 
