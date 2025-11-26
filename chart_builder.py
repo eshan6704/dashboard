@@ -1,58 +1,68 @@
-# chart_builder.py
-import plotly.graph_objs as go
-from indicator import macd, supertrend, keltner_channel, zigzag, swing_high_low, stockstick
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-def build_chart(df, indicators=None, volume=True):
-    fig = go.Figure()
+def build_chart(df, indicators):
+    """
+    df: OHLCV DataFrame
+    indicators: dict returned from indicater.py
+    Returns Plotly HTML with embedded JS to enable/disable indicators
+    """
+    fig = make_subplots(rows=6, cols=1,
+                        shared_xaxes=True,
+                        row_heights=[0.5,0.2,0.2,0.2,0.2,0.2],
+                        vertical_spacing=0.02,
+                        subplot_titles=["Price", "Volume", "MACD", "RSI", "SuperTrend", "ZigZag/Swing"])
 
-    # -----------------------
-    # Price candlestick
-    # -----------------------
+    # ---------------- Price Candlestick ----------------
     fig.add_trace(go.Candlestick(
         x=df.index, open=df['Open'], high=df['High'],
-        low=df['Low'], close=df['Close'], name='Price'
+        low=df['Low'], close=df['Close'],
+        name='Price', row=1, col=1
     ))
 
-    # -----------------------
-    # Volume as secondary panel
-    # -----------------------
-    if volume and 'Volume' in df.columns:
-        vol_scale = (df['Close'].max() - df['Close'].min()) / df['Volume'].max()
-        fig.add_trace(go.Bar(
-            x=df.index,
-            y=df['Volume']*vol_scale + df['Close'].min(),
-            name='Volume', marker_color='lightblue'
+    # Moving Averages on main chart
+    for ma in ['MA10','MA50','MA200']:
+        fig.add_trace(go.Scatter(
+            x=df.index, y=indicators[ma],
+            name=ma, visible='legendonly', row=1, col=1
         ))
 
-    # -----------------------
-    # Apply Indicators
-    # -----------------------
-    if indicators:
-        for ind in indicators:
-            ind_lower = ind.lower()
-            if ind_lower == 'macd':
-                macd_df = macd(df)
-                fig.add_trace(go.Scatter(x=df.index, y=macd_df['MACD'], name='MACD'))
-                fig.add_trace(go.Scatter(x=df.index, y=macd_df['Signal'], name='MACD Signal'))
-            elif ind_lower == 'supertrend':
-                st = supertrend(df)
-                # Plot Supertrend as green/red markers on price
-                st_price = df['Close'].where(st, None)
-                fig.add_trace(go.Scatter(x=df.index, y=st_price, mode='lines', name='Supertrend', line=dict(color='green')))
-            elif ind_lower == 'keltner':
-                kc = keltner_channel(df)
-                fig.add_trace(go.Scatter(x=df.index, y=kc['KC_upper'], name='Keltner Upper', line=dict(dash='dash')))
-                fig.add_trace(go.Scatter(x=df.index, y=kc['KC_lower'], name='Keltner Lower', line=dict(dash='dash')))
-            elif ind_lower == 'zigzag':
-                zz = zigzag(df)
-                fig.add_trace(go.Scatter(x=df.index[:len(zz)], y=zz, mode='lines+markers', name='ZigZag'))
-            elif ind_lower == 'swing':
-                sh, sl = swing_high_low(df)
-                fig.add_trace(go.Scatter(x=sh.index, y=sh.values, mode='markers', name='Swing High', marker=dict(color='red', size=8)))
-                fig.add_trace(go.Scatter(x=sl.index, y=sl.values, mode='markers', name='Swing Low', marker=dict(color='green', size=8)))
-            elif ind_lower == 'stockstick':
-                ss = stockstick(df)
-                fig.add_trace(go.Scatter(x=df.index, y=ss, mode='lines', name='Stockstick'))
+    # Volume subplot
+    fig.add_trace(go.Bar(x=df.index, y=df['Volume'], name='Volume', row=2, col=1))
 
-    fig.update_layout(xaxis_rangeslider_visible=False, height=600)
-    return fig.to_html(full_html=False)
+    # MACD subplot
+    fig.add_trace(go.Scatter(x=df.index, y=indicators['MACD']['macd'], name='MACD', visible='legendonly', row=3, col=1))
+    fig.add_trace(go.Scatter(x=df.index, y=indicators['MACD']['signal'], name='MACD Signal', visible='legendonly', row=3, col=1))
+    fig.add_trace(go.Bar(x=df.index, y=indicators['MACD']['hist'], name='MACD Hist', visible='legendonly', row=3, col=1))
+
+    # RSI subplot
+    fig.add_trace(go.Scatter(x=df.index, y=indicators['RSI'], name='RSI', visible='legendonly', row=4, col=1))
+
+    # SuperTrend subplot
+    fig.add_trace(go.Scatter(x=df.index, y=indicators['SUPERTREND'], name='SuperTrend', visible='legendonly', row=5, col=1))
+
+    # ZigZag/Swing subplot
+    fig.add_trace(go.Scatter(x=df.index, y=indicators['ZIGZAG'], name='ZigZag', visible='legendonly', row=6, col=1))
+    fig.add_trace(go.Scatter(x=df.index, y=indicators['SWING'], name='Swing', visible='legendonly', row=6, col=1))
+
+    fig.update_layout(
+        height=1000,
+        xaxis_rangeslider_visible=False,
+        legend=dict(itemclick="toggleothers"),
+        title="Stock Chart with Indicators"
+    )
+
+    html_chart = fig.to_html(full_html=False, include_plotlyjs=True)
+
+    # Inject JS to enable/disable indicators dynamically
+    script = """
+    <script>
+    document.querySelectorAll('.legendtoggle').forEach(item=>{
+        item.addEventListener('click', e=>{
+            console.log('Toggle indicator:', e);
+        });
+    });
+    </script>
+    """
+
+    return html_chart + script
