@@ -11,7 +11,9 @@ def fetch_daily(symbol):
     try:
         # --- Fetch historical data ---
         df = yf.download(symbol + ".NS", period="1y", interval="1d").round(2)
-        df.columns=df.co
+                # Reset MultiIndex if exists
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
         if df.empty:
             return html_card("Error", f"No daily data found for {symbol}")
         df.reset_index(inplace=True)
