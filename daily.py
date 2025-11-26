@@ -24,7 +24,9 @@ def fetch_daily(symbol, indicators=None):
             df.columns = df.columns.get_level_values(0)
 
         # Build chart with optional indicators
-        chart_html = build_chart(df, indicators=indicators, volume=True)
+        chart_html = build_chart(df, indicators=['macd','supertrend','keltner','zigzag','swing','stockstick'])
+
+        #chart_html = build_chart(df, indicators=indicators, volume=True)
 
         # Format last 30 rows for table
         table_html = make_table(df.tail(30))
