@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 from common import (
     format_large_number,
-    #format_timestamp_to_date,
+    format_timestamp_to_date,
     format_number,
     wrap_html,
     STYLE_BLOCK
