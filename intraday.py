@@ -1,102 +1,39 @@
 # intraday.py
-
 import yfinance as yf
 import pandas as pd
+from common import format_large_number, wrap_html, make_table
 from chart_builder import build_chart
 
+# ============================================================
+#               INTRADAY DATA PROCESSING
+# ============================================================
 
-# -------------------------------
-# Fetch + Clean intraday dataset
-# -------------------------------
-def _fetch_intraday(symbol, interval="5m", period="1d"):
-    yfs = f"{symbol}.NS"
-
+def fetch_intraday(symbol, indicators=None):
+    """
+    Fetch intraday (5-min) data for a symbol from Yahoo Finance,
+    format it, apply indicators, and return full HTML.
+    """
+    yfsymbol = f"{symbol}.NS"
     try:
-        df = yf.download(
-            yfs,
-            interval=interval,
-            period=period,
-            progress=False
-        )
+        # Fetch 1-day intraday 5-min interval
+        df = yf.download(yfsymbol, period="1d", interval="5m").round(2)
+        if df.empty:
+            return wrap_html(f"<h1>No intraday data available for {symbol}</h1>")
+
+        # Reset MultiIndex if exists
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        # Build chart with indicators
+        chart_html = build_chart(df, indicators=indicators, volume=True)
+
+        # Format last 50 rows for table
+        table_html = make_table(df.tail(50))
+
+        # Wrap in full HTML
+        full_html = wrap_html(f"{chart_html}<h2>Recent Intraday Data (last 50 rows)</h2>{table_html}",
+                              title=f"Intraday Data for {symbol}")
+        return full_html
+
     except Exception as e:
-        return None, str(e)
-
-    if df is None or df.empty:
-        return None, "No intraday data returned"
-
-    # Clean index timestamps
-    df.index = pd.to_datetime(df.index)
-
-    # Remove timezone if present
-    try:
-        df.index = df.index.tz_localize(None)
-    except:
-        pass
-
-    # Round values
-    df = df.round(2)
-
-    return df, None
-
-
-# -------------------------------
-# Main intraday function (UI return)
-# -------------------------------
-def fetch_intraday(symbol, interval="5m", period="1d"):
-    """
-    Supported:
-        interval = 1m,2m,5m,15m,30m,60m
-        period   = 1d,5d,1mo
-    """
-
-    df, err = _fetch_intraday(symbol, interval, period)
-
-    if err:
-        return {
-            "html": f"<div class='group'><h2>Intraday Error</h2><p>{err}</p></div>",
-            "data": {}
-        }
-
-    if df is None or df.empty:
-        return {
-            "html": f"<div class='group'><h2>No Intraday Data for {symbol}</h2></div>",
-            "data": {}
-        }
-
-    # Build chart using indicator engine
-    chart_html = build_chart(df)
-
-    # Convert last rows to table
-    table_html = df.tail(200).to_html(
-        classes="styled-table",
-        border=0
-    )
-
-    final = f"""
-    <div class="group">
-        <h2>Intraday Chart — {symbol} ({interval}, {period})</h2>
-        {chart_html}
-
-        <h3>Last 200 Rows</h3>
-        {table_html}
-
-        <style>
-            .styled-table {{
-                border-collapse: collapse;
-                width: 100%;
-                font-size: 13px;
-            }}
-            .styled-table td, .styled-table th {{
-                border: 1px solid #ddd;
-                padding: 6px;
-                text-align: right;
-            }}
-            .styled-table tr:nth-child(even) {{background: #f9f9f9;}}
-        </style>
-    </div>
-    """
-
-    return {
-        "html": final,
-        "data": df.tail(200).to_dict()
-    }
+        return wrap_html(f"<h1>Error fetching intraday data for {symbol}</h1><p>{str(e)}</p>")
