@@ -1,60 +1,59 @@
 # indicater.py
 import pandas as pd
 import numpy as np
-import talib as ta
-
-# -------------------------------
-# CUSTOM INDICATOR FUNCTIONS
-# -------------------------------
-
-def supertrend(df, period=10, multiplier=3):
-    """
-    Simple SuperTrend calculation.
-    Returns a Series aligned with df.index
-    """
-    atr = ta.ATR(df['High'], df['Low'], df['Close'], timeperiod=period)
-    hl2 = (df['High'] + df['Low']) / 2
-    final_upperband = hl2 + multiplier * atr
-    final_lowerband = hl2 - multiplier * atr
-
-    st = pd.Series(index=df.index, dtype=float)
-    trend = True
-    for i in range(1, len(df)):
-        if df['Close'].iloc[i] > final_upperband.iloc[i-1]:
-            trend = True
-        elif df['Close'].iloc[i] < final_lowerband.iloc[i-1]:
-            trend = False
-        st.iloc[i] = final_lowerband.iloc[i] if trend else final_upperband.iloc[i]
-    return st
-
-# -------------------------------
-# MAIN INDICATOR FUNCTION
-# -------------------------------
+import talib
 
 def calculate_indicators(df):
     """
-    df: DataFrame with columns ['Open','High','Low','Close','Volume']
-    Returns dict of indicator DataFrames or Series
+    Calculate multiple indicators for given OHLCV df.
+    Returns dict of indicator name -> DataFrame/Series.
     """
     indicators = {}
 
-    if 'Close' in df.columns:
-        # Moving averages on main chart
-        indicators['SMA20'] = ta.SMA(df['Close'], timeperiod=20)
-        indicators['SMA50'] = ta.SMA(df['Close'], timeperiod=50)
-        indicators['EMA20'] = ta.EMA(df['Close'], timeperiod=20)
-        indicators['EMA50'] = ta.EMA(df['Close'], timeperiod=50)
+    close = df['Close'].astype(float)
+    high = df['High'].astype(float)
+    low = df['Low'].astype(float)
+    volume = df['Volume'].astype(float)
 
-        # MACD as sub-plot
-        macd, macdsignal, macdhist = ta.MACD(df['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
-        indicators['MACD'] = pd.DataFrame({'MACD': macd, 'Signal': macdsignal, 'Hist': macdhist}, index=df.index)
+    # --- MA on main chart ---
+    indicators['SMA20'] = talib.SMA(close, timeperiod=20)
+    indicators['SMA50'] = talib.SMA(close, timeperiod=50)
 
-        # Bollinger Bands
-        upper, middle, lower = ta.BBANDS(df['Close'], timeperiod=20)
-        indicators['Bollinger'] = pd.DataFrame({'Upper': upper, 'Middle': middle, 'Lower': lower}, index=df.index)
+    # --- MACD ---
+    macd, macdsignal, macdhist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
+    indicators['MACD'] = pd.DataFrame({'MACD': macd, 'Signal': macdsignal, 'Hist': macdhist})
 
-    # SuperTrend requires High, Low, Close
-    if all(x in df.columns for x in ['High', 'Low', 'Close']):
-        indicators['SuperTrend'] = supertrend(df)
+    # --- RSI ---
+    indicators['RSI'] = talib.RSI(close, timeperiod=14)
+
+    # --- SuperTrend (not in TA-Lib, custom function) ---
+    indicators['SuperTrend'] = supertrend(high, low, close, period=10, multiplier=3)
 
     return indicators
+
+def supertrend(high, low, close, period=10, multiplier=3):
+    """
+    Simple SuperTrend implementation.
+    Returns Series with trend value.
+    """
+    atr = talib.ATR(high, low, close, timeperiod=period)
+    hl2 = (high + low) / 2
+    final_upperband = hl2 + (multiplier * atr)
+    final_lowerband = hl2 - (multiplier * atr)
+    trend = pd.Series(index=close.index)
+    direction = True  # True = uptrend
+
+    for i in range(len(close)):
+        if i == 0:
+            trend.iloc[i] = final_upperband.iloc[i]
+        else:
+            if close.iloc[i] > final_upperband.iloc[i-1]:
+                direction = True
+            elif close.iloc[i] < final_lowerband.iloc[i-1]:
+                direction = False
+            if direction:
+                trend.iloc[i] = final_lowerband.iloc[i]
+            else:
+                trend.iloc[i] = final_upperband.iloc[i]
+
+    return trend
