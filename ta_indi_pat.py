@@ -4,31 +4,27 @@ import numpy as np
 
 def patterns(df):
     """
-    Return a DataFrame of all CDL patterns with 0/1,
-    adding the original 'Date' column as the first column.
+    Return a DataFrame of all CDL patterns (0/1),
+    with original Date + OHLC as the first columns.
     """
     df = df.copy()
-    required_cols = ['Open','High','Low','Close']
-
-    for col in required_cols:
+    for col in ['Open','High','Low','Close']:
         if col not in df.columns:
             raise ValueError(f"Missing column: {col}")
 
-    pattern_df = pd.DataFrame(index=df.index)
-    pattern_list = [f for f in dir(talib) if f.startswith("CDL")]
-
-    for pattern in pattern_list:
-        func = getattr(talib, pattern)
-        result = func(
+    pattern_df = pd.DataFrame({
+        p: (getattr(talib, p)(
             df['Open'].values.astype(float),
             df['High'].values.astype(float),
             df['Low'].values.astype(float),
             df['Close'].values.astype(float)
-        )
-        pattern_df[pattern] = (result != 0).astype(int)
+        ) != 0).astype(int)
+        for p in dir(talib) if p.startswith("CDL")
+    }, index=df.index)
 
-    # Add original Date as first column
-    pattern_df.insert(0, 'Date', df['Date'].values)
+    # Prepend Date + OHLC
+    for col in ['Date', 'Open', 'High', 'Low', 'Close'][::-1]:
+        pattern_df.insert(0, col, df[col].values)
 
     return pattern_df
 
@@ -36,52 +32,36 @@ def patterns(df):
 def indicators(df):
     """
     Return a DataFrame of numeric TA-Lib indicators,
-    adding the original 'Date' column as the first column.
+    with original Date + OHLC as the first columns.
     """
     df_std = df.copy()
     df_std.columns = [c.lower() for c in df_std.columns]
 
-    ohlcv = {
-        'open': df_std.get('open'),
-        'high': df_std.get('high'),
-        'low': df_std.get('low'),
-        'close': df_std.get('close'),
-        'volume': df_std.get('volume')
-    }
+    ohlcv = {k: df_std.get(k) for k in ['open','high','low','close','volume']}
+    indicator_list = [f for f in dir(talib)
+                      if not f.startswith("CDL") and not f.startswith("_")
+                      and f not in ["wraps", "wrapped_func"]]
 
-    indicator_list = [
-        f for f in dir(talib)
-        if not f.startswith("CDL") and not f.startswith("_") and f not in ["wraps", "wrapped_func"]
-    ]
-
-    df_list = []
-    original_index = df.index
-
+    dfs = []
     for name in indicator_list:
         func = getattr(talib, name)
         try:
-            if ohlcv['close'] is not None:
-                result = func(ohlcv['close'].values.astype(float))
-            else:
+            if ohlcv['close'] is None:
                 continue
-
+            result = func(ohlcv['close'].values.astype(float))
+            # handle tuple outputs
             if isinstance(result, tuple):
                 for i, arr in enumerate(result):
-                    col_name = f"{name}_{i}"
-                    temp_df = pd.DataFrame(arr, index=original_index, columns=[col_name])
-                    df_list.append(temp_df)
+                    dfs.append(pd.DataFrame(arr, index=df.index, columns=[f"{name}_{i}"]))
             else:
-                temp_df = pd.DataFrame(result, index=original_index, columns=[name])
-                df_list.append(temp_df)
+                dfs.append(pd.DataFrame(result, index=df.index, columns=[name]))
         except:
             continue
 
-    if df_list:
-        indicator_df = pd.concat(df_list, axis=1)
-    else:
-        indicator_df = pd.DataFrame(index=original_index)
+    indicator_df = pd.concat(dfs, axis=1) if dfs else pd.DataFrame(index=df.index)
 
-    # Add original Date as first column
-    indicator_df.insert(0, 'Date', df['Date'].values)
+    # Prepend Date + OHLC
+    for col in ['Date', 'Open', 'High', 'Low', 'Close'][::-1]:
+        indicator_df.insert(0, col, df[col].values)
 
     return indicator_df
