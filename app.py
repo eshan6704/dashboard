@@ -45,9 +45,9 @@ STYLE_BLOCK = """
   gap: 15px; /* Space between individual key-value items */
 }
 .key-value-pair {
-  flex: 1 1 calc(33% - 15px); /* For 3 items in a row, considering gap */
+  flex: 1 1 calc(25% - 15px); /* For 3 items in a row, considering gap */
   box-sizing: border-box; /* Include padding and border in the width */
-  min-width: 250px; /* Prevent items from becoming too narrow */
+  min-width: 150px; /* Prevent items from becoming too narrow */
   background: #fff;
   padding: 10px;
   border: 1px solid #e0e0e0;
