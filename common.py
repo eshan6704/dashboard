@@ -155,3 +155,11 @@ def safe_get(df, key, default_val="-"):
         return df.get(key, default_val)
     except:
         return default_val
+def format_timestamp_to_date(timestamp):
+    if not isinstance(timestamp, (int, float)) or timestamp <= 0:
+        return "N/A"
+    try:
+        return datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
+    except Exception:
+        return "Invalid Date"
+
