@@ -4,7 +4,7 @@ import pandas as pd
 from ta_indi_pat import patterns, indicators
 from common import html_card, wrap_html
 
-def fetch_daily_full_table(symbol, max_rows=200):
+def fetch_daily(symbol, max_rows=200):
     """
     Fetch daily OHLCV data, calculate indicators + patterns, handle multilevel headers,
     and return a scrollable HTML table (x and y).
