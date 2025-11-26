@@ -2,97 +2,80 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-def build_chart(df, indicators=None, symbol="STOCK"):
+def build_chart(df, indicators, symbol="Stock"):
     """
-    df: DataFrame with ['Open','High','Low','Close','Volume']
-    indicators: dict returned from calculate_indicators
-    Returns Plotly HTML div
+    Build Plotly chart with main OHLC + optional subplots for indicators.
+    Inject JS to toggle each indicator dynamically.
     """
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
         row_heights=[0.7, 0.3],
-        vertical_spacing=0.02,
-        subplot_titles=[f"{symbol} Price Chart", "Volume"]
+        vertical_spacing=0.05,
+        subplot_titles=(f"{symbol} Price", "Indicators")
     )
 
-    # -------------------------------
-    # CANDLESTICK ON MAIN CHART
-    # -------------------------------
-    fig.add_trace(
-        go.Candlestick(
-            x=df.index,
-            open=df['Open'],
-            high=df['High'],
-            low=df['Low'],
-            close=df['Close'],
-            name="Price"
-        ),
-        row=1, col=1
-    )
+    # --- Main chart: OHLC + MA ---
+    fig.add_trace(go.Candlestick(
+        x=df.index, open=df['Open'], high=df['High'],
+        low=df['Low'], close=df['Close'], name='OHLC'
+    ), row=1, col=1)
 
-    # -------------------------------
-    # ADD MOVING AVERAGES ON MAIN CHART
-    # -------------------------------
-    if indicators:
-        for name in ['SMA20','SMA50','EMA20','EMA50']:
-            if name in indicators:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df.index,
-                        y=indicators[name],
-                        mode='lines',
-                        name=name
-                    ),
-                    row=1, col=1
-                )
+    # MA on main chart
+    for ma in ['SMA20', 'SMA50']:
+        if ma in indicators:
+            fig.add_trace(go.Scatter(
+                x=df.index, y=indicators[ma],
+                mode='lines', name=ma
+            ), row=1, col=1)
 
-    # -------------------------------
-    # VOLUME BAR
-    # -------------------------------
-    fig.add_trace(
-        go.Bar(
-            x=df.index,
-            y=df['Volume'],
-            name="Volume",
-            marker_color='lightblue'
-        ),
-        row=2, col=1
-    )
+    # --- Subplot for MACD/RSI/SuperTrend ---
+    indicator_row = 2
+    for ind_name in ['MACD', 'RSI', 'SuperTrend']:
+        if ind_name in indicators:
+            data = indicators[ind_name]
+            if isinstance(data, pd.DataFrame):
+                for col in data.columns:
+                    fig.add_trace(go.Scatter(
+                        x=df.index, y=data[col],
+                        mode='lines', name=f"{ind_name}-{col}",
+                        visible=False  # Start hidden, toggle later
+                    ), row=indicator_row, col=1)
+            else:
+                fig.add_trace(go.Scatter(
+                    x=df.index, y=data,
+                    mode='lines', name=ind_name,
+                    visible=False
+                ), row=indicator_row, col=1)
 
-    # -------------------------------
-    # ADD SUBPLOTS FOR INDICATORS
-    # -------------------------------
-    if indicators:
-        # MACD
-        if 'MACD' in indicators:
-            macd = indicators['MACD']
-            fig.add_trace(
-                go.Scatter(x=macd.index, y=macd['MACD'], name="MACD", line=dict(color='blue')),
-                row=2, col=1
-            )
-            fig.add_trace(
-                go.Scatter(x=macd.index, y=macd['Signal'], name="MACD Signal", line=dict(color='orange')),
-                row=2, col=1
-            )
-
-        # SuperTrend as overlay
-        if 'SuperTrend' in indicators:
-            fig.add_trace(
-                go.Scatter(
-                    x=df.index,
-                    y=indicators['SuperTrend'],
-                    name="SuperTrend",
-                    line=dict(color='green')
-                ),
-                row=1, col=1
-            )
-
+    # --- Layout ---
     fig.update_layout(
-        xaxis_rangeslider_visible=False,
-        template="plotly_white",
         height=700,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        showlegend=True,
+        title=f"{symbol} Chart with Indicators",
+        xaxis_rangeslider_visible=False
     )
 
-    return fig.to_html(include_plotlyjs='cdn')
+    # --- Inject JS for toggle buttons ---
+    toggle_script = """
+    <script>
+    function toggleIndicator(indName) {
+        var gd = document.querySelectorAll('.js-plotly-plot')[0];
+        var update = {visible: []};
+        gd.data.forEach(function(trace) {
+            if(trace.name.includes(indName)) {
+                trace.visible = !trace.visible;
+            }
+        });
+        Plotly.redraw(gd);
+    }
+    </script>
+    <div style="margin-top:10px;">
+        <button onclick="toggleIndicator('MACD')">Toggle MACD</button>
+        <button onclick="toggleIndicator('RSI')">Toggle RSI</button>
+        <button onclick="toggleIndicator('SuperTrend')">Toggle SuperTrend</button>
+    </div>
+    """
+
+    chart_html = fig.to_html(full_html=False, include_plotlyjs='cdn') + toggle_script
+    return chart_html
