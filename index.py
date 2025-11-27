@@ -8,7 +8,7 @@ from common import html_card, wrap_html
 from ta_indi_pat import talib_df
 
 
-def nifty50_daily(max_rows=200):
+def fetch_index(max_rows=200):
     """
     Fetch NIFTY 50 (^NSEI) 1-year OHLCV data from Yahoo Finance,
     add TA-Lib indicators + candlestick patterns,
