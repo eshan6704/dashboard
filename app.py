@@ -15,7 +15,7 @@ from other import fetch_other
 def fetch_data(symbol, req_type):
     req_type = req_type.lower()
     if req_type == "daily":
-        return fetch_daily(symbol)
+        return fetch_daily(symbol,"NSE")
     elif req_type == "intraday":
         return fetch_intraday(symbol)
     elif req_type == "info":
