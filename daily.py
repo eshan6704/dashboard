@@ -1,5 +1,9 @@
 import yfinance as yf
 import pandas as pd
+import io
+import requests
+
+from datetime import datetime, timedelta
 from ta_indi_pat import talib_df  # use the combined talib_df function
 from common import html_card, wrap_html
 
