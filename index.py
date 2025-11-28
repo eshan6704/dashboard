@@ -8,6 +8,8 @@ from common import html_card, wrap_html
 from ta_indi_pat import talib_df
 import datetime
 
+import nse
+
 date = datetime.date(2025, 11, 27) # Trying a past date where data is likely available
 
 df = nse_preopen_df("NIFTY")
