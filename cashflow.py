@@ -1,12 +1,12 @@
 # cashflow.py
 import yfinance as yf
 from common import make_table, wrap_html, format_large_number, html_error
-
+from yf import cashflow
 def fetch_cashflow(symbol):
-    yfsymbol = symbol + ".NS"
+    
     try:
-        ticker = yf.Ticker(yfsymbol)
-        df = ticker.cashflow
+      
+        df = cashflow(symbol)
 
         if df.empty:
             return wrap_html(f"<h1>No cash flow data available for {symbol}</h1>")
