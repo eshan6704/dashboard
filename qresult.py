@@ -2,15 +2,15 @@
 import yfinance as yf
 import pandas as pd
 from common import make_table, wrap_html, format_large_number, html_error
-
+from yf import qresult
 def fetch_qresult(symbol):
     """
     Fetch quarterly financials for a stock symbol and return HTML
     """
-    yfsymbol = symbol + ".NS"
+
     try:
-        ticker = yf.Ticker(yfsymbol)
-        df = ticker.quarterly_financials
+ 
+        df = qresult(symbol)
 
         if df.empty:
             return wrap_html(f"<h1>No quarterly results available for {symbol}</h1>")
