@@ -7,7 +7,7 @@ import yfinance as yf
 import pandas as pd
 import traceback
 
-from yf import (info)
+from yf import yfinfo
 
 from common import (format_number,format_large_number,make_table,html_card,html_section,html_error,clean_df,safe_get)
 
