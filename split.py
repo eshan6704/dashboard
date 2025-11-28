@@ -1,12 +1,12 @@
 # split.py
 import yfinance as yf
 from common import make_table, wrap_html, format_large_number, html_error
-
+from yf import split
 def fetch_split(symbol):
-    yfsymbol = symbol + ".NS"
+    
     try:
-        ticker = yf.Ticker(yfsymbol)
-        df = ticker.splits.to_frame('Split')
+        
+        df = split(symbol)
 
         if df.empty:
             return wrap_html(f"<h1>No split history available for {symbol}</h1>")
