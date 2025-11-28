@@ -8,16 +8,7 @@ from common import html_card, wrap_html
 from ta_indi_pat import talib_df
 import datetime
 
-import nse
 
-date = datetime.date(2025, 11, 27) # Trying a past date where data is likely available
-
-df = nse_preopen_df("NIFTY")
-df_bhav, act_date = fetch_bhavcopy_df(date)
-df_ce, df_pe = fetch_option_chain_df("NIFTY")
-df_m, df_a, df_meta, df_data = nse_index_df("NIFTY 50")
-
-fno = nse_fno_df("RELIANCE")
 
 def fetch_index(max_rows=200):
     """
