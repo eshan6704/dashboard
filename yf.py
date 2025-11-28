@@ -36,7 +36,7 @@ def dividend(symbol):
     df = ticker.dividends.to_frame('Dividend')
     return df
     
-def dividend(symbol): 
+def split(symbol): 
         ticker = yf.Ticker(symbol + ".NS")
         df = ticker.splits.to_frame('Split')
         return df
