@@ -5,7 +5,7 @@ import pandas as pd
 def yfinfo(symbol):
 
         tk = yf.Ticker(symbol + ".NS")
-        return tk
+        return tk.info
 
 def qresult(symbol):
 
