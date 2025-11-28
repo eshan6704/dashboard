@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from common import html_card, wrap_html
 from ta_indi_pat import talib_df
 import datetime
-import nse
+from nse import nse_index_df
 
 
 def fetch_index(max_rows=200):
