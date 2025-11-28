@@ -1,12 +1,11 @@
 # balance.py
 import yfinance as yf
 from common import make_table, wrap_html, format_large_number, html_error
-
+from yf import (balance)
 def fetch_balance(symbol):
-    yfsymbol = symbol + ".NS"
+    
     try:
-        ticker = yf.Ticker(yfsymbol)
-        df = ticker.balance_sheet
+        df = balance(symbol)
 
         if df.empty:
             return wrap_html(f"<h1>No balance sheet available for {symbol}</h1>")
