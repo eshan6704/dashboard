@@ -7,16 +7,9 @@ import yfinance as yf
 import pandas as pd
 import traceback
 
-from common import (
-    format_number,
-    format_large_number,
-    make_table,
-    html_card,
-    html_section,
-    html_error,
-    clean_df,
-    safe_get
-)
+from yf import (info)
+
+from common import (format_number,format_large_number,make_table,html_card,html_section,html_error,clean_df,safe_get)
 
 
 def fetch_info(symbol: str):
@@ -25,8 +18,7 @@ def fetch_info(symbol: str):
     Only internal code updated to use common.py helpers.
     """
     try:
-        yf_symbol = f"{symbol}.NS"
-        tk = yf.Ticker(yf_symbol)
+        tk=info(symbol)
         info = tk.info
 
         if not info:
