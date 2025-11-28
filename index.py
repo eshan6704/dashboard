@@ -21,7 +21,8 @@ def fetch_index(max_rows=200):
         # ----------------------------------
         # Fetch NIFTY 50 data
         # ----------------------------------
-        df = nse_preopen_df()
+        df = nse_index_df(index_name="NIFTY 50"):
+        
 
         if df.empty:
             return html_card("Error", "No data found for NIFTY 50 (^NSEI).")
@@ -31,17 +32,14 @@ def fetch_index(max_rows=200):
         df.reset_index(inplace=True)  # make Date a column
 
         # Limit display rows
-        df_display = df.head(max_rows)
+        df_display = df
 
-        # ----------------------------------
-        # Generate TA-Lib indicators
-        # ----------------------------------
-        combined_df = talib_df(df_display)
+
 
         # ----------------------------------
         # Convert to HTML
         # ----------------------------------
-        table_html = combined_df.to_html(
+        table_html = df_display.to_html(
             classes="table table-striped table-bordered",
             index=False
         )
@@ -53,7 +51,7 @@ def fetch_index(max_rows=200):
         """
 
         content = f"""
-        <h2>NIFTY 50 (^NSEI) — Daily (OHLCV + Indicators + Patterns)</h2>
+        <h2>NIFTY 50 </h2>
         {html_card("Technical Analysis Table", scrollable_html)}
         """
 
