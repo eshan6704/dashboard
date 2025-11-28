@@ -1,12 +1,12 @@
 # result.py
 import yfinance as yf
 from common import make_table, wrap_html, format_large_number, html_error
-
+from yf import result
 def fetch_result(symbol):
-    yfsymbol = symbol + ".NS"
+    
     try:
-        ticker = yf.Ticker(yfsymbol)
-        df = ticker.financials
+        
+        df = result(symbol)
 
         if df.empty:
             return wrap_html(f"<h1>No annual results available for {symbol}</h1>")
