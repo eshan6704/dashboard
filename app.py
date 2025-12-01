@@ -43,46 +43,44 @@ def fetch_data(symbol, req_type):
         return f"<h1>No handler for {req_type}</h1>"
 
 
-# --- Gradio Minimal Layout ---
+# --- Minimal Clean UI ---
 with gr.Blocks() as iface:
 
-    # Inject custom CSS (safe for older Gradio)
+    # Inject CSS for compact UI
     gr.HTML("""
     <style>
-        .gradio-container {padding-top: 0 !important;}
-        #topbar {margin: 0; padding: 0;}
+        .gradio-container { padding-top: 0 !important; }
+        #topbar { margin: 0; padding: 0; }
+        #topbar .gr-input, #topbar .gr-select { margin-top: 0 !important; }
     </style>
     """)
 
+    # Top compact row
     with gr.Row(elem_id="topbar"):
         symbol = gr.Textbox(
-            label="",
-            placeholder="Enter Symbol (e.g., PNB)",
+            label="",                     # No label
+            placeholder="Symbol (e.g., PNB)",
             value="PNB",
             scale=2
         )
+
         req_type = gr.Dropdown(
-            label="",
+            label="",                     # No label
             choices=[
-                "index",
-                "info",
-                "intraday",
-                "daily",
-                "qresult",
-                "result",
-                "balance",
-                "cashflow",
-                "dividend",
-                "split",
-                "other"
+                "index", "info", "intraday", "daily",
+                "qresult", "result", "balance",
+                "cashflow", "dividend", "split", "other"
             ],
             value="info",
             scale=2
         )
+
         btn = gr.Button("Submit", scale=1)
 
+    # Output area
     output = gr.HTML()
 
+    # Click event
     btn.click(fetch_data, inputs=[symbol, req_type], outputs=output)
 
 
