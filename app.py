@@ -14,7 +14,6 @@ from other import fetch_other
 from index import fetch_index
 
 
-# --- Main UI function ---
 def fetch_data(symbol, req_type):
     req_type = req_type.lower()
     if req_type == "index":
@@ -39,51 +38,74 @@ def fetch_data(symbol, req_type):
         return fetch_split(symbol)
     elif req_type == "other":
         return fetch_other(symbol)
-    else:
-        return f"<h1>No handler for {req_type}</h1>"
+    return f"<h1>No handler for {req_type}</h1>"
 
 
-# --- Minimal Clean UI ---
 with gr.Blocks() as iface:
 
-    # Inject CSS for compact UI
+    # REMOVE labels and shrink input heights
     gr.HTML("""
     <style>
-        .gradio-container { padding-top: 0 !important; }
-        #topbar { margin: 0; padding: 0; }
-        #topbar .gr-input, #topbar .gr-select { margin-top: 0 !important; }
+        /* Remove label spaces entirely */
+        .gr-form > div > label, 
+        .gr-input label, 
+        .gr-textbox label, 
+        .gr-dropdown label {
+            display: none !important;
+        }
+
+        /* Shrink components height */
+        input, select, button {
+            height: 28px !important;
+            padding: 0 6px !important;
+            font-size: 14px !important;
+        }
+
+        /* Tight row */
+        #topbar {
+            margin: 0;
+            padding: 0;
+            height: 30px !important;
+        }
+
+        #topbar > * {
+            margin: 0 !important;
+        }
+
+        /* Smaller dropdown arrow */
+        .gr-dropdown select {
+            height: 28px !important;
+        }
     </style>
     """)
 
-    # Top compact row
     with gr.Row(elem_id="topbar"):
+
         symbol = gr.Textbox(
-            label="",                     # No label
-            placeholder="Symbol (e.g., PNB)",
+            label="",
+            placeholder="Symbol",
             value="PNB",
             scale=2
         )
 
         req_type = gr.Dropdown(
-            label="",                     # No label
+            label="",
             choices=[
-                "index", "info", "intraday", "daily",
-                "qresult", "result", "balance",
-                "cashflow", "dividend", "split", "other"
+                "index","info","intraday","daily","qresult",
+                "result","balance","cashflow","dividend","split","other"
             ],
             value="info",
             scale=2
         )
 
         btn = gr.Button("Submit", scale=1)
+        clear_btn = gr.Button("Clear", scale=1)
 
-    # Output area
     output = gr.HTML()
 
-    # Click event
-    btn.click(fetch_data, inputs=[symbol, req_type], outputs=output)
+    btn.click(fetch_data, [symbol, req_type], output)
+    clear_btn.click(lambda: "", None, output)
 
 
-# --- Launch Server ---
 if __name__ == "__main__":
     iface.launch(server_name="0.0.0.0", server_port=7860)
