@@ -1,5 +1,6 @@
 # app.py
 import gradio as gr
+
 from daily import fetch_daily
 from intraday import fetch_intraday
 from info import fetch_info
@@ -11,13 +12,15 @@ from dividend import fetch_dividend
 from split import fetch_split
 from other import fetch_other
 from index import fetch_index
+
+
 # --- Main UI function ---
 def fetch_data(symbol, req_type):
     req_type = req_type.lower()
     if req_type == "index":
-        return fetch_index()   
+        return fetch_index()
     elif req_type == "daily":
-        return fetch_daily(symbol,"NSE")
+        return fetch_daily(symbol, "NSE")
     elif req_type == "intraday":
         return fetch_intraday(symbol)
     elif req_type == "info":
@@ -39,13 +42,23 @@ def fetch_data(symbol, req_type):
     else:
         return f"<h1>No handler for {req_type}</h1>"
 
-# --- Gradio Interface ---
-iface = gr.Interface(
-    fn=fetch_data,
-    inputs=[
-        gr.Textbox(label="Stock Symbol", value="PNB"),
-        gr.Dropdown(
-            label="Request Type",
+
+# --- Gradio Minimal Layout ---
+with gr.Blocks(css="""
+.gradio-container {padding-top: 0 !important;}
+#topbar {margin: 0; padding: 0;}
+""") as iface:
+
+    # Top horizontal row
+    with gr.Row(elem_id="topbar"):
+        symbol = gr.Textbox(
+            label="",
+            placeholder="Enter Symbol (e.g., PNB)",
+            value="PNB",
+            scale=2
+        )
+        req_type = gr.Dropdown(
+            label="",
             choices=[
                 "index",
                 "info",
@@ -59,14 +72,22 @@ iface = gr.Interface(
                 "split",
                 "other"
             ],
-            value="info"
+            value="info",
+            scale=2
         )
-    ],
-    outputs=gr.HTML(label="Full HTML Output"),
-    title="Stock Data API (Full)",
-    description="Fetch NSE stock data with charts and indicators",
-    api_name="fetch_data"
-)
+        btn = gr.Button("Submit", scale=1)
 
+    # Output container (full HTML)
+    output = gr.HTML()
+
+    # Bind click event
+    btn.click(
+        fetch_data,
+        inputs=[symbol, req_type],
+        outputs=output
+    )
+
+
+# --- Launch Server ---
 if __name__ == "__main__":
     iface.launch(server_name="0.0.0.0", server_port=7860)
