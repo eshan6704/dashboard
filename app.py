@@ -14,8 +14,12 @@ from other import fetch_other
 from index import fetch_index
 
 
+# -------------------------
+# Main Router Function
+# -------------------------
 def fetch_data(symbol, req_type):
     req_type = req_type.lower()
+
     if req_type == "index":
         return fetch_index()
     elif req_type == "daily":
@@ -38,47 +42,74 @@ def fetch_data(symbol, req_type):
         return fetch_split(symbol)
     elif req_type == "other":
         return fetch_other(symbol)
+
     return f"<h1>No handler for {req_type}</h1>"
 
 
+# -------------------------
+# UI
+# -------------------------
 with gr.Blocks() as iface:
 
-    # REMOVE labels and shrink input heights
+    # HuggingFace-compatible label-removal + compact toolbar CSS
     gr.HTML("""
     <style>
-        /* Remove label spaces entirely */
-        .gr-form > div > label, 
-        .gr-input label, 
-        .gr-textbox label, 
-        .gr-dropdown label {
-            display: none !important;
-        }
+    /* Remove all labels everywhere */
+    .gr-block label,
+    label,
+    .gr-form > div > label,
+    .gr-input > label,
+    .gr-textbox > label,
+    .gr-dropdown > label {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
 
-        /* Shrink components height */
-        input, select, button {
-            height: 28px !important;
-            padding: 0 6px !important;
-            font-size: 14px !important;
-        }
+    /* Remove HF Spaces extra label containers */
+    .svelte-1ipelgc label,
+    .svelte-1ipelgc > label {
+        display: none !important;
+        height: 0 !important;
+    }
 
-        /* Tight row */
-        #topbar {
-            margin: 0;
-            padding: 0;
-            height: 30px !important;
-        }
+    /* Remove top padding */
+    .gradio-container {
+        padding-top: 0 !important;
+    }
 
-        #topbar > * {
-            margin: 0 !important;
-        }
+    /* Compact row */
+    #topbar {
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        display: flex;
+        align-items: center;
+    }
 
-        /* Smaller dropdown arrow */
-        .gr-dropdown select {
-            height: 28px !important;
-        }
+    /* Shrink inputs */
+    #topbar input, #topbar select {
+        height: 28px !important;
+        padding: 0 6px !important;
+        font-size: 14px !important;
+    }
+
+    /* Shrink buttons */
+    #topbar button {
+        height: 30px !important;
+        padding: 0 10px !important;
+        font-size: 14px !important;
+        margin-left: 5px !important;
+    }
     </style>
     """)
 
+    # ------------------
+    # Compact top bar
+    # ------------------
     with gr.Row(elem_id="topbar"):
 
         symbol = gr.Textbox(
@@ -91,8 +122,9 @@ with gr.Blocks() as iface:
         req_type = gr.Dropdown(
             label="",
             choices=[
-                "index","info","intraday","daily","qresult",
-                "result","balance","cashflow","dividend","split","other"
+                "index", "info", "intraday", "daily", "qresult",
+                "result", "balance", "cashflow",
+                "dividend", "split", "other"
             ],
             value="info",
             scale=2
@@ -101,11 +133,14 @@ with gr.Blocks() as iface:
         btn = gr.Button("Submit", scale=1)
         clear_btn = gr.Button("Clear", scale=1)
 
+    # Output area
     output = gr.HTML()
 
+    # Actions
     btn.click(fetch_data, [symbol, req_type], output)
     clear_btn.click(lambda: "", None, output)
 
 
+# Launch
 if __name__ == "__main__":
     iface.launch(server_name="0.0.0.0", server_port=7860)
