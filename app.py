@@ -44,12 +44,16 @@ def fetch_data(symbol, req_type):
 
 
 # --- Gradio Minimal Layout ---
-with gr.Blocks(css="""
-.gradio-container {padding-top: 0 !important;}
-#topbar {margin: 0; padding: 0;}
-""") as iface:
+with gr.Blocks() as iface:
 
-    # Top horizontal row
+    # Inject custom CSS (safe for older Gradio)
+    gr.HTML("""
+    <style>
+        .gradio-container {padding-top: 0 !important;}
+        #topbar {margin: 0; padding: 0;}
+    </style>
+    """)
+
     with gr.Row(elem_id="topbar"):
         symbol = gr.Textbox(
             label="",
@@ -77,15 +81,9 @@ with gr.Blocks(css="""
         )
         btn = gr.Button("Submit", scale=1)
 
-    # Output container (full HTML)
     output = gr.HTML()
 
-    # Bind click event
-    btn.click(
-        fetch_data,
-        inputs=[symbol, req_type],
-        outputs=output
-    )
+    btn.click(fetch_data, inputs=[symbol, req_type], outputs=output)
 
 
 # --- Launch Server ---
