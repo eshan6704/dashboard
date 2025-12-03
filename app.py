@@ -12,6 +12,9 @@ from split import fetch_split
 from other import fetch_other
 from index import fetch_index
 
+# -----------------------------
+# Data fetch function
+# -----------------------------
 def fetch_data(mode, req_type, name):
     req_type = req_type.lower()
     symbol = name
@@ -41,24 +44,24 @@ def fetch_data(mode, req_type, name):
     else:
         return f"<h1>No handler for {req_type}</h1>"
 
+# -----------------------------
+# Gradio UI (default styling)
+# -----------------------------
 with gr.Blocks() as iface:
 
-    # CSS for horizontal top bar, spacing, full visibility
-    gr.HTML(
-    # Top inputs in horizontal block (use Blocks, not Block)
-    with gr.Blocks(elem_id="topblock"):
-        mode_input = gr.Textbox(label="Mode", value="stock", scale=2, placeholder="Mode")
-        symbol = gr.Textbox(label="Stock symbol", value="PNB", scale=2, placeholder="Symbol")
+    # Top inputs
+    with gr.Blocks():
+        mode_input = gr.Textbox(label="Mode", value="stock", placeholder="Mode")
+        symbol = gr.Textbox(label="Stock symbol", value="PNB", placeholder="Symbol")
         req_type = gr.Dropdown(
             label="req_type",
             choices=[
                 "info","intraday","daily","qresult","result","balance","cashflow",
                 "dividend","split","index","open","preopen","ce","pe","future","bhav","highlow"
             ],
-            value="info",
-            scale=3
+            value="info"
         )
-        btn = gr.Button("Submit", scale=2)
+        btn = gr.Button("Submit")
 
     # Output area
     output = gr.HTML()
@@ -66,5 +69,8 @@ with gr.Blocks() as iface:
     # Click event
     btn.click(fetch_data, inputs=[mode_input, req_type, symbol], outputs=output)
 
+# -----------------------------
+# Launch server
+# -----------------------------
 if __name__ == "__main__":
     iface.launch(server_name="0.0.0.0", server_port=7860)
