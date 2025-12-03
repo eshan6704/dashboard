@@ -13,10 +13,16 @@ from split import fetch_split
 from other import fetch_other
 from index import fetch_index
 
-
 # --- Main UI function ---
-def fetch_data(symbol, req_type):
+def fetch_data(mode, req_type, name):
+    """
+    mode: 'stock' or 'index' (currently not used, can be used in future)
+    req_type: type of data requested (info, daily, intraday, etc.)
+    name: stock symbol or index name
+    """
     req_type = req_type.lower()
+    symbol = name  # existing code uses 'symbol'
+    
     if req_type == "index":
         return fetch_index()
     elif req_type == "daily":
@@ -42,7 +48,6 @@ def fetch_data(symbol, req_type):
     else:
         return f"<h1>No handler for {req_type}</h1>"
 
-
 # --- Minimal Clean UI ---
 with gr.Blocks() as iface:
 
@@ -57,15 +62,18 @@ with gr.Blocks() as iface:
 
     # Top compact row
     with gr.Row(elem_id="topbar"):
+        mode_input = gr.Textbox(
+            label="Mode",
+            value="stock",  # default value
+            scale=1
+        )
         symbol = gr.Textbox(
-            label="Stock symbol",                     # No label
-            #placeholder="",
+            label="Stock symbol",
             value="PNB",
             scale=2
         )
-
         req_type = gr.Dropdown(
-            label="req_type",                     # No label
+            label="req_type",
             choices=[
                 "index", "info", "intraday", "daily",
                 "qresult", "result", "balance",
@@ -74,15 +82,13 @@ with gr.Blocks() as iface:
             value="info",
             scale=2
         )
-
         btn = gr.Button("Submit", scale=2)
 
     # Output area
     output = gr.HTML()
 
     # Click event
-    btn.click(fetch_data, inputs=[symbol, req_type], outputs=output)
-
+    btn.click(fetch_data, inputs=[mode_input, req_type, symbol], outputs=output)
 
 # --- Launch Server ---
 if __name__ == "__main__":
