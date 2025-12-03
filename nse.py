@@ -78,17 +78,30 @@ def fetch_stock_df(nse_module, stock, start, end, series="ALL"):
 # ---------------------------------------------------
 # All NSE Indices → DataFrames
 # ---------------------------------------------------
-def nse_indices_df():
+def indices():
     url = "https://www.nseindia.com/api/allIndices"
     data = fetch_data(url)
     if data is None:
-        return None, None, None
+        return None
 
+    # DataFrames
     df_dates = pd.DataFrame([data["dates"]])
     df_meta = pd.DataFrame([{k: v for k, v in data.items() if k not in ["data", "dates"]}])
     df_data = pd.DataFrame(data["data"])
 
-    return df_dates, df_meta, df_data
+    # Convert to HTML pieces
+    html_dates = df_dates.to_html(index=False, border=1)
+    html_meta  = df_meta.to_html(index=False, border=1)
+    html_data  = df_data.to_html(index=False, border=1)
+
+    # Combine into one single HTML block
+    full_html = (
+        "<h3>Dates</h3>" + html_dates +
+        "<br><h3>Meta</h3>" + html_meta +
+        "<br><h3>Data</h3>" + html_data
+    )
+
+    return full_html
 
 # ---------------------------------------------------
 # Specific Index → DataFrames
