@@ -43,14 +43,18 @@ def fetch_data(mode, req_type, name):
 
 with gr.Blocks() as iface:
 
-    # CSS for taller row and bigger components
+    # CSS for taller row and proper textbox alignment
     gr.HTML("""
     <style>
         .gradio-container { padding-top: 0 !important; }
-        #topbar { margin: 0; padding: 5px; height: 60px; display: flex; align-items: center; gap: 10px; }
+        #topbar { margin: 0; padding: 5px; display: flex; align-items: center; gap: 10px; }
         #topbar .gr-input, #topbar .gr-select, #topbar .gr-button { 
             height: 40px !important; 
             font-size: 16px; 
+            box-sizing: border-box;  /* important to include padding in height */
+        }
+        #topbar .gr-input label, #topbar .gr-select label {
+            display: none; /* optional: hide labels to save vertical space */
         }
     </style>
     """)
