@@ -54,7 +54,6 @@ from common import (
 
 from chart_builder import build_chart
 from ta_indi_pat import talib_df
-from nse import daily as nse_daily
 
 
 # -------------------------- INFO ------------------------------
