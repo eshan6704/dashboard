@@ -37,17 +37,17 @@ def fetch_data(mode, req_type, name):
 
     if mode == "index":
 
-        if req_type == "indices":
-            return wrap(indices())
+        if req_type == "nse_indices":
+            return wrap(nse_indices())
 
-        elif req_type == "open":
-            return wrap(open(name))
+        elif req_type == "nse_open":
+            return wrap(nse_open(name))
 
-        elif req_type == "preopen":
-            return wrap(preopen(name))
+        elif req_type == "nse_preopen":
+            return wrap(nse_preopen(name))
 
-        elif req_type == "fno":
-            return wrap(fno(name))
+        elif req_type == "nse_fno":
+            return wrap(nse_fno(name))
 
         else:
             return wrap(f"<h3>No handler for {req_type}</h3>")
@@ -117,7 +117,7 @@ with gr.Blocks(title="Stock / Index App") as iface:
             label="Request Type",
             choices=[
                 "info","intraday","daily","qresult","result","balance","cashflow",
-                "dividend","split","index","open","preopen","fno","future","bhav","highlow"
+                "dividend","split","nse_indices","nse_open","nse_preopen","nse_fno","nse_future","nse_bhav","nse_highlow"
             ],
             value="info",
             scale=2
