@@ -15,7 +15,7 @@ def fetch_data(mode, req_type, name):
     if mode=="index":
         return indices()    
     
-    elif mode=="stock"::
+    elif mode=="stock":
         
         if req_type == "daily":
             return fetch_daily(symbol)
