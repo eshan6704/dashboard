@@ -12,6 +12,9 @@ from split import fetch_split
 from other import fetch_other
 from index import fetch_index
 
+# -----------------------------
+# Data fetch function
+# -----------------------------
 def fetch_data(mode, req_type, name):
     req_type = req_type.lower()
     symbol = name
@@ -41,39 +44,47 @@ def fetch_data(mode, req_type, name):
     else:
         return f"<h1>No handler for {req_type}</h1>"
 
+# -----------------------------
+# Gradio UI
+# -----------------------------
 with gr.Blocks() as iface:
 
-    # CSS for proper spacing and full textbox visibility
+    # CSS for horizontal top bar, spacing, full visibility
     gr.HTML("""
     <style>
         .gradio-container { padding-top: 0 !important; }
-        #topblock { margin: 0; padding: 5px; }
+        #topblock { 
+            margin: 0; padding: 5px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            flex-wrap: wrap;
+        }
         #topblock .gr-input, #topblock .gr-select, #topblock .gr-button { 
             height: 40px !important; 
             font-size: 16px; 
             box-sizing: border-box; 
         }
         #topblock .gr-input label, #topblock .gr-select label {
-            display: none; /* optional: hide labels to save space */
+            display: none;
         }
     </style>
     """)
 
-    # Top inputs in a block
+    # Top inputs in a horizontal block
     with gr.Block(elem_id="topblock"):
-        
-            mode_input = gr.Textbox(label="Mode", value="stock", scale=2, placeholder="Mode")
-            symbol = gr.Textbox(label="Stock symbol", value="PNB", scale=2, placeholder="Symbol")
-            req_type = gr.Dropdown(
-                label="req_type",
-                choices=[
-                    "info","intraday","daily","qresult","result","balance","cashflow",
-                    "dividend","split","index","open","preopen","ce","pe","future","bhav","highlow"
-                ],
-                value="info",
-                scale=3
-            
-            btn = gr.Button("Submit", scale=2)
+        mode_input = gr.Textbox(label="Mode", value="stock", scale=2, placeholder="Mode")
+        symbol = gr.Textbox(label="Stock symbol", value="PNB", scale=2, placeholder="Symbol")
+        req_type = gr.Dropdown(
+            label="req_type",
+            choices=[
+                "info","intraday","daily","qresult","result","balance","cashflow",
+                "dividend","split","index","open","preopen","ce","pe","future","bhav","highlow"
+            ],
+            value="info",
+            scale=3
+        )
+        btn = gr.Button("Submit", scale=2)
 
     # Output area
     output = gr.HTML()
@@ -81,5 +92,8 @@ with gr.Blocks() as iface:
     # Click event
     btn.click(fetch_data, inputs=[mode_input, req_type, symbol], outputs=output)
 
+# -----------------------------
+# Launch server
+# -----------------------------
 if __name__ == "__main__":
     iface.launch(server_name="0.0.0.0", server_port=7860)
