@@ -12,11 +12,10 @@ from split import fetch_split
 from other import fetch_other
 from index import fetch_index
 
-# --- Main UI function ---
 def fetch_data(mode, req_type, name):
     req_type = req_type.lower()
     symbol = name
-    
+
     if req_type == "index":
         return fetch_index()
     elif req_type == "daily":
@@ -42,34 +41,24 @@ def fetch_data(mode, req_type, name):
     else:
         return f"<h1>No handler for {req_type}</h1>"
 
-# --- Minimal Clean UI ---
 with gr.Blocks() as iface:
 
-    # Inject CSS for compact and taller UI
+    # CSS for taller row and bigger components
     gr.HTML("""
     <style>
         .gradio-container { padding-top: 0 !important; }
-        #topbar { margin: 0; padding: 5px; height: 60px; }
+        #topbar { margin: 0; padding: 5px; height: 60px; display: flex; align-items: center; gap: 10px; }
         #topbar .gr-input, #topbar .gr-select, #topbar .gr-button { 
-            margin-top: 0 !important; 
-            height: 40px !important;  /* Increase input height */
-            font-size: 16px;
+            height: 40px !important; 
+            font-size: 16px; 
         }
     </style>
     """)
 
-    # Top row with bigger height
-    with gr.Row(elem_id="topbar", variant="default", gap="small"):
-        mode_input = gr.Textbox(
-            label="Mode",
-            value="stock",
-            scale=2
-        )
-        symbol = gr.Textbox(
-            label="Stock symbol",
-            value="PNB",
-            scale=2
-        )
+    # Top row
+    with gr.Row(elem_id="topbar"):
+        mode_input = gr.Textbox(label="Mode", value="stock", scale=2)
+        symbol = gr.Textbox(label="Stock symbol", value="PNB", scale=2)
         req_type = gr.Dropdown(
             label="req_type",
             choices=[
@@ -87,6 +76,5 @@ with gr.Blocks() as iface:
     # Click event
     btn.click(fetch_data, inputs=[mode_input, req_type, symbol], outputs=output)
 
-# --- Launch Server ---
 if __name__ == "__main__":
     iface.launch(server_name="0.0.0.0", server_port=7860)
