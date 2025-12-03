@@ -5,7 +5,7 @@ from stock import *
 
 
 # ======================================================
-# Scrollable HTML wrapper for all table-based output
+# Scrollable HTML wrapper for table output
 # ======================================================
 SCROLL_WRAP = """
 <div style="
@@ -19,7 +19,6 @@ SCROLL_WRAP = """
 {{HTML}}
 </div>
 """
-
 
 def wrap(html):
     if html is None:
@@ -48,13 +47,13 @@ def update_on_mode(mode):
     if mode == "stock":
         return (
             gr.update(choices=STOCK_REQ, value="info", visible=True),
-            gr.update(value="ITC")        # default stock symbol
+            gr.update(value="ITC")
         )
 
     elif mode == "index":
         return (
             gr.update(choices=INDEX_REQ, value="nse_indices", visible=True),
-            gr.update(value="NIFTY 50")   # default index name
+            gr.update(value="NIFTY 50")
         )
 
     return (
@@ -71,7 +70,6 @@ def fetch_data(mode, req_type, name):
     symbol = name
 
     if mode == "index":
-
         if req_type == "nse_indices":
             return wrap(nse_indices())
         elif req_type == "nse_open":
@@ -90,7 +88,6 @@ def fetch_data(mode, req_type, name):
             return wrap(f"<h3>No handler for {req_type}</h3>")
 
     elif mode == "stock":
-
         if req_type == "daily":
             return wrap(fetch_daily(symbol))
         elif req_type == "intraday":
@@ -126,7 +123,7 @@ with gr.Blocks(title="Stock / Index App") as iface:
 
     with gr.Row():
 
-        mode_input = gr.SegmentedButton(
+        mode_input = gr.Radio(
             ["stock", "index"],
             label="Mode",
             value="stock",
@@ -135,7 +132,7 @@ with gr.Blocks(title="Stock / Index App") as iface:
 
         symbol = gr.Textbox(
             label="Symbol / Index Name",
-            value="ITC",    # default for stock
+            value="ITC",
             placeholder="Enter symbol",
             scale=2
         )
