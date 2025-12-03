@@ -106,6 +106,7 @@ def indices():
 # ---------------------------------------------------
 # Specific Index → DataFrames
 # ---------------------------------------------------
+'''
 def open(index_name="NIFTY 50"):
     url = f"https://www.nseindia.com/api/equity-stockIndices?index={index_name.replace(' ', '%20')}"
     data = fetch_data(url)
@@ -134,6 +135,54 @@ def open(index_name="NIFTY 50"):
 
     return full_html
 
+'''
+def open(index_name="NIFTY 50"):
+    url = f"https://www.nseindia.com/api/equity-stockIndices?index={index_name.replace(' ', '%20')}"
+    data = fetch_data(url)
+
+    if data is None:
+        return "<h3>No Data</h3>"
+
+    # Extract base parts
+    df_market = pd.DataFrame([data["marketStatus"]])
+    df_adv    = pd.DataFrame([data["advance"]])
+    df_data   = pd.DataFrame(data["data"])
+
+    # ------------------------------
+    # Merge child meta keys into df_data
+    # ------------------------------
+    def flatten_meta(row):
+        meta = row.get("meta", {})
+        flat = {}
+        for k, v in meta.items():
+            if isinstance(v, dict):  # flatten one level
+                for ck, cv in v.items():
+                    flat[f"{k}_{ck}"] = cv
+            else:
+                flat[k] = v
+        return pd.Series(flat)
+
+    # Expand meta into columns
+    df_meta_expanded = df_data.apply(flatten_meta, axis=1)
+
+    # Merge expanded meta into df_data
+    df_data = pd.concat([df_data.drop(columns=["meta"], errors="ignore"),
+                         df_meta_expanded], axis=1)
+
+    # ------------------------------
+    # Convert to HTML
+    # ------------------------------
+    html_market = df_market.to_html(index=False, border=1)
+    html_adv    = df_adv.to_html(index=False, border=1)
+    html_data   = df_data.to_html(index=False, border=1)
+
+    full_html = (
+        "<h3>Market Status</h3>" + html_market +
+        "<br><h3>Advance/Decline</h3>" + html_adv +
+        "<br><h3>Index Data (with META merged)</h3>" + html_data
+    )
+
+    return full_html
 
 # ---------------------------------------------------
 # Option Chain DF (Raw CE/PE)
