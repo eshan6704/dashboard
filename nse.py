@@ -320,18 +320,3 @@ def nse_del(symbol, start_date_str=None, end_date_str=None):
     except Exception as e:
         print(f"Error fetching data from NSE for {symbol}: {e}")
     return None
-
-def daily(symbol,source="yfinace"):
-    if source=="yfinance":
-        df = yf.download(symbol + ".NS", period="1y", interval="1d").round(2)
-        if df.empty:
-            return html_card("Error", f"No daily data found for {symbol}")
-
-        # --- Standardize columns ---
-        df.columns = ["Close", "High", "Low", "Open", "Volume"]
-        df.reset_index(inplace=True)  # make Date a column
-    
-    if source=="NSE":
-        df=nse_del(symbol)
-        print("df from nse data")
-    return df
