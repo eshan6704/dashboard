@@ -13,7 +13,14 @@ def fetch_data(mode, req_type, name):
     req_type = req_type.lower()
     symbol = name
     if mode=="index":
-        return indices()    
+        if req_type=="indices":
+            return indices()
+        elif req_type=="open":
+            return open(name)
+        elif req_type=="preopen":
+            return preopen(name)
+        elif req_type=="fno":
+            return fno(name)
     
     elif mode=="stock":
         
@@ -68,7 +75,7 @@ with gr.Blocks(title="Stock / Index App") as iface:
             label="Request Type",
             choices=[
                 "info","intraday","daily","qresult","result","balance","cashflow",
-                "dividend","split","index","open","preopen","ce","pe","future","bhav","highlow"
+                "dividend","split","index","open","preopen","fno","future","bhav","highlow"
             ],
             value="info",
             scale=2
