@@ -44,27 +44,7 @@ def fetch_data(mode, req_type, name):
 with gr.Blocks() as iface:
 
     # CSS for horizontal top bar, spacing, full visibility
-    gr.HTML("""
-    <style>
-        .gradio-container { padding-top: 0 !important; }
-        #topblock { 
-            margin: 0; padding: 5px; 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            flex-wrap: wrap;
-        }
-        #topblock .gr-input, #topblock .gr-select, #topblock .gr-button { 
-            height: 40px !important; 
-            font-size: 16px; 
-            box-sizing: border-box; 
-        }
-        #topblock .gr-input label, #topblock .gr-select label {
-            display: none;
-        }
-    </style>
-    """)
-
+    gr.HTML(
     # Top inputs in horizontal block (use Blocks, not Block)
     with gr.Blocks(elem_id="topblock"):
         mode_input = gr.Textbox(label="Mode", value="stock", scale=2, placeholder="Mode")
