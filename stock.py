@@ -146,7 +146,7 @@ def fetch_intraday(symbol, indicators=None):
 
 def fetch_daily(symbol, source="yfinance", max_rows=200):
     try:
-        df = nse_daily(symbol, source) if source == "nse" else daily(symbol)
+        df = daily(symbol)
         df_disp = df.head(max_rows)
 
         combined_df = talib_df(df_disp)
