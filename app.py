@@ -1,8 +1,7 @@
 import gradio as gr
-
 from nse import *
 from stock import *
-
+import pandas as pd
 
 # ======================================================
 # Scrollable HTML wrapper for table output
@@ -27,7 +26,7 @@ def wrap(html):
 
 
 # ======================================================
-# REQUEST TYPE OPTIONS
+# Request Type Options
 # ======================================================
 STOCK_REQ = [
     "info", "intraday", "daily", "qresult", "result", "balance",
@@ -41,49 +40,46 @@ INDEX_REQ = [
 
 
 # ======================================================
-# UPDATE DROPDOWN + SYMBOL BASED ON MODE
+# Update Dropdown + Symbol Based on Mode
 # ======================================================
 def update_on_mode(mode):
     if mode == "stock":
         return (
             gr.update(choices=STOCK_REQ, value="info", visible=True),
-            gr.update(value="ITC")
+            gr.update(value="ITC", placeholder="Enter stock symbol")
         )
-
     elif mode == "index":
         return (
             gr.update(choices=INDEX_REQ, value="nse_indices", visible=True),
-            gr.update(value="NIFTY 50")
+            gr.update(value="NIFTY 50", placeholder="Enter index name or date for bhavcopy (DDMMYYYY / DD-MM-YYYY / DD/MM/YYYY)")
         )
-
-    return (
-        gr.update(visible=False),
-        gr.update(value="")
-    )
+    return (gr.update(visible=False), gr.update(value="", placeholder=""))
 
 
 # ======================================================
-# DATA FETCHER
+# Data Fetcher
 # ======================================================
 def fetch_data(mode, req_type, name):
     req_type = req_type.lower()
-    symbol = name
+    symbol = name.strip()
 
     if mode == "index":
         if req_type == "nse_indices":
             return wrap(nse_indices())
         elif req_type == "nse_open":
-            return wrap(nse_open(name))
+            return wrap(nse_open(symbol))
         elif req_type == "nse_preopen":
-            return wrap(nse_preopen(name))
+            return wrap(nse_preopen(symbol))
         elif req_type == "nse_fno":
-            return wrap(nse_fno(name))
+            return wrap(nse_fno(symbol))
         elif req_type == "nse_future":
-            return wrap(nse_future(name))
+            return wrap(nse_future(symbol))
         elif req_type == "nse_bhav":
-            return wrap(nse_bhav(name))
+            # If blank, use today
+            date_input = symbol or pd.Timestamp.today().strftime("%d-%m-%Y")
+            return wrap(nse_bhav(date_input))
         elif req_type == "nse_highlow":
-            return wrap(nse_highlow(name))
+            return wrap(nse_highlow())
         else:
             return wrap(f"<h3>No handler for {req_type}</h3>")
 
@@ -133,7 +129,7 @@ with gr.Blocks(title="Stock / Index App") as iface:
         symbol = gr.Textbox(
             label="Symbol / Index Name",
             value="ITC",
-            placeholder="Enter symbol",
+            placeholder="Enter stock symbol",
             scale=2
         )
 
@@ -148,7 +144,7 @@ with gr.Blocks(title="Stock / Index App") as iface:
 
     output = gr.HTML(label="Output")
 
-    # Mode changes dropdown + symbol
+    # Mode changes dropdown + symbol placeholder
     mode_input.change(
         update_on_mode,
         inputs=mode_input,
