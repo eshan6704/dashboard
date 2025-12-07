@@ -1,6 +1,7 @@
 import gradio as gr
 from nse import *
 from stock import *
+from indices_html import *
 import pandas as pd
 
 # ======================================================
@@ -66,7 +67,7 @@ def fetch_data(mode, req_type, symbol, date_str):
 
     if mode == "index":
         if req_type == "nse_indices":
-            return wrap(nse_indices())
+            return build_indices_html()
         elif req_type == "nse_open":
             return wrap(nse_open(symbol))
         elif req_type == "nse_preopen":
