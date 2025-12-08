@@ -51,7 +51,7 @@ def update_on_mode(mode):
         )
     elif mode == "index":
         return (
-            gr.update(choices=INDEX_REQ, value="nse_indices"),
+            gr.update(choices=INDEX_REQ, value="indices"),
             gr.update(value="NIFTY 50", placeholder="Enter index name or leave blank for today bhavcopy")
         )
     return gr.update(visible=False), gr.update(value="")
