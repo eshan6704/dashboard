@@ -136,8 +136,8 @@ with gr.Blocks(title="Stock / Index App") as iface:
 
         req_type = gr.Dropdown(
             label="Request Type",
-            choices=[],      # will be updated dynamically
-            value="",        # will be updated dynamically
+            choices=STOCK_REQ,  # initial choices for default stock mode
+            value="info",       # initial value
             scale=2
         )
 
@@ -158,10 +158,6 @@ with gr.Blocks(title="Stock / Index App") as iface:
         inputs=mode_input,
         outputs=[req_type, symbol]
     )
-
-    # Initialize dropdown for default mode
-    req_type.update(choices=STOCK_REQ, value="info")
-    symbol.update(value="ITC")
 
     # Fetch button click
     btn.click(fetch_data, inputs=[mode_input, req_type, symbol, date_field], outputs=output)
