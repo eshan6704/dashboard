@@ -9,7 +9,6 @@ def build_indices_html():
     data_df = p["data"]
     dates_df = p["dates"]
 
-    # JSON conversion
     data_json = json.dumps(data_df.to_dict(orient="records"), ensure_ascii=False)
     dates_json = json.dumps(dates_df.to_dict(orient="records"), ensure_ascii=False)
 
@@ -68,7 +67,6 @@ th {{
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 200px 200px;
     gap: 20px;
-    width: 100%;
 }}
 
 .chart-box {{
@@ -99,7 +97,7 @@ const DEFAULT_KEY = "{DEFAULT_KEY}";
 const DEFAULT_SYMBOL = "{DEFAULT_SYMBOL}";
 </script>
 
-<!-- ===================== MAIN TABLE SECTION ===================== -->
+<!-- MAIN TABLE -->
 <h3>Main Full Indices Table</h3>
 <button onclick="toggleMainTable()">Show / Hide Main Table</button>
 
@@ -109,7 +107,7 @@ const DEFAULT_SYMBOL = "{DEFAULT_SYMBOL}";
 
 <hr>
 
-<!-- ===================== FILTERED TABLE SECTION ===================== -->
+<!-- FILTERED TABLE -->
 <h3>Filter Table by Category</h3>
 
 <label><b>Select Index Category:</b></label>
@@ -121,7 +119,7 @@ const DEFAULT_SYMBOL = "{DEFAULT_SYMBOL}";
 
 <hr>
 
-<!-- ===================== CHART SECTION ===================== -->
+<!-- CHARTS -->
 <h3>Charts Based on Index</h3>
 
 <label><b>Select Index:</b></label>
@@ -135,58 +133,57 @@ const DEFAULT_SYMBOL = "{DEFAULT_SYMBOL}";
 
 <script>
 
-// ------------------ MAIN FULL TABLE ------------------
-function buildMainTable() {
+// ================= MAIN TABLE =================
+
+function buildMainTable() {{
     const table = document.getElementById("mainTable");
     const cols = Object.keys(records[0]);
 
     let header = "<tr>";
-    cols.forEach(c => header += `<th>${c}</th>`);
+    cols.forEach(c => header += `<th>${{c}}</th>`);
     header += "</tr>";
 
     let rows = "";
-    records.forEach(r => {
+    records.forEach(r => {{
         rows += "<tr>";
-        cols.forEach(c => rows += `<td>${r[c]}</td>`);
+        cols.forEach(c => rows += `<td>${{r[c]}}</td>`);
         rows += "</tr>";
-    });
+    }});
 
     table.innerHTML = header + rows;
-}
+}}
 
-function toggleMainTable() {
+function toggleMainTable() {{
     const sec = document.getElementById("mainTableSection");
     sec.style.display = sec.style.display === "none" ? "block" : "none";
-}
+}}
 
-// Build main table immediately
 buildMainTable();
 
 
-// ------------------ KEY DROPDOWN ------------------
+// ================= FILTERED TABLE =================
+
 const keyDropdown = document.getElementById("keyDropdown");
 const chartDropdown = document.getElementById("chartDropdown");
 
 const keyList = [...new Set(records.map(r => r.key))];
-keyList.forEach(k => {
+keyList.forEach(k => {{
     const opt = document.createElement("option");
     opt.value = k;
     opt.textContent = k;
     if (k === DEFAULT_KEY) opt.selected = true;
     keyDropdown.appendChild(opt);
-});
+}});
 
-
-// ------------------ FILTERED TABLE ------------------
-function buildAltTable(keyName) {
+function buildAltTable(keyName) {{
     const table = document.getElementById("altTable");
-    const sec = document.getElementById("altTableSection");
 
     const filtered = records.filter(r => r.key === keyName);
-    if (!filtered.length) {
+
+    if (!filtered.length) {{
         table.innerHTML = "<tr><td>No Data</td></tr>";
         return;
-    }
+    }}
 
     const hiddenCols = [
         "key","chartTodayPath","chart30dPath","chart30Path","chart365dPath",
@@ -197,72 +194,75 @@ function buildAltTable(keyName) {
     const cols = Object.keys(filtered[0]).filter(c => !hiddenCols.includes(c));
 
     let header = "<tr>";
-    cols.forEach(c => header += `<th>${c}</th>`);
+    cols.forEach(c => header += `<th>${{c}}</th>`);
     header += "</tr>";
 
     let rows = "";
-    filtered.forEach(obj => {
+    filtered.forEach(obj => {{
         rows += "<tr>";
-        cols.forEach(c => rows += `<td>${obj[c]}</td>`);
+        cols.forEach(c => rows += `<td>${{obj[c]}}</td>`);
         rows += "</tr>";
-    });
+    }});
 
     table.innerHTML = header + rows;
-}
+}}
 
 
-// ------------------ CHART DROPDOWN ------------------
-function populateChartDropdown(keyVal) {
+// ================= CHARTS =================
+
+function populateChartDropdown(keyVal) {{
     chartDropdown.innerHTML = "";
 
-    records.filter(r => r.key === keyVal).forEach(r => {
+    records.filter(r => r.key === keyVal).forEach(r => {{
         const opt = document.createElement("option");
         opt.value = r.indexSymbol;
         opt.textContent = r.index;
         chartDropdown.appendChild(opt);
-    });
+    }});
 
-    [...chartDropdown.options].forEach(opt => {
+    // auto select default
+    [...chartDropdown.options].forEach(opt => {{
         if (opt.textContent.toUpperCase().includes(DEFAULT_SYMBOL.toUpperCase()))
             opt.selected = true;
-    });
-}
+    }});
+}}
 
-
-// ------------------ LOAD CHARTS ------------------
-function loadCharts(symbol) {
+function loadCharts(symbol) {{
     const row = records.find(r => r.indexSymbol === symbol);
     if (!row) return;
 
     document.getElementById("chartToday").src = row.chartTodayPath;
     document.getElementById("chart30").src = row.chart30dPath || row.chart30Path;
     document.getElementById("chart365").src = row.chart365dPath;
-}
+}}
 
 
-// ------------------ EVENT HANDLERS ------------------
-keyDropdown.addEventListener("change", () => {
+// ================= EVENT HANDLERS =================
+
+keyDropdown.addEventListener("change", () => {{
     const keyVal = keyDropdown.value;
     buildAltTable(keyVal);
     populateChartDropdown(keyVal);
     loadCharts(chartDropdown.value);
-});
+}});
 
-chartDropdown.addEventListener("change", () => {
+chartDropdown.addEventListener("change", () => {{
     loadCharts(chartDropdown.value);
-});
+}});
 
 
-// ------------------ INITIAL LOAD ------------------
+// ================= INITIAL LOAD =================
+
 buildAltTable(DEFAULT_KEY);
 populateChartDropdown(DEFAULT_KEY);
 
-let start = records.find(
+let initial = records.find(
     r => r.index.toUpperCase().includes(DEFAULT_SYMBOL.toUpperCase())
 );
-if (!start) start = records[0];
 
-loadCharts(start.indexSymbol);
+if (!initial) initial = records[0];
+
+loadCharts(initial.indexSymbol);
 
 </script>
 
