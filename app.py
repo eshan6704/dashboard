@@ -1,6 +1,6 @@
 import gradio as gr
 from stock import *
-from indices_html import indices_html
+from indices_html import *
 import pandas as pd
 
 # ======================================================
