@@ -40,45 +40,37 @@ INDEX_REQ = [
 
 
 # ======================================================
-# Update Dropdown + Symbol based on mode
+# Update Dropdown based on mode
 # ======================================================
 def update_on_mode(mode):
     if mode == "stock":
-        return (
-            gr.update(choices=STOCK_REQ, value="info"),
-            gr.update(value="ITC", placeholder="Enter stock symbol")
-        )
+        return gr.update(choices=STOCK_REQ, value="info")
     elif mode == "index":
-        return (
-            gr.update(choices=INDEX_REQ, value="indices"),
-            gr.update(value="NIFTY 50", placeholder="Enter index name or leave blank for today bhavcopy")
-        )
-    return gr.update(visible=False), gr.update(value="")
+        return gr.update(choices=INDEX_REQ, value="indices")
+    return gr.update(choices=[], value="")
 
 
 # ======================================================
-# Data Fetcher
+# Data Fetcher (no defaults, use exactly frontend input)
 # ======================================================
-def fetch_data(mode, req_type, symbol, date_str):
+def fetch_data(mode, req_type, name, date_str):
     req_type = req_type.lower()
-    symbol = symbol.strip()
+    name = name.strip()
     date_str = date_str.strip()
 
     if mode == "index":
         if req_type == "indices":
             return build_indices_html()
         elif req_type == "nse_open":
-            return wrap(nse_open(symbol))
+            return wrap(nse_open(name))
         elif req_type == "nse_preopen":
-            return wrap(nse_preopen(symbol))
+            return wrap(nse_preopen(name))
         elif req_type == "nse_fno":
-            return wrap(nse_fno(symbol))
+            return wrap(nse_fno(name))
         elif req_type == "nse_future":
-            return wrap(nse_future(symbol))
+            return wrap(nse_future(name))
         elif req_type == "nse_bhav":
-            # Use date if provided, else today
-            date_input = date_str or pd.Timestamp.today().strftime("%d-%m-%Y")
-            return wrap(nse_bhav(date_input))
+            return wrap(nse_bhav(date_str))  # no default
         elif req_type == "nse_highlow":
             return wrap(nse_highlow())
         else:
@@ -86,25 +78,25 @@ def fetch_data(mode, req_type, symbol, date_str):
 
     elif mode == "stock":
         if req_type == "daily":
-            return wrap(fetch_daily(symbol))
+            return wrap(fetch_daily(name))
         elif req_type == "intraday":
-            return wrap(fetch_intraday(symbol))
+            return wrap(fetch_intraday(name))
         elif req_type == "info":
-            return wrap(fetch_info(symbol))
+            return wrap(fetch_info(name))
         elif req_type == "qresult":
-            return wrap(fetch_qresult(symbol))
+            return wrap(fetch_qresult(name))
         elif req_type == "result":
-            return wrap(fetch_result(symbol))
+            return wrap(fetch_result(name))
         elif req_type == "balance":
-            return wrap(fetch_balance(symbol))
+            return wrap(fetch_balance(name))
         elif req_type == "cashflow":
-            return wrap(fetch_cashflow(symbol))
+            return wrap(fetch_cashflow(name))
         elif req_type == "dividend":
-            return wrap(fetch_dividend(symbol))
+            return wrap(fetch_dividend(name))
         elif req_type == "split":
-            return wrap(fetch_split(symbol))
+            return wrap(fetch_split(name))
         elif req_type == "other":
-            return wrap(fetch_other(symbol))
+            return wrap(fetch_other(name))
         else:
             return wrap(f"<h3>No handler for {req_type}</h3>")
 
@@ -119,7 +111,6 @@ with gr.Blocks(title="Stock / Index App") as iface:
     gr.Markdown("### **Stock / Index Data Fetcher**")
 
     with gr.Row():
-
         mode_input = gr.Radio(
             ["stock", "index"],
             label="Mode",
@@ -127,40 +118,45 @@ with gr.Blocks(title="Stock / Index App") as iface:
             scale=1
         )
 
-        symbol = gr.Textbox(
+        name_input = gr.Textbox(
             label="Symbol / Index Name",
             value="ITC",
-            placeholder="Enter stock symbol",
+            placeholder="Enter stock symbol or index",
             scale=2
         )
 
-        req_type = gr.Dropdown(
+        req_type_input = gr.Dropdown(
             label="Request Type",
-            choices=STOCK_REQ,  # initial choices for default stock mode
-            value="info",       # initial value
+            choices=STOCK_REQ + INDEX_REQ,
+            value="info",
+            allow_custom_value=True,
             scale=2
         )
 
-        date_field = gr.Textbox(
+        date_input = gr.Textbox(
             label="Date",
             value="",
             placeholder="DD-MM-YYYY",
             scale=1
         )
 
-        btn = gr.Button("Fetch", scale=1)
+        fetch_btn = gr.Button("Fetch", scale=1)
 
     output = gr.HTML(label="Output")
 
-    # Update dropdown + symbol when mode changes
+    # Update dropdown choices when mode changes
     mode_input.change(
         update_on_mode,
         inputs=mode_input,
-        outputs=[req_type, symbol]
+        outputs=req_type_input
     )
 
-    # Fetch button click
-    btn.click(fetch_data, inputs=[mode_input, req_type, symbol, date_field], outputs=output)
+    # Fetch button
+    fetch_btn.click(
+        fetch_data,
+        inputs=[mode_input, req_type_input, name_input, date_input],
+        outputs=output
+    )
 
 
 # ======================================================
