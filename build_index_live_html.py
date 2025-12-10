@@ -16,8 +16,14 @@ def build_index_live_html(name=""):
         if not const_df.empty:
             const_df = const_df.iloc[:, 1:]  # Remove first column
 
-            # Drop unnecessary columns
-            drop_cols = [
+            # Columns to move from constituents to info
+            move_to_info = [c for c in ['segment', 'equityTime', 'preOpenTime'] if c in const_df.columns]
+            if move_to_info:
+                rem_df = pd.concat([rem_df, const_df[move_to_info].iloc[[0]]], axis=1)
+                const_df = const_df.drop(columns=move_to_info)
+
+            # Drop unnecessary columns from Constituents
+            drop_cols_const = [
                 "identifier", "ffmc", "stockIndClosePrice", "lastUpdateTime",
                 "chartTodayPath", "chart30dPath", "chart365dPath", "series",
                 "symbol_meta", "activeSeries", "debtSeries", "isFNOSec",
@@ -25,7 +31,16 @@ def build_index_live_html(name=""):
                 "tempSuspendedSeries", "isETFSec", "isDelisted",
                 "slb_isin", "isMunicipalBond", "isHybridSymbol", "QuotePreOpenFlag"
             ]
-            const_df = const_df.drop(columns=[c for c in drop_cols if c in const_df.columns])
+            const_df = const_df.drop(columns=[c for c in drop_cols_const if c in const_df.columns])
+
+            # Drop unnecessary columns from Main Data
+            drop_cols_main = [
+                "series", "symbol_meta", "companyName", "industry", "activeSeries", "debtSeries",
+                "isFNOSec", "isCASec", "isSLBSec", "isDebtSec", "isSuspended", "tempSuspendedSeries",
+                "isETFSec", "isDelisted", "isin", "slb_isin", "listingDate", "isMunicipalBond",
+                "isHybridSymbol", "segment", "equityTime", "preOpenTime", "QuotePreOpenFlag"
+            ]
+            main_df = main_df.drop(columns=[c for c in drop_cols_main if c in main_df.columns])
 
             # Ensure pChange is numeric and sort
             if 'pChange' in const_df.columns:
@@ -69,7 +84,7 @@ def build_index_live_html(name=""):
     # ================= METRIC TABLES =================
     metric_cols = [
         "pChange", "totalTradedValue", "nearWKH", "nearWKL",
-        "perChange365d", "perChange30d", "listingDate"
+        "perChange365d", "perChange30d"
     ]
 
     metric_tables = ""
@@ -146,7 +161,7 @@ th {{
     background: #f0a8a8; /* light red */
 }}
 
-/* ==================== Fixed row height & clipping for Constituent Table ==================== */
+/* Fixed row height & clipping for Constituent Table */
 #constituents-table tr, #constituents-table td {{
     max-height: 25px;
     height: 25px;
