@@ -30,6 +30,7 @@ def build_index_live_html(name):
 
     table {{
         width:100%; border-collapse:collapse; margin-top:10px;
+        font-size:14px;
     }}
     th, td {{
         padding:6px 8px; border:1px solid #ccc; text-align:left;
@@ -76,29 +77,6 @@ def build_index_live_html(name):
     <button onclick="toggle('consTable')">Show / Hide</button>
     <table id="consTable"></table>
 </div>
-
-<!-- ===================== CHARTS ==================== -->
-<div class="section">
-    <h3>Advance / Decline</h3>
-    <canvas id="chartAD"></canvas>
-</div>
-
-<div class="section">
-    <h3>Top Gainers</h3>
-    <canvas id="chartG"></canvas>
-</div>
-
-<div class="section">
-    <h3>Top Losers</h3>
-    <canvas id="chartL"></canvas>
-</div>
-
-<!-- ===================== EMBEDDED CHART.JS ==================== -->
-<script>
-{open('chartjs.min.js','r').read() if os.path.exists('chartjs.min.js') else """
-// minimal Chart.js inline fallback (if external not found)
-"""}
-</script>
 
 <script>
     const remData  = {rem_json};
@@ -172,49 +150,6 @@ def build_index_live_html(name):
         consFiltered = [...consData];
         fillTable("consTable", consFiltered);
     }}
-
-    // -------------------- CHARTS --------------------
-    function calcAD() {{
-        let adv = consData.filter(r => r.change > 0).length;
-        let dec = consData.filter(r => r.change < 0).length;
-        let flat = consData.length - adv - dec;
-        return [adv, dec, flat];
-    }}
-
-    function topN(key, n, asc=false) {{
-        let arr = [...consData].filter(r => !isNaN(r[key]));
-        arr.sort((a,b)=> asc ? a[key]-b[key] : b[key]-a[key]);
-        return arr.slice(0,n);
-    }}
-
-    // Advance/Decline
-    new Chart(document.getElementById("chartAD"), {{
-        type: "bar",
-        data: {{
-            labels: ["Advancing", "Declining", "Flat"],
-            datasets: [{{ data: calcAD() }}]
-        }},
-    }});
-
-    // Top Gainers
-    let g = topN("pChange", 5, false);
-    new Chart(document.getElementById("chartG"), {{
-        type:"bar",
-        data:{{
-            labels:g.map(x=>x.symbol),
-            datasets:[{{ data:g.map(x=>x.pChange) }}]
-        }},
-    }});
-
-    // Top Losers
-    let l = topN("pChange", 5, true);
-    new Chart(document.getElementById("chartL"), {{
-        type:"bar",
-        data:{{
-            labels:l.map(x=>x.symbol),
-            datasets:[{{ data:l.map(x=>x.pChange) }}]
-        }},
-    }});
 </script>
 
 </body>
