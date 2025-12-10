@@ -1,8 +1,9 @@
 import datetime
+from nsepython import *
 
 def fetch_bhavcopy_html(date_str):
     """
-    Use existing nse_bhavcopy function to fetch Bhavcopy and return HTML.
+    Use existing nse_bhavcopy function to fetch Bhavcopy and return HTML directly.
     """
     # Validate date format
     try:
@@ -10,10 +11,11 @@ def fetch_bhavcopy_html(date_str):
     except ValueError:
         return "<h3>Invalid date format. Please use DD-MM-YYYY.</h3>"
 
-    # Fetch data using your existing function
+    # Fetch data using existing function
     try:
         df = nse_bhavcopy(date_str)
-        # Convert to HTML and wrap scrollable
-        return wrap(df)
+        # Convert DataFrame to HTML directly
+        html = df.to_html(index=False, escape=False)
+        return html
     except Exception:
         return f"<h3>No Bhavcopy found for {date_str}. Please check the date.</h3>"
