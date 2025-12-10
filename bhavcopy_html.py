@@ -12,7 +12,7 @@ def build_bhavcopy_html(date_str):
         return "<h3>Invalid date format. Use DD-MM-YYYY.</h3>"
 
     # -------------------------------------------------------
-    # 2) Fetch using nse_bhavcopy
+    # 2) Fetch Bhavcopy
     # -------------------------------------------------------
     try:
         df = nse_bhavcopy(date_str)   # <-- your custom loader
@@ -21,7 +21,7 @@ def build_bhavcopy_html(date_str):
         return f"<h3>No Bhavcopy found for {date_str}.</h3>"
 
     # -------------------------------------------------------
-    # 3) Drop unwanted columns
+    # 3) Drop unwanted columns safely
     # -------------------------------------------------------
     remove = ["DATE1", "LAST_PRICE", "AVG_PRICE"]
     df.drop(columns=[col for col in remove if col in df.columns], inplace=True)
@@ -60,7 +60,7 @@ def build_bhavcopy_html(date_str):
     df["pergap"] = ((df["OPEN_PRICE"] - df["PREV_CLOSE"]) / df["PREV_CLOSE"].replace(0, 1)) * 100
 
     # -------------------------------------------------------
-    # 6) MAIN TABLE with vertical scroll
+    # 6) MAIN TABLE (vertical scroll)
     # -------------------------------------------------------
     main_html = f"""
     <div class="main-table-container">
@@ -69,19 +69,19 @@ def build_bhavcopy_html(date_str):
     """
 
     # -------------------------------------------------------
-    # 7) GRID TABLE (5 columns)
+    # 7) GRID TABLE (SYMBOL vs metric)
     # -------------------------------------------------------
-    df_sorted = df.sort_values("perchange", ascending=False)
-    n = len(df_sorted)
-    chunk_size = (n + 4) // 5
-    chunks = [df_sorted.iloc[i:i+chunk_size] for i in range(0, n, chunk_size)]
+    metrics = ["perchange", "pergap", "TURNOVER_LACS", "NO_OF_TRADES", "DELIV_PER"]
+    existing_metrics = [m for m in metrics if m in df.columns]
 
     col_html = []
-    for ch in chunks:
+    for metric in existing_metrics:
+        temp_df = df[["SYMBOL", metric]].sort_values(metric, ascending=False)
         col_html.append(
             f"""
             <div class="col">
-                {ch.to_html(index=False, escape=False)}
+                <h4>{metric}</h4>
+                {temp_df.to_html(index=False, escape=False)}
             </div>
             """
         )
@@ -143,6 +143,6 @@ def build_bhavcopy_html(date_str):
         css +
         "<h2>Main Bhavcopy Table</h2>" +
         main_html +
-        "<h2>5-Column Grid View</h2>" +
+        "<h2>Matrix/Grid Table</h2>" +
         grid_html
     )
