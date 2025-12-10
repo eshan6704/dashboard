@@ -2,82 +2,85 @@ from nsepython import *
 import pandas as pd
 import json
 
-def df_to_html(df):
-    """Convert DataFrame to HTML table (static, no JS)."""
-    if df.empty:
-        return "<p>No data available.</p>"
-
-    # Start table
-    html = "<table><thead><tr>"
-
-    # Headers
-    for col in df.columns:
-        html += f"<th>{col}</th>"
-    html += "</tr></thead><tbody>"
-
-    # Rows
-    for _, row in df.iterrows():
-        html += "<tr>"
-        for col in df.columns:
-            html += f"<td>{row[col]}</td>"
-        html += "</tr>"
-
-    html += "</tbody></table>"
-    return html
-
-
 def build_index_live_html(name=""):
-    # Fetch data (default index)
-    p = nse_index_live()
+    # Fetch live data
+    p = nse_index_live(name)
 
     full_df = p.get("data", pd.DataFrame())
     rem_df  = p.get("rem", pd.DataFrame())
+    const_df = p.get("con", pd.DataFrame())  # constituents
 
-    # Convert to static HTML tables
-    rem_html = df_to_html(rem_df)
-    full_html = df_to_html(full_df)
+    # Remove first column from constituents
+    if not const_df.empty:
+        const_df = const_df.iloc[:, 1:]
 
-    # ---- Final static HTML (no <script>) ----
+    # Convert to HTML
+    rem_html   = rem_df.to_html(index=False, escape=False)
+    full_html  = full_df.to_html(index=False, escape=False)
+    const_html = const_df.to_html(index=False, escape=False)
+
     html = f"""
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <style>
-body {{
-    font-family: Arial;
-    margin: 15px;
-    background: #f5f5f5;
+body {{ 
+    font-family: Arial; 
+    margin:15px; 
+    background:#f5f5f5; 
 }}
+
 h2, h3 {{
-    margin-bottom: 10px;
+    font-weight: 600;
 }}
+
+.table-container {{
+    width: 100%;
+    overflow-x: auto;      /* Horizontal scroll */
+    border: 1px solid #ccc;
+    background: white;
+    padding: 10px;
+    margin-bottom: 25px;
+}}
+
 table {{
     border-collapse: collapse;
-    width: 100%;
-    margin-bottom: 20px;
-    background: white;
+    width: max-content;    /* Prevent squeezing */
 }}
+
 th, td {{
-    border: 1px solid #ccc;
-    padding: 6px 8px;
-    text-align: left;
+    border:1px solid #bbb;
+    padding:6px 8px;
+    text-align:left;
+    white-space: nowrap;   /* No text wrap */
 }}
+
 th {{
-    background: #333;
-    color: white;
+    background:#333; 
+    color:white; 
 }}
 </style>
 </head>
+
 <body>
 
-<h2>Live Index Data — {name or "Default Index"}</h2>
+<h2>Live Index Data: {name or 'Default Index'}</h2>
 
 <h3>Index Info (rem)</h3>
+<div class="table-container">
 {rem_html}
+</div>
 
-<h3>Full Index Data</h3>
+<h3>Main Data (full)</h3>
+<div class="table-container">
 {full_html}
+</div>
+
+<h3>Constituents</h3>
+<div class="table-container">
+{const_html}
+</div>
 
 </body>
 </html>
