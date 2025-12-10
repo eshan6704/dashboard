@@ -133,14 +133,14 @@ th {{
     background: #f0a8a8; /* light red */
 }}
 
-/* ==================== Fixed row height for Constituent Table ==================== */
-#constituents-table tr, #constituents-table td {
+/* ==================== Fixed row height & clipping for Constituent Table ==================== */
+#constituents-table tr, #constituents-table td {{
     max-height: 25px;
     height: 25px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-}
+}}
 
 .small-table {{
     background: white;
