@@ -9,6 +9,7 @@ def build_eq_html(symbol):
     # CALL eq() function internally
     # -------------------------------------------------------
     out = eq(symbol)        # <-- your existing eq(symbol)
+    print(out)
     if not isinstance(out, dict):
         return "<h3>Error: EQ data not available</h3>"
 
