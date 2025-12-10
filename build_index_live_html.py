@@ -4,7 +4,7 @@ import json
 
 def build_index_live_html(name=""):
     # Fetch live index data
-    p = nse_index_live(name)  # default if name=""
+    p = nse_index_live()  # default if name=""
 
     full_df = p.get("data", pd.DataFrame())
     rem_df  = p.get("rem", pd.DataFrame())
