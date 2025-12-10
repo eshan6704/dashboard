@@ -74,7 +74,7 @@ def build_preopen_html(key="NIFTY"):
     cons_html = df_to_html_color(const_df) if not const_df.empty else "<i>No pre-open constituents</i>"
 
     # ================= Metric tables (restricted to selected columns) =================
-    metric_cols_allowed = ["pChange", "totalTurnover", "marketCap", "IEP", "totalTradedVolume", "perChange"]
+    metric_cols_allowed = ["pChange", "totalTurnover", "marketCap", "totalTradedVolume"]
     metric_cols = [c for c in metric_cols_allowed if c in const_df.columns and pd.api.types.is_numeric_dtype(const_df[c])] if not const_df.empty else []
 
     metric_tables = ""
