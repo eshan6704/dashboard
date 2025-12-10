@@ -12,7 +12,7 @@ def build_bhavcopy_html(date_str):
         return "<h3>Invalid date format. Use DD-MM-YYYY.</h3>"
 
     # -------------------------------------------------------
-    # 2) Fetch using YOUR nse_bhavcopy definition
+    # 2) Fetch using nse_bhavcopy
     # -------------------------------------------------------
     try:
         df = nse_bhavcopy(date_str)   # <-- your custom loader
@@ -20,12 +20,16 @@ def build_bhavcopy_html(date_str):
     except:
         return f"<h3>No Bhavcopy found for {date_str}.</h3>"
 
+    # -------------------------------------------------------
+    # 3) Drop unwanted columns
+    # -------------------------------------------------------
+    remove = ["DATE1", "LAST_PRICE", "AVG_PRICE"]
+    df.drop(columns=[col for col in remove if col in df.columns], inplace=True)
 
     # -------------------------------------------------------
     # 4) Convert numeric columns properly
     # -------------------------------------------------------
     numeric_cols = [
-
         "PREV_CLOSE",
         "OPEN_PRICE",
         "HIGH_PRICE",
@@ -48,26 +52,26 @@ def build_bhavcopy_html(date_str):
             )
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-
-
     # -------------------------------------------------------
-    # 6) Add computed columns
+    # 5) Add computed columns
     # -------------------------------------------------------
     df["change"] = df["CLOSE_PRICE"] - df["PREV_CLOSE"]
     df["perchange"] = (df["change"] / df["PREV_CLOSE"].replace(0, 1)) * 100
     df["pergap"] = ((df["OPEN_PRICE"] - df["PREV_CLOSE"]) / df["PREV_CLOSE"].replace(0, 1)) * 100
-    print(df)
-    
-    # -------------------------------------------------------
-    # 7) MAIN TABLE
-    # -------------------------------------------------------
-    main_html = df.to_html(index=False, escape=False)
 
     # -------------------------------------------------------
-    # 8) GRID TABLE (5 columns)
+    # 6) MAIN TABLE with vertical scroll
+    # -------------------------------------------------------
+    main_html = f"""
+    <div class="main-table-container">
+        {df.to_html(index=False, escape=False)}
+    </div>
+    """
+
+    # -------------------------------------------------------
+    # 7) GRID TABLE (5 columns)
     # -------------------------------------------------------
     df_sorted = df.sort_values("perchange", ascending=False)
-
     n = len(df_sorted)
     chunk_size = (n + 4) // 5
     chunks = [df_sorted.iloc[i:i+chunk_size] for i in range(0, n, chunk_size)]
@@ -89,7 +93,7 @@ def build_bhavcopy_html(date_str):
     """
 
     # -------------------------------------------------------
-    # 9) CSS
+    # 8) CSS
     # -------------------------------------------------------
     css = """
     <style>
@@ -106,9 +110,18 @@ def build_bhavcopy_html(date_str):
             padding: 4px;
             background: #fafafa;
         }
+        .main-table-container {
+            max-height: 480px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            padding: 4px;
+            background: #fff;
+            margin-bottom: 20px;
+        }
         table {
             font-size: 12px;
             border-collapse: collapse;
+            width: 100%;
         }
         th, td {
             padding: 3px 6px;
@@ -118,13 +131,13 @@ def build_bhavcopy_html(date_str):
             background: #eee;
             position: sticky;
             top: 0;
-            z-index: 1;
+            z-index: 2;
         }
     </style>
     """
 
     # -------------------------------------------------------
-    # 10) Final Output
+    # 9) Final Output
     # -------------------------------------------------------
     return (
         css +
