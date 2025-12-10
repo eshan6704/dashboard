@@ -15,6 +15,19 @@ def build_index_live_html(name=""):
         const_df = full_df.iloc[1:]  # Constituents
         if not const_df.empty:
             const_df = const_df.iloc[:, 1:]  # Remove first column
+
+            # Drop unnecessary columns
+            drop_cols = [
+                "identifier", "ffmc", "stockIndClosePrice", "lastUpdateTime",
+                "chartTodayPath", "chart30dPath", "chart365dPath", "series",
+                "symbol_meta", "activeSeries", "debtSeries", "isFNOSec",
+                "isCASec", "isSLBSec", "isDebtSec", "isSuspended",
+                "tempSuspendedSeries", "isETFSec", "isDelisted",
+                "slb_isin", "isMunicipalBond", "isHybridSymbol", "QuotePreOpenFlag"
+            ]
+            const_df = const_df.drop(columns=[c for c in drop_cols if c in const_df.columns])
+
+            # Ensure pChange is numeric and sort
             if 'pChange' in const_df.columns:
                 const_df['pChange'] = pd.to_numeric(const_df['pChange'], errors='coerce')
                 const_df = const_df.sort_values('pChange', ascending=False)
