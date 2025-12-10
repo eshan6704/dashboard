@@ -12,7 +12,7 @@ def build_index_live_html(name=""):
         const_df = pd.DataFrame()
     else:
         main_df = full_df.iloc[[0]]
-        const_df = full_df.iloc[1:]           # ← Constituents
+        const_df = full_df.iloc[1:]           # Constituents
         if not const_df.empty:
             const_df = const_df.iloc[:, 1:]   # Remove first column
 
@@ -20,27 +20,49 @@ def build_index_live_html(name=""):
     main_html = main_df.to_html(index=False, escape=False)
     cons_html = const_df.to_html(index=False, escape=False)
 
-    # ==================== MATRIX USES const_df NOW ====================
+    # ==========================================================
+    # METRICS WITH TOP 20 UPSIDE + TOP 20 DOWNSIDE
+    # ==========================================================
+
     metric_cols = [
-        "change", "totalTradedValue", "nearWKH", "nearWKL",
+        "pChange", "totalTradedValue", "nearWKH", "nearWKL",
         "perChange365d", "perChange30d", "listingDate"
     ]
 
     metric_tables = ""
 
     for col in metric_cols:
-        if col not in const_df.columns:   # NOW checks in constituents
+        if col not in const_df.columns:
             continue
 
-        df_small = const_df[["symbol", col]].copy()
-        tbl = df_small.to_html(index=False)
+        df_const = const_df.copy()
+        df_const[col] = pd.to_numeric(df_const[col], errors="ignore")
+
+        # Top 20 Upside
+        df_up = df_const[["symbol", col]].dropna().sort_values(col, ascending=False).head(20)
+        tbl_up = df_up.to_html(index=False)
+
+        # Top 20 Downside
+        df_down = df_const[["symbol", col]].dropna().sort_values(col, ascending=True).head(20)
+        tbl_down = df_down.to_html(index=False)
 
         metric_tables += f"""
         <div class="small-table">
-            <div class="st-title">symbol vs {col}</div>
-            <div class="st-body">{tbl}</div>
+
+            <div class="st-title">{col}</div>
+
+            <div class="sub-title up">Top 20 Upside</div>
+            <div class="st-body">{tbl_up}</div>
+
+            <div class="sub-title down">Top 20 Downside</div>
+            <div class="st-body">{tbl_down}</div>
+
         </div>
         """
+
+    # ==========================================================
+    # FINAL HTML
+    # ==========================================================
 
     html = f"""
 <!DOCTYPE html>
@@ -76,8 +98,7 @@ h2, h3 {{
     font-weight: 600;
 }}
 
-/* ===================== MATRIX ONLY ===================== */
-
+/* GRID LAYOUT */
 .grid {{
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -90,24 +111,36 @@ h2, h3 {{
     border-radius: 8px;
     padding: 10px;
     box-shadow: 0px 2px 6px rgba(0,0,0,0.15);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
     border: 1px solid #ddd;
 }}
 
-.small-table:hover {{
-    transform: translateY(-3px);
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.20);
-}}
-
 .st-title {{
-    font-size: 14px;
+    font-size: 15px;
     text-align: center;
     margin-bottom: 10px;
     font-weight: bold;
     background: #222;
     color: white;
-    padding: 4px 0;
+    padding: 6px 0;
     border-radius: 4px;
+}}
+
+.sub-title {{
+    margin-top: 10px;
+    font-weight: bold;
+    text-align: center;
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: white;
+}}
+
+.sub-title.up {{
+    background: #0a4;   /* Green */
+}}
+
+.sub-title.down {{
+    background: #c22;   /* Red */
 }}
 
 .small-table table {{
@@ -143,7 +176,7 @@ h2, h3 {{
 <h3>Constituents</h3>
 {cons_html}
 
-<h3>Compact Metric Tables (5-column matrix)</h3>
+<h3>Metric Tables (Top 20 Upside / Downside)</h3>
 <div class="grid">
     {metric_tables}
 </div>
@@ -151,4 +184,5 @@ h2, h3 {{
 </body>
 </html>
 """
+
     return html
