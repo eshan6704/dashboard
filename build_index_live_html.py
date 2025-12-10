@@ -12,7 +12,8 @@ def build_index_live_html(name=""):
     # Convert DataFrames to JSON
     rem_json  = json.dumps(rem_df.to_dict(orient="records"), ensure_ascii=False)
     full_json = json.dumps(full_df.to_dict(orient="records"), ensure_ascii=False)
-
+    print(rem_json)
+    print(full_json)
     html = f"""
 <!DOCTYPE html>
 <html>
