@@ -67,7 +67,7 @@ def fetch_data(mode, req_type, name, date_str):
             return build_indices_html()
 
         elif req_type == "nse_open":
-            return build_index_live_html(name)
+            return build_index_live_html()
         elif req_type == "nse_preopen":
             return build_preopen_html()
         elif req_type == "nse_fno":
