@@ -56,7 +56,7 @@ def build_bhavcopy_html(date_str):
     # 5) Filter by turnover
     # -------------------------------------------------------
     df = df[df["TURNOVER_LACS"] > 1000]
-
+    df = df.sort_values(by="TURNOVER_LACS", ascending=False)
     # -------------------------------------------------------
     # 6) Add computed columns
     # -------------------------------------------------------
