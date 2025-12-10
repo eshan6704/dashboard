@@ -39,7 +39,7 @@ def build_bhavcopy_html(date_str):
     }
 
     df = df.rename(columns=rename_map)
-
+    print(df)
     # -------------------------------------------------------
     # 4) Convert numeric columns properly
     # -------------------------------------------------------
