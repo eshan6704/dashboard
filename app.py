@@ -82,7 +82,7 @@ def fetch_data(mode, req_type, name, date_str):
         if req_type == "daily":
             return wrap(fetch_daily(name))
         elif req_type == "nse_eq":
-            return build_eq_html()
+            return build_eq_html(name)
         elif req_type == "intraday":
             return wrap(fetch_intraday(name))
         elif req_type == "info":
