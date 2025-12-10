@@ -22,8 +22,8 @@ def build_index_live_html(name=""):
 
     # Metrics for matrix tables
     metric_cols = [
-        "change", "totalTradedValue", "nearWKH", "nearWKL",
-        "perChange365d", "perChange30d", "listingDate"
+        "pchange", "totalTradedValue", "nearWKH", "nearWKL",
+        "perChange365d"
     ]
 
     metric_tables = ""
