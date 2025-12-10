@@ -34,7 +34,7 @@ STOCK_REQ = [
 ]
 
 INDEX_REQ = [
-    "indices", "nse_open", "nse_preopen", "nse_fno",
+    "indices","nse_eq", "nse_open", "nse_preopen", "nse_fno",
     "nse_future", "nse_bhav", "nse_highlow"
 ]
 
@@ -61,6 +61,8 @@ def fetch_data(mode, req_type, name, date_str):
     if mode == "index":
         if req_type == "indices":
             return build_indices_html()
+        elif req_type == "nse_eq":
+            return build_eq_html()
         elif req_type == "nse_open":
             return wrap(nse_open(name))
         elif req_type == "nse_preopen":
