@@ -2,68 +2,82 @@ from nsepython import *
 import pandas as pd
 import json
 
+def df_to_html(df):
+    """Convert DataFrame to HTML table (static, no JS)."""
+    if df.empty:
+        return "<p>No data available.</p>"
+
+    # Start table
+    html = "<table><thead><tr>"
+
+    # Headers
+    for col in df.columns:
+        html += f"<th>{col}</th>"
+    html += "</tr></thead><tbody>"
+
+    # Rows
+    for _, row in df.iterrows():
+        html += "<tr>"
+        for col in df.columns:
+            html += f"<td>{row[col]}</td>"
+        html += "</tr>"
+
+    html += "</tbody></table>"
+    return html
+
+
 def build_index_live_html(name=""):
-    # Fetch live index data
-    p = nse_index_live()  # default if name=""
+    # Fetch data (default index)
+    p = nse_index_live()
 
     full_df = p.get("data", pd.DataFrame())
     rem_df  = p.get("rem", pd.DataFrame())
 
-    # Convert DataFrames to JSON
-    rem_json  = json.dumps(rem_df.to_dict(orient="records"), ensure_ascii=False)
-    full_json = json.dumps(full_df.to_dict(orient="records"), ensure_ascii=False)
-    print(rem_json)
-    print(full_json)
+    # Convert to static HTML tables
+    rem_html = df_to_html(rem_df)
+    full_html = df_to_html(full_df)
+
+    # ---- Final static HTML (no <script>) ----
     html = f"""
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <style>
-body {{ font-family: Arial; margin:15px; background:#f5f5f5; }}
-table {{ border-collapse: collapse; width: 100%; margin-bottom:20px; }}
-th, td {{ border:1px solid #ccc; padding:6px 8px; text-align:left; }}
-th {{ background:#333; color:white; }}
+body {{
+    font-family: Arial;
+    margin: 15px;
+    background: #f5f5f5;
+}}
+h2, h3 {{
+    margin-bottom: 10px;
+}}
+table {{
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 20px;
+    background: white;
+}}
+th, td {{
+    border: 1px solid #ccc;
+    padding: 6px 8px;
+    text-align: left;
+}}
+th {{
+    background: #333;
+    color: white;
+}}
 </style>
 </head>
 <body>
 
-<h2>Live Index Data: {name or 'Default Index'}</h2>
+<h2>Live Index Data — {name or "Default Index"}</h2>
 
 <h3>Index Info (rem)</h3>
-<table id="remTable"></table>
+{rem_html}
 
-<h3>Index Data (full)</h3>
-<table id="fullTable"></table>
-
-<script>
-const remData = {rem_json};
-const fullData = {full_json};
-
-function fillTable(id, rows) {{
-    const table = document.getElementById(id);
-    if (!rows.length) {{
-        table.innerHTML = "<tr><td>No data</td></tr>";
-        return;
-    }}
-    let keys = Object.keys(rows[0]);
-    let thead = "<tr>";
-    keys.forEach(k => thead += `<th>${{k}}</th>`);
-    thead += "</tr>";
-
-    let tbody = "";
-    rows.forEach(r => {{
-        tbody += "<tr>";
-        keys.forEach(k => tbody += `<td>${{r[k]}}</td>`);
-        tbody += "</tr>";
-    }});
-
-    table.innerHTML = thead + tbody;
-}}
-
-fillTable("remTable", remData);
-fillTable("fullTable", fullData);
-</script>
+<h3>Full Index Data</h3>
+{full_html}
 
 </body>
 </html>
