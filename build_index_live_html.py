@@ -1,3 +1,4 @@
+from nsepython import *
 def build_index_live_html(name):
     p = nse_index_live(name)
 
