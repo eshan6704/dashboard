@@ -17,7 +17,7 @@ def build_bhavcopy_html(date_str):
     try:
         df = nse_bhavcopy(date_str)   # <-- your custom loader
         df.columns = df.columns.str.strip()
-        df=df[df["TURNOVER_LACS"]>1000]
+        
     except:
         return f"<h3>No Bhavcopy found for {date_str}.</h3>"
 
@@ -52,7 +52,8 @@ def build_bhavcopy_html(date_str):
                 .str.strip()
             )
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-
+            
+    df=df[df["TURNOVER_LACS"]>1000]
     # -------------------------------------------------------
     # 5) Add computed columns
     # -------------------------------------------------------
