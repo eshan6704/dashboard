@@ -16,36 +16,26 @@ def build_bhavcopy_html(date_str):
     # -------------------------------------------------------
     try:
         df = nse_bhavcopy(date_str)   # <-- your custom loader
-        print(df)
     except:
         return f"<h3>No Bhavcopy found for {date_str}.</h3>"
 
-    # -------------------------------------------------------
-    # 3) Rename columns
-    # -------------------------------------------------------
-    rename_map = {
-        "SYMBOL": "symbol",
-        "SERIES": "series",
-        "PREV_CLOSE": "preclose",
-        "OPEN_PRICE": "open",
-        "HIGH_PRICE": "high",
-        "LOW_PRICE": "low",
-        "CLOSE_PRICE": "close",
-        "TTL_TRD_QNTY": "volume",
-        "TURNOVER_LACS": "turnover",
-        "NO_OF_TRADES": "order",
-        "DELIV_QTY": "del",
-        "DELIV_PER": "perdel",
-    }
 
-    df = df.rename(columns=rename_map)
-    print(df)
     # -------------------------------------------------------
     # 4) Convert numeric columns properly
     # -------------------------------------------------------
     numeric_cols = [
-        "preclose","open","high","low","close",
-        "volume","turnover","order","del","perdel"
+
+        "PREV_CLOSE",
+        "OPEN_PRICE",
+        "HIGH_PRICE",
+        "LOW_PRICE",
+        "CLOSE_PRICE",
+        "TTL_TRD_QNTY",
+        "TURNOVER_LACS",
+        "NO_OF_TRADES",
+        "DELIV_QTY",
+        "DELIV_PER"
+"
     ]
 
     for col in numeric_cols:
@@ -58,27 +48,16 @@ def build_bhavcopy_html(date_str):
             )
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-    # -------------------------------------------------------
-    # 5) Select required columns
-    # -------------------------------------------------------
-    required = [
-        "symbol","series","preclose","open","high",
-        "low","close","volume","turnover","order","perdel"
-    ]
 
-    for col in required:
-        if col not in df.columns:
-            df[col] = 0
-
-    df = df[required]
 
     # -------------------------------------------------------
     # 6) Add computed columns
     # -------------------------------------------------------
-    df["change"] = df["close"] - df["preclose"]
-    df["perchange"] = (df["change"] / df["preclose"].replace(0, 1)) * 100
-    df["pergap"] = ((df["open"] - df["preclose"]) / df["preclose"].replace(0, 1)) * 100
-
+    df["change"] = df["CLOSE_PRICE"] - df["PREV_CLOSE"]
+    df["perchange"] = (df["change"] / df["PREV_CLOSE"].replace(0, 1)) * 100
+    df["pergap"] = ((df["OPEN_PRICE"] - df["PREV_CLOSE"]) / df["PREV_CLOSE"].replace(0, 1)) * 100
+    print(df)
+    
     # -------------------------------------------------------
     # 7) MAIN TABLE
     # -------------------------------------------------------
