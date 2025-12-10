@@ -220,7 +220,7 @@ import json
 import pandas as pd
 from nsepython import *
 
-def build_indices_html():
+def build_indices_html2():
 
     p = indices()
 
