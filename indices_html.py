@@ -1,272 +1,189 @@
 import json
 import pandas as pd
 from nsepython import *
+import html
+
 
 def build_indices_html():
+    """
+    Generate a single, fully-rendered HTML string (no <script>) containing:
+      - main indices table
+      - dates table (if present)
+      - one table per category/key
+      - for each index record, a chart grid with 3 iframes (if paths exist) or placeholders
 
-    p = indices()
+    Requires: indices() function available in scope which returns dict with keys:
+      - "data": DataFrame of records (each row a dict with fields including at least 'key', 'index', 'indexSymbol')
+      - "dates": DataFrame (optional)
+    """
+    p = indices()  # must exist in your module
+    data_df = p.get("data", pd.DataFrame())
+    dates_df = p.get("dates", pd.DataFrame())
 
-    data_df = p["data"]
-    dates_df = p["dates"]
+    # Convert records to list of dicts for iteration
+    records = data_df.to_dict(orient="records") if not data_df.empty else []
 
-    data_json = json.dumps(data_df.to_dict(orient="records"), ensure_ascii=False)
-    dates_json = json.dumps(dates_df.to_dict(orient="records"), ensure_ascii=False)
-
-    DEFAULT_KEY = "INDICES ELIGIBLE IN DERIVATIVES"
-    DEFAULT_SYMBOL = "NIFTY 50"
-
-    html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>NSE Indices Dashboard</title>
-
-<style>
-body {{
-    font-family: Arial, sans-serif;
-    padding: 20px;
-}}
-
-button {{
-    padding: 7px 14px;
-    margin-bottom: 10px;
-    cursor: pointer;
-}}
-
-.scroll-table {{
-    width: 100%;
-    overflow: auto;
-    border: 1px solid #ccc;
-    max-height: 450px;
-    margin-bottom: 20px;
-}}
-
-table {{
-    border-collapse: collapse;
-    width: max-content;
-    min-width: 100%;
-}}
-
-th, td {{
-    border: 1px solid #ddd;
-    padding: 8px;
-    white-space: nowrap;
-}}
-
-th {{
-    background-color: #007bff;
-    color: white;
-    position: sticky;
-    top: 0;
-    z-index: 5;
-}}
-
-.chart-grid {{
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 200px 200px;
-    gap: 20px;
-}}
-
-.chart-box {{
-    width: 100%;
-    height: 100%;
-    border: 1px solid #ccc;
-}}
-
-#chart365 {{
-    grid-column: 1 / 3;
-}}
-
-select {{
-    padding: 6px;
-    margin: 8px 0;
-}}
-</style>
-
-</head>
-<body>
-
-<h2>NSE Indices Dashboard</h2>
-
-<script>
-const records = {data_json};
-const dates = {dates_json};
-const DEFAULT_KEY = "{DEFAULT_KEY}";
-const DEFAULT_SYMBOL = "{DEFAULT_SYMBOL}";
-</script>
-
-<!-- MAIN TABLE -->
-<h3>Main Full Indices Table</h3>
-<button onclick="toggleMainTable()">Show / Hide Main Table</button>
-
-<div id="mainTableSection" class="scroll-table" style="display:none;">
-    <table id="mainTable"></table>
-</div>
-
-<hr>
-
-<!-- FILTERED TABLE -->
-<h3>Filter Table by Category</h3>
-
-<label><b>Select Index Category:</b></label>
-<select id="keyDropdown"></select>
-
-<div id="altTableSection" class="scroll-table">
-    <table id="altTable"></table>
-</div>
-
-<hr>
-
-<!-- CHARTS -->
-<h3>Charts Based on Index</h3>
-
-<label><b>Select Index:</b></label>
-<select id="chartDropdown"></select>
-
-<div class="chart-grid">
-    <iframe id="chartToday" class="chart-box"></iframe>
-    <iframe id="chart30" class="chart-box"></iframe>
-    <iframe id="chart365" class="chart-box"></iframe>
-</div>
-
-<script>
-
-// ================= MAIN TABLE =================
-
-function buildMainTable() {{
-    const table = document.getElementById("mainTable");
-    const cols = Object.keys(records[0]);
-
-    let header = "<tr>";
-    cols.forEach(c => header += `<th>${{c}}</th>`);
-    header += "</tr>";
-
-    let rows = "";
-    records.forEach(r => {{
-        rows += "<tr>";
-        cols.forEach(c => rows += `<td>${{r[c]}}</td>`);
-        rows += "</tr>";
-    }});
-
-    table.innerHTML = header + rows;
-}}
-
-function toggleMainTable() {{
-    const sec = document.getElementById("mainTableSection");
-    sec.style.display = sec.style.display === "none" ? "block" : "none";
-}}
-
-buildMainTable();
-
-
-// ================= FILTERED TABLE =================
-
-const keyDropdown = document.getElementById("keyDropdown");
-const chartDropdown = document.getElementById("chartDropdown");
-
-const keyList = [...new Set(records.map(r => r.key))];
-keyList.forEach(k => {{
-    const opt = document.createElement("option");
-    opt.value = k;
-    opt.textContent = k;
-    if (k === DEFAULT_KEY) opt.selected = true;
-    keyDropdown.appendChild(opt);
-}});
-
-function buildAltTable(keyName) {{
-    const table = document.getElementById("altTable");
-
-    const filtered = records.filter(r => r.key === keyName);
-
-    if (!filtered.length) {{
-        table.innerHTML = "<tr><td>No Data</td></tr>";
-        return;
-    }}
-
-    const hiddenCols = [
+    # Hidden columns we don't want to show in per-category tables
+    hidden_cols = {
         "key","chartTodayPath","chart30dPath","chart30Path","chart365dPath",
         "date365dAgo","date30dAgo","previousDay","oneWeekAgo","oneMonthAgoVal",
         "oneWeekAgoVal","oneYearAgoVal","index","indicativeClose"
-    ];
+    }
 
-    const cols = Object.keys(filtered[0]).filter(c => !hiddenCols.includes(c));
+    def build_table_from_records(recs, cols=None):
+        """Return HTML <table> string for recs (list of dicts). If cols provided, use that order."""
+        if not recs:
+            return "<p>No data available.</p>"
 
-    let header = "<tr>";
-    cols.forEach(c => header += `<th>${{c}}</th>`);
-    header += "</tr>";
+        # Determine columns
+        if cols is None:
+            # union of keys preserving insertion order from first record
+            cols = []
+            for r in recs:
+                for k in r.keys():
+                    if k not in cols:
+                        cols.append(k)
 
-    let rows = "";
-    filtered.forEach(obj => {{
-        rows += "<tr>";
-        cols.forEach(c => rows += `<td>${{obj[c]}}</td>`);
-        rows += "</tr>";
-    }});
+        # Build header
+        header_cells = "".join(f"<th>{html.escape(str(c))}</th>" for c in cols)
+        rows_html = []
+        for r in recs:
+            row_cells = []
+            for c in cols:
+                v = r.get(c, "")
+                # Convert lists/dicts to string
+                if isinstance(v, (list, dict)):
+                    cell = html.escape(str(v))
+                else:
+                    cell = html.escape("" if v is None else str(v))
+                row_cells.append(f"<td>{cell}</td>")
+            rows_html.append("<tr>" + "".join(row_cells) + "</tr>")
 
-    table.innerHTML = header + rows;
-}}
+        table_html = "<table>\n<thead>\n<tr>" + header_cells + "</tr>\n</thead>\n<tbody>\n" + "\n".join(rows_html) + "\n</tbody>\n</table>"
+        return table_html
 
+    def build_chart_grid_for_record(r):
+        """
+        Build a 3-panel grid for charts for a single record r.
+        Uses r.get('chartTodayPath'), r.get('chart30dPath' or 'chart30Path'), r.get('chart365dPath').
+        If a path is missing, show a placeholder box with text.
+        """
+        def iframe_or_placeholder(src, label):
+            if src and isinstance(src, str) and src.strip():
+                # escape src only in attribute context
+                return f'<div class="chart-cell"><iframe src="{html.escape(src)}" frameborder="0" loading="lazy" title="{html.escape(label)}" style="width:100%;height:100%;"></iframe></div>'
+            else:
+                return f'<div class="chart-cell placeholder"><div class="ph-inner">{html.escape(label)}<br/>(no chart)</div></div>'
 
-// ================= CHARTS =================
+        today_src = r.get("chartTodayPath") or r.get("chartToday") or ""
+        month30_src = r.get("chart30dPath") or r.get("chart30Path") or r.get("chart30") or ""
+        year365_src = r.get("chart365dPath") or r.get("chart365Path") or r.get("chart365") or ""
 
-function populateChartDropdown(keyVal) {{
-    chartDropdown.innerHTML = "";
+        idx_name = r.get("index") or r.get("indexSymbol") or r.get("symbol") or ""
 
-    records.filter(r => r.key === keyVal).forEach(r => {{
-        const opt = document.createElement("option");
-        opt.value = r.indexSymbol;
-        opt.textContent = r.index;
-        chartDropdown.appendChild(opt);
-    }});
+        grid = (
+            '<div class="chart-grid-record">\n'
+            f'  <div class="chart-header"><strong>{html.escape(str(idx_name))}</strong></div>\n'
+            '  <div class="chart-row">\n'
+            f'    {iframe_or_placeholder(today_src, "Today Chart")}\n'
+            f'    {iframe_or_placeholder(month30_src, "30d Chart")}\n'
+            '  </div>\n'
+            '  <div class="chart-row">\n'
+            f'    {iframe_or_placeholder(year365_src, "365d Chart")}\n'
+            '  </div>\n'
+            '</div>\n'
+        )
+        return grid
 
-    // auto select default
-    [...chartDropdown.options].forEach(opt => {{
-        if (opt.textContent.toUpperCase().includes(DEFAULT_SYMBOL.toUpperCase()))
-            opt.selected = true;
-    }});
-}}
+    # Build main full table (all columns present in records)
+    main_table_html = build_table_from_records(records)
 
-function loadCharts(symbol) {{
-    const row = records.find(r => r.indexSymbol === symbol);
-    if (!row) return;
+    # Build dates table if dates_df present
+    dates_table_html = ""
+    if not dates_df.empty:
+        dates_records = dates_df.to_dict(orient="records")
+        dates_table_html = build_table_from_records(dates_records)
 
-    document.getElementById("chartToday").src = row.chartTodayPath;
-    document.getElementById("chart30").src = row.chart30dPath || row.chart30Path;
-    document.getElementById("chart365").src = row.chart365dPath;
-}}
+    # Group records by 'key' (category)
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for r in records:
+        k = r.get("key") or "UNCLASSIFIED"
+        groups[k].append(r)
 
+    # Build per-key tables and per-record chart grids
+    per_key_sections = []
+    for key_name, recs in groups.items():
+        # Columns to show: all keys from first record except hidden_cols, preserving order
+        first = recs[0] if recs else {}
+        cols = [c for c in first.keys() if c not in hidden_cols]
+        # But ensure some useful order: indexSymbol/index/name first if present
+        preferred = ["indexSymbol","index","symbol","name"]
+        cols_sorted = []
+        for p in preferred:
+            if p in cols:
+                cols_sorted.append(p)
+        for c in cols:
+            if c not in cols_sorted:
+                cols_sorted.append(c)
 
-// ================= EVENT HANDLERS =================
+        table_html = build_table_from_records(recs, cols_sorted)
+        # Build chart block for all recs in this key
+        charts_html = "\n".join(build_chart_grid_for_record(r) for r in recs)
 
-keyDropdown.addEventListener("change", () => {{
-    const keyVal = keyDropdown.value;
-    buildAltTable(keyVal);
-    populateChartDropdown(keyVal);
-    loadCharts(chartDropdown.value);
-}});
+        section_html = f"""
+        <section class="key-section">
+          <h3>Category: {html.escape(str(key_name))} (Total: {len(recs)})</h3>
+          <div class="key-table">{table_html}</div>
+          <div class="key-charts">{charts_html}</div>
+        </section>
+        """
+        per_key_sections.append(section_html)
 
-chartDropdown.addEventListener("change", () => {{
-    loadCharts(chartDropdown.value);
-}});
+    # CSS for layout (no JS)
+    css = """
+    <style>
+    body { font-family: Arial, sans-serif; padding: 16px; color: #111; background: #fff; }
+    h1,h2,h3 { color: #0b69a3; margin: 8px 0; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 12px; font-size: 13px; }
+    th, td { border: 1px solid #d0d0d0; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #007bff; color: #fff; position: sticky; top: 0; z-index: 2; }
+    .scroll { max-height: 420px; overflow: auto; border: 1px solid #eee; padding: 8px; background: #fafafa; margin-bottom: 18px; }
+    .key-section { margin-bottom: 28px; padding: 8px 6px; border: 1px solid #e6eef6; background: #fbfeff; border-radius: 6px; }
+    .chart-grid-record { border: 1px solid #e0e0e0; padding: 6px; margin: 8px 0; border-radius: 6px; background: #fff; }
+    .chart-header { margin-bottom: 6px; }
+    .chart-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .chart-cell { flex: 1 1 0; height: 200px; border: 1px solid #ddd; }
+    .chart-cell.iframe-wrap iframe { width:100%; height:100%; border:0; }
+    .placeholder { display:flex; align-items:center; justify-content:center; background:#f6f6f6; color:#666; font-size:13px; }
+    .ph-inner { text-align:center; padding:8px; }
+    .meta { font-size: 13px; color: #444; margin-bottom: 8px; }
+    </style>
+    """
 
+    # HTML assembly
+    html_parts = []
+    html_parts.append("<!DOCTYPE html>")
+    html_parts.append("<html><head><meta charset='utf-8'><title>NSE Indices (Static)</title>")
+    html_parts.append(css)
+    html_parts.append("</head><body>")
+    html_parts.append("<h1>NSE Indices — Full Static Render</h1>")
+    html_parts.append(f"<div class='meta'>Generated: {html.escape(pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'))}</div>")
 
-// ================= INITIAL LOAD =================
+    html_parts.append("<h2>Main Indices Table</h2>")
+    html_parts.append("<div class='scroll'>")
+    html_parts.append(main_table_html)
+    html_parts.append("</div>")
 
-buildAltTable(DEFAULT_KEY);
-populateChartDropdown(DEFAULT_KEY);
+    if dates_table_html:
+        html_parts.append("<h2>Dates / Meta</h2>")
+        html_parts.append("<div class='scroll'>")
+        html_parts.append(dates_table_html)
+        html_parts.append("</div>")
 
-let initial = records.find(
-    r => r.index.toUpperCase().includes(DEFAULT_SYMBOL.toUpperCase())
-);
+    html_parts.append("<h2>Categories & Charts (All)</h2>")
+    html_parts.extend(per_key_sections)
 
-if (!initial) initial = records[0];
+    html_parts.append("</body></html>")
 
-loadCharts(initial.indexSymbol);
-
-</script>
-
-</body>
-</html>
-"""
-    return html
+    return "\n".join(html_parts)
