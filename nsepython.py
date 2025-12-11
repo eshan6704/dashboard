@@ -152,11 +152,9 @@ def nse_circular(mode="latest"):
     return nsefetch('https://www.nseindia.com/api/latest-circular' if mode=="latest" else 'https://www.nseindia.com/api/circulars')
 
 def nse_fiidii(mode="pandas"):
-    try:
-        p=nsefetch('https://www.nseindia.com/api/fiidiiTradeReact')
-        return pd.DataFrame(p) if mode=="pandas" else p
-    except:
-        return nsefetch('https://www.nseindia.com/api/fiidiiTradeReact')
+    
+    p=nsefetch('https://www.nseindia.com/api/fiidiiTradeReact')
+    return pd.DataFrame(p)
 
 def nsetools_get_quote(symbol):
     p=nsefetch('https://www.nseindia.com/api/equity-stockIndices?index=SECURITIES%20IN%20F%26O')
