@@ -6,6 +6,7 @@ from preopen_html import *
 from eq_html import *
 import pandas as pd
 from bhavcopy_html import *
+from nsepython import *
 
 # ======================================================
 # Scrollable HTML wrapper
@@ -23,6 +24,16 @@ SCROLL_WRAP = """
 </div>
 """
 
+import datetime
+
+def last_year_date(d):
+    # d = "09-12-2025"
+    dt = datetime.datetime.strptime(d, "%d-%m-%Y")
+    new_dt = dt.replace(year=dt.year - 1)
+    return new_dt.strftime("%d-%m-%Y")
+
+
+
 def wrap(html):
     if html is None:
         return "<h3>No Data</h3>"
@@ -34,12 +45,13 @@ def wrap(html):
 # ======================================================
 STOCK_REQ = [
     "info", "intraday", "daily","nse_eq", "qresult", "result", "balance",
-    "cashflow", "dividend", "split", "other"
+    "cashflow", "dividend", "split", "other","stock_hist"
 ]
 
 INDEX_REQ = [
-    "indices", "nse_open", "nse_preopen", "nse_fno",
-    "nse_future", "nse_bhav", "nse_highlow"
+    "indices", "nse_open", "nse_preopen", "nse_fno","nse_fiidii","nse_events"
+    "nse_future", "nse_bhav", "nse_highlow","index_history","nse_largedeals","nse_most_active","largedeals_historical","nse_bulkdeals",
+    "nse_blockdeals","index_pe_pb_div","index_total_returns"
 ]
 
 
@@ -61,7 +73,7 @@ def fetch_data(mode, req_type, name, date_str):
     req_type = req_type.lower()
     name = name.strip()
     date_str = date_str.strip()
-
+    date_start= last_year_date(date_str)
     if mode == "index":
         if req_type == "indices":
             return build_indices_html()
@@ -72,12 +84,36 @@ def fetch_data(mode, req_type, name, date_str):
             return build_preopen_html()
         elif req_type == "nse_fno":
             return wrap(nse_fno(name))
+        elif req_type == "nse_events":
+            return nse_events().to_html()
+        elif req_type == "nse_fiidii":
+            return nse_fiidii().to_html()
         elif req_type == "nse_future":
             return wrap(nse_future(name))
-        elif req_type == "nse_bhav":
-            return build_bhavcopy_html(date_str) # no default
         elif req_type == "nse_highlow":
             return wrap(nse_highlow())
+        elif req_type == "nse_bhav":
+            return build_bhavcopy_html(date_str) # no default
+         elif req_type == "nse_largedeals":
+            return nse_largedeals().to_html()  
+         elif req_type == "nse_bulkdeals":
+            return nse_bulkdeals().to_html()  
+
+         elif req_type == "nse_blockdeals":
+            return nse_blockdeals().to_html()  
+         elif req_type == "nse_most_active":
+            return nse_most_active().to_html()  
+        elif req_type == "index_history":
+            return index_history("NIFTY 50",date_start,date_str).to_html() # no default
+        elif req_type == "largedeals_historical":
+            return nse_largedeals_historical(date_start,date_str).to_html() # no default
+        elif req_type == "index_pe_pb_div":
+            return index_pe_pb_div("NIFY 50",date_start,date_str).to_html() # no default
+        elif req_type == "index_total_returns":
+            return index_total_returns("NIFY 50",date_start,date_str).to_html() # no default
+            
+        nse_largedeals_historical
+
         else:
             return wrap(f"<h3>No handler for {req_type}</h3>")
 
@@ -104,6 +140,8 @@ def fetch_data(mode, req_type, name, date_str):
             return wrap(fetch_split(name))
         elif req_type == "other":
             return wrap(fetch_other(name))
+        elif req_type == "stock_hist":    
+            return nse_stock_hist(date_start,date_str,name).to_html()
         else:
             return wrap(f"<h3>No handler for {req_type}</h3>")
 
