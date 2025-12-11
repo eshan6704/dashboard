@@ -94,14 +94,14 @@ def fetch_data(mode, req_type, name, date_str):
             return wrap(nse_highlow())
         elif req_type == "nse_bhav":
             return build_bhavcopy_html(date_str) # no default
-         elif req_type == "nse_largedeals":
+        elif req_type == "nse_largedeals":
             return nse_largedeals().to_html()  
-         elif req_type == "nse_bulkdeals":
+        elif req_type == "nse_bulkdeals":
             return nse_bulkdeals().to_html()  
 
-         elif req_type == "nse_blockdeals":
+        elif req_type == "nse_blockdeals":
             return nse_blockdeals().to_html()  
-         elif req_type == "nse_most_active":
+        elif req_type == "nse_most_active":
             return nse_most_active().to_html()  
         elif req_type == "index_history":
             return index_history("NIFTY 50",date_start,date_str).to_html() # no default
@@ -111,8 +111,7 @@ def fetch_data(mode, req_type, name, date_str):
             return index_pe_pb_div("NIFY 50",date_start,date_str).to_html() # no default
         elif req_type == "index_total_returns":
             return index_total_returns("NIFY 50",date_start,date_str).to_html() # no default
-            
-        nse_largedeals_historical
+    
 
         else:
             return wrap(f"<h3>No handler for {req_type}</h3>")
