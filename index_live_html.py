@@ -2,8 +2,8 @@
 from nsepython import *
 import pandas as pd
 
-def build_index_live_html(name=""):
-    p = nse_index_live(name)
+def build_index_live_html():
+    p = nse_index_live()
 
     full_df = p.get("data", pd.DataFrame())
     rem_df  = p.get("rem", pd.DataFrame())
