@@ -7,7 +7,8 @@ def build_index_live_html():
 
     full_df = p.get("data", pd.DataFrame())
     rem_df  = p.get("rem", pd.DataFrame())
-
+    print(rem_df)
+    print(full_df)
     if full_df.empty:
         main_df = pd.DataFrame()
         const_df = pd.DataFrame()
