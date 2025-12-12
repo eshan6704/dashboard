@@ -3,7 +3,7 @@ from nsepython import *
 import pandas as pd
 
 def build_index_live_html():
-    p = nse_index_live()
+    p = nse_index_live("NIFTY 50")
 
     full_df = p.get("data", pd.DataFrame())
     rem_df  = p.get("rem", pd.DataFrame())
