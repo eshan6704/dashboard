@@ -10,7 +10,7 @@ def talib_df(df):
     - All CDL patterns (0/1)
     """
     df = df.copy()
-    
+    print(df)
     # Ensure OHLCV columns exist
     for col in ['Open','High','Low','Close','Volume']:
         if col not in df.columns:
