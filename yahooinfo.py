@@ -11,7 +11,7 @@ import traceback
 # ==============================
 def yfinfo(symbol):
     try:
-        t = yf.Ticker(symbol)
+        t = yf.Ticker(symbol+".NS")
         info = t.info
         if not info or not isinstance(info, dict):
             return {}
