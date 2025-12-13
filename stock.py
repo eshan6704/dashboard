@@ -58,7 +58,7 @@ from ta_indi_pat import talib_df
 
 # -------------------------- INFO ------------------------------
 
-def fetch_info(symbol):
+def fetch_info2(symbol):
     try:
         info = yfinfo(symbol)
         if not info:
