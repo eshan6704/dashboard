@@ -3,7 +3,7 @@
 import yfinance as yf
 import pandas as pd
 import traceback
-from ta import *
+from ta_indi_pat import *
 
 # ================================================================
 #                    BASIC YFINANCE FETCHERS
