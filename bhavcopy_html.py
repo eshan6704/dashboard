@@ -62,16 +62,6 @@ def build_bhavcopy_html(date_str):
         df["PREV_CLOSE"].replace(0, 1)
     ) * 100
 
-    # -------------------------------------------------------
-    # 7) Upload to Backblaze (FINAL DF)
-    # -------------------------------------------------------
-    file_name = f"bhav/bhav_{date_str.replace('-', '_')}.csv"
-
-    upload_file(
-        bucket_name="eshanhf",
-        file_name=file_name,
-        file_content=df
-    )
 
     # -------------------------------------------------------
     # 8) HTML Output
