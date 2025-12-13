@@ -5,6 +5,8 @@ import pandas as pd
 import traceback
 from ta_indi_pat import *
 
+#file_name = f"bhav/bhav_{date_str.replace('-', '_')}.csv"
+#upload_file("eshanhf",file_name,df)
 # ================================================================
 #                    BASIC YFINANCE FETCHERS
 # ================================================================
@@ -67,7 +69,8 @@ def fetch_intraday(symbol, indicators=None):
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-        #print(df)
+        file_name = f"intraday/{symbol}_{date_str.replace('-', '_')}.csv"
+        upload_file("eshanhf",file_name,df)
         #chart_html = build_chart(df, indicators=indicators)
         table_html = make_table(df.tail(50))
         return wrap_html(f"<h2>Last 50 Rows</h2>{table_html}",
@@ -86,7 +89,8 @@ def fetch_daily(symbol, source="yfinance", max_rows=200):
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-            
+        file_name = f"daily/{symbol}_{date_str.replace('-', '_')}.csv"
+        upload_file("eshanhf",file_name,df)
         df_disp = df.head(max_rows)   
         combined_df = talib_df(df_disp)
         table_html = combined_df.to_html(
@@ -113,7 +117,8 @@ def fetch_qresult(symbol):
         df = qresult(symbol)
         if df.empty:
             return wrap_html(f"<h1>No quarterly results for {symbol}</h1>")
-
+        file_name = f"qresult/{symbol}_{date_str.replace('-', '_')}.csv"
+        upload_file("eshanhf",file_name,df)
         df_fmt = df.copy()
         for col in df_fmt.columns:
             df_fmt[col] = df_fmt[col].apply(
@@ -135,7 +140,8 @@ def fetch_result(symbol):
         df = result(symbol)
         if df.empty:
             return wrap_html(f"<h1>No annual results for {symbol}</h1>")
-
+        file_name = f"result/{symbol}_{date_str.replace('-', '_')}.csv"
+        upload_file("eshanhf",file_name,df)
         df_fmt = df.copy()
         for col in df_fmt.columns:
             df_fmt[col] = df_fmt[col].apply(
@@ -157,7 +163,8 @@ def fetch_balance(symbol):
         df = balance(symbol)
         if df.empty:
             return wrap_html(f"<h1>No balance sheet for {symbol}</h1>")
-
+        file_name = f"balance/{symbol}_{date_str.replace('-', '_')}.csv"
+        upload_file("eshanhf",file_name,df)
         df_fmt = df.copy()
         for col in df_fmt.columns:
             df_fmt[col] = df_fmt[col].apply(
@@ -179,7 +186,8 @@ def fetch_cashflow(symbol):
         df = cashflow(symbol)
         if df.empty:
             return wrap_html(f"<h1>No cashflow for {symbol}</h1>")
-
+        file_name = f"cashflow/{symbol}_{date_str.replace('-', '_')}.csv"
+        upload_file("eshanhf",file_name,df)
         df_fmt = df.copy()
         for col in df_fmt.columns:
             df_fmt[col] = df_fmt[col].apply(
