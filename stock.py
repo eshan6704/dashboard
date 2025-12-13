@@ -70,7 +70,7 @@ def fetch_intraday(symbol, indicators=None):
         #print(df)
         #chart_html = build_chart(df, indicators=indicators)
         table_html = make_table(df.tail(50))
-        return wrap_html(f"{chart_html}<h2>Last 50 Rows</h2>{table_html}",
+        return wrap_html(f"<h2>Last 50 Rows</h2>{table_html}",
                          title=f"{symbol} Intraday")
 
     except Exception as e:
