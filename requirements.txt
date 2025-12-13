@@ -7,6 +7,5 @@ TA-Lib
 boto3
 openpyxl
 requests
-beautifulsoup4
-lxml
+
 
