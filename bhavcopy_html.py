@@ -1,7 +1,7 @@
 import pandas as pd
 import datetime
 from nsepython import *
-from blackblaze import upload_file,read_file
+from backblaze import upload_file,read_file
 def build_bhavcopy_html(date_str):
     # -------------------------------------------------------
     # 1) Validate Date
