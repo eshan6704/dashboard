@@ -9,30 +9,12 @@ from bhavcopy_html import *
 from nsepython import *
 from yahooinfo import fetch_info
 import datetime
-from io import BytesIO
 from datetime import datetime
-import boto3
+from backblaze import upload_file, read_file  # for optional file writing
 
-# ======================================================
-# Backblaze B2 Setup
-# ======================================================
-S3_ENDPOINT = "https://s3.us-east-005.backblazeb2.com"
-BUCKET_NAME = "eshanhf"
-AWS_KEY_ID = "005239ca03b31af0000000001"
-AWS_SECRET_KEY = "K005uGFZkrtYa4Hg1GliFUQohs/BTk4"
-
-s3 = boto3.client(
-    "s3",
-    endpoint_url=S3_ENDPOINT,
-    aws_access_key_id=AWS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_KEY,
-)
-
-LOG_FILE = "fetch_log.csv"
-
-# ======================================================
+# ===========================
 # Scrollable HTML wrapper
-# ======================================================
+# ===========================
 SCROLL_WRAP = """
 <div style="
     max-height: 80vh;
@@ -46,9 +28,9 @@ SCROLL_WRAP = """
 </div>
 """
 
-# ======================================================
+# ===========================
 # Date helpers
-# ======================================================
+# ===========================
 def today_str():
     return datetime.date.today().strftime("%d-%m-%Y")
 
@@ -60,17 +42,17 @@ def last_year_date(d):
     new_dt = dt.replace(year=dt.year - 1)
     return new_dt.strftime("%d-%m-%Y")
 
-# ======================================================
+# ===========================
 # HTML wrapper
-# ======================================================
+# ===========================
 def wrap(html):
     if html is None:
         return "<h3>No Data</h3>"
     return SCROLL_WRAP.replace("{{HTML}}", html)
 
-# ======================================================
+# ===========================
 # Request Type Options
-# ======================================================
+# ===========================
 STOCK_REQ = [
     "info", "intraday", "daily", "nse_eq", "qresult", "result",
     "balance", "cashflow", "dividend", "split", "other", "stock_hist"
@@ -84,9 +66,9 @@ INDEX_REQ = [
     "index_pe_pb_div", "index_total_returns"
 ]
 
-# ======================================================
-# Update UI based on mode
-# ======================================================
+# ===========================
+# Update UI defaults
+# ===========================
 def update_on_mode(mode):
     if mode == "stock":
         return (
@@ -107,9 +89,9 @@ def update_on_mode(mode):
             gr.update(value="")
         )
 
-# ======================================================
-# Data Fetcher with log update at the end
-# ======================================================
+# ===========================
+# Fetch data
+# ===========================
 def fetch_data(mode, req_type, name, date_str):
     req_type = req_type.lower()
     name = name.strip()
@@ -118,9 +100,7 @@ def fetch_data(mode, req_type, name, date_str):
         date_str = yesterday_str()
     date_start = last_year_date(date_str)
 
-    # ==========================
-    # Fetch the requested data
-    # ==========================
+    # ======= Index Mode =======
     if mode == "index":
         if req_type == "indices":
             result = build_indices_html()
@@ -159,6 +139,7 @@ def fetch_data(mode, req_type, name, date_str):
         else:
             result = wrap(f"<h3>No handler for {req_type}</h3>")
 
+    # ======= Stock Mode =======
     elif mode == "stock":
         if req_type == "daily":
             result = wrap(fetch_daily(name))
@@ -190,44 +171,11 @@ def fetch_data(mode, req_type, name, date_str):
     else:
         result = wrap(f"<h3>No valid mode: {mode}</h3>")
 
-    # ==========================
-    # Update fetch log at the END
-    # ==========================
-    try:
-        # Read existing log from B2
-        try:
-            obj = s3.get_object(Bucket=BUCKET_NAME, Key=LOG_FILE)
-            data = obj['Body'].read()
-            df = pd.read_csv(BytesIO(data))
-        except Exception:
-            df = pd.DataFrame(columns=["Sr","Datetime","Client","Mode","Req_Type","Name","Date"])
-
-        # Append new row
-        df = df.append({
-            "Sr": len(df)+1,
-            "Datetime": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
-            "Client": "gradio",
-            "Mode": mode,
-            "Req_Type": req_type,
-            "Name": name,
-            "Date": date_str
-        }, ignore_index=True)
-
-        # Save back to B2
-        csv_buffer = BytesIO()
-        df.to_csv(csv_buffer, index=False)
-        csv_buffer.seek(0)
-        s3.put_object(Bucket=BUCKET_NAME, Key=LOG_FILE, Body=csv_buffer.getvalue())
-
-    except Exception as e:
-        print(f"Error logging fetch: {e}")
-
-    # Return the fetched result to Gradio
     return result
 
-# ======================================================
+# ===========================
 # UI
-# ======================================================
+# ===========================
 with gr.Blocks(title="Stock / Index App") as iface:
 
     gr.Markdown("### **Stock / Index Data Fetcher**")
@@ -250,8 +198,8 @@ with gr.Blocks(title="Stock / Index App") as iface:
     # Fetch
     fetch_btn.click(fetch_data, inputs=[mode_input, req_type_input, name_input, date_input], outputs=output)
 
-# ======================================================
+# ===========================
 # Launch
-# ======================================================
+# ===========================
 if __name__ == "__main__":
     iface.launch(server_name="0.0.0.0", server_port=7860)
