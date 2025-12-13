@@ -15,7 +15,7 @@ def talib_df(df):
     for col in ['Open','High','Low','Close','Volume']:
         if col not in df.columns:
             raise ValueError(f"Missing column: {col}")
-
+    df=df.reset_index()
     # Base DF with Date + OHLCV
     result_df = df[['Date','Close','High','Low','Open','Volume']].copy()
 
