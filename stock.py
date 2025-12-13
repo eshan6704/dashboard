@@ -67,8 +67,8 @@ def fetch_intraday(symbol, indicators=None):
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-        print(df)
-        chart_html = build_chart(df, indicators=indicators)
+        #print(df)
+        #chart_html = build_chart(df, indicators=indicators)
         table_html = make_table(df.tail(50))
         return wrap_html(f"{chart_html}<h2>Last 50 Rows</h2>{table_html}",
                          title=f"{symbol} Intraday")
