@@ -1,7 +1,7 @@
 import pandas as pd
 import datetime
 from nsepython import *
-from backblaze import upload_file
+
 
 def build_bhavcopy_html(date_str):
     # -------------------------------------------------------
