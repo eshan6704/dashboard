@@ -147,8 +147,12 @@ def fetch_intraday(symbol, indicators=None):
 def fetch_daily(symbol, source="yfinance", max_rows=200):
     try:
         df = daily(symbol)
-        df_disp = df.head(max_rows)
+        
 
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+            
+        df_disp = df.head(max_rows)   
         combined_df = talib_df(df_disp)
         table_html = combined_df.to_html(
             classes="table table-striped table-bordered",
