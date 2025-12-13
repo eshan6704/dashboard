@@ -4,4 +4,11 @@ pandas
 numpy
 plotly
 TA-Lib
-nsepython
+boto3
+
+yahooinfo
+openpyxl
+requests
+beautifulsoup4
+lxml
+
