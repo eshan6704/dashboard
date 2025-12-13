@@ -10,43 +10,12 @@ from nsepython import *
 from yahooinfo import fetch_info
 import datetime
 
-# ======================================================
-# Scrollable HTML wrapper
-# ======================================================
-SCROLL_WRAP = """
-<div style="
-    max-height: 80vh;
-    overflow-y: auto;
-    overflow-x: auto;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-">
-{{HTML}}
-</div>
-"""
+from backblaze import upload_file
 
-# ======================================================
-# Date helpers
-# ======================================================
-def today_str():
-    return datetime.date.today().strftime("%d-%m-%Y")
+file_name = f"bhav/bhav_{date_str.replace('-', '_')}.csv"
+upload_file("eshanhf",file_name,df)
 
-def yesterday_str():
-    return (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d-%m-%Y")
 
-def last_year_date(d):
-    dt = datetime.datetime.strptime(d, "%d-%m-%Y")
-    new_dt = dt.replace(year=dt.year - 1)
-    return new_dt.strftime("%d-%m-%Y")
-
-# ======================================================
-# HTML wrapper
-# ======================================================
-def wrap(html):
-    if html is None:
-        return "<h3>No Data</h3>"
-    return SCROLL_WRAP.replace("{{HTML}}", html)
 
 # ======================================================
 # Request Type Options
