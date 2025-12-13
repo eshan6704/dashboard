@@ -16,6 +16,7 @@ def build_bhavcopy_html(date_str):
     # -------------------------------------------------------
     try:
         df = nse_bhavcopy(date_str)   # <-- your custom loader
+        upload_files("eshanhf","bhav.csv",df.to_csv())
         df.columns = df.columns.str.strip()
     except:
         return f"<h3>No Bhavcopy found for {date_str}.</h3>"
