@@ -29,34 +29,7 @@ s3 = boto3.client(
     aws_secret_access_key=AWS_SECRET_KEY,
 )
 
-LOG_FILE = "fetch_log.csv"  # CSV log in bucket
-
-def b2_file(file_path=None, bucket_name=BUCKET_NAME, upload=True, download_path=None):
-    """
-    Universal upload/download function for Backblaze B2.
-    """
-    try:
-        if upload:
-            if not file_path or not os.path.isfile(file_path):
-                raise ValueError("Valid local file_path must be provided for upload")
-            with open(file_path, "rb") as f:
-                data = f.read()
-            file_name = os.path.basename(file_path)
-            s3.put_object(Bucket=bucket_name, Key=file_name, Body=data)
-            return True
-        else:
-            if not file_path:
-                raise ValueError("Bucket file name must be provided for download")
-            if not download_path:
-                raise ValueError("download_path must be provided for download")
-            obj = s3.get_object(Bucket=bucket_name, Key=file_path)
-            data = obj['Body'].read()
-            with open(download_path, "wb") as f:
-                f.write(data)
-            return True
-    except Exception as e:
-        print(f"Error in B2 operation: {e}")
-        return False
+LOG_FILE = "fetch_log.csv"
 
 # ======================================================
 # Scrollable HTML wrapper
@@ -113,19 +86,40 @@ INDEX_REQ = [
 ]
 
 # ======================================================
+# Update UI on mode change (set defaults)
+# ======================================================
+def update_on_mode(mode):
+    if mode == "stock":
+        return (
+            gr.update(choices=STOCK_REQ, value="info"),
+            gr.update(value="ITC"),
+            gr.update(value=yesterday_str())
+        )
+    elif mode == "index":
+        return (
+            gr.update(choices=INDEX_REQ, value="indices"),
+            gr.update(value="NIFTY 50"),
+            gr.update(value=yesterday_str())
+        )
+    else:
+        return (
+            gr.update(choices=[], value=""),
+            gr.update(value=""),
+            gr.update(value="")
+        )
+
+# ======================================================
 # Data Fetcher
 # ======================================================
 def fetch_data(mode, req_type, name, date_str):
     mode = mode or "stock"
     req_type = req_type.lower() if req_type else "info"
-    name = name.strip() if name else "ITC"
+    name = name.strip() if name else ("ITC" if mode == "stock" else "NIFTY 50")
     date_str = date_str.strip() if date_str else yesterday_str()
     date_start = last_year_date(date_str)
     client = "gradio"
 
-    # =====================
-    # INDEX MODE
-    # =====================
+    # ========== INDEX ==========
     if mode == "index":
         if req_type == "indices":
             result = build_indices_html()
@@ -164,9 +158,7 @@ def fetch_data(mode, req_type, name, date_str):
         else:
             result = wrap(f"<h3>No handler for {req_type}</h3>")
 
-    # =====================
-    # STOCK MODE
-    # =====================
+    # ========== STOCK ==========
     elif mode == "stock":
         if req_type == "daily":
             result = wrap(fetch_daily(name))
@@ -198,9 +190,7 @@ def fetch_data(mode, req_type, name, date_str):
     else:
         result = wrap(f"<h3>No valid mode: {mode}</h3>")
 
-    # =====================
-    # Log fetch AFTER serving API
-    # =====================
+    # ========== Log fetch AFTER serving API ==========
     try:
         # Read existing log
         try:
@@ -226,7 +216,6 @@ def fetch_data(mode, req_type, name, date_str):
         df.to_csv(csv_buffer, index=False)
         csv_buffer.seek(0)
         s3.put_object(Bucket=BUCKET_NAME, Key=LOG_FILE, Body=csv_buffer.getvalue())
-        print("Fetch logged successfully.")
     except Exception as e:
         print(f"Error logging fetch: {e}")
 
@@ -247,9 +236,10 @@ with gr.Blocks(title="Stock / Index App") as iface:
 
     output = gr.HTML(label="Output")
 
-    # =====================
-    # Only Fetch triggers data
-    # =====================
+    # ======= Mode change updates defaults only =======
+    mode_input.change(update_on_mode, inputs=mode_input, outputs=[req_type_input, name_input, date_input])
+
+    # ======= Only Fetch triggers fetch_data ==========
     fetch_btn.click(fetch_data, inputs=[mode_input, req_type_input, name_input, date_input], outputs=output)
 
 # ======================================================
