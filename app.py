@@ -1,3 +1,4 @@
+from common import *
 import gradio as gr
 from stock import *
 from indices_html import *
@@ -9,12 +10,6 @@ from bhavcopy_html import *
 from nsepython import *
 from yahooinfo import fetch_info
 import datetime
-
-from backblaze import upload_file
-
-file_name = f"bhav/bhav_{date_str.replace('-', '_')}.csv"
-upload_file("eshanhf",file_name,df)
-
 
 
 # ======================================================
