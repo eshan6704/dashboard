@@ -39,65 +39,24 @@ def b2_file(file_path=None, bucket_name=BUCKET_NAME, upload=True, download_path=
         if upload:
             if not file_path or not os.path.isfile(file_path):
                 raise ValueError("Valid local file_path must be provided for upload")
-            
             with open(file_path, "rb") as f:
                 data = f.read()
-
             file_name = os.path.basename(file_path)
             s3.put_object(Bucket=bucket_name, Key=file_name, Body=data)
             return True
-
         else:
             if not file_path:
                 raise ValueError("Bucket file name must be provided for download")
             if not download_path:
                 raise ValueError("download_path must be provided for download")
-
             obj = s3.get_object(Bucket=bucket_name, Key=file_path)
             data = obj['Body'].read()
-
             with open(download_path, "wb") as f:
                 f.write(data)
-
             return True
-
     except Exception as e:
         print(f"Error in B2 operation: {e}")
         return False
-
-def log_fetch(client, mode, req_type, name, date_str):
-    """
-    Append a new fetch record to the CSV in B2.
-    """
-    try:
-        # Try to read existing CSV from B2
-        try:
-            obj = s3.get_object(Bucket=BUCKET_NAME, Key=LOG_FILE)
-            data = obj['Body'].read()
-            df = pd.read_csv(BytesIO(data))
-        except Exception:
-            df = pd.DataFrame(columns=["Sr", "Datetime", "Client", "Mode", "Req_Type", "Name", "Date"])
-
-        # Append new row
-        new_row = {
-            "Sr": len(df) + 1,
-            "Datetime": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
-            "Client": client,
-            "Mode": mode,
-            "Req_Type": req_type,
-            "Name": name,
-            "Date": date_str
-        }
-        df = df.append(new_row, ignore_index=True)
-
-        # Save back to B2
-        csv_buffer = BytesIO()
-        df.to_csv(csv_buffer, index=False)
-        csv_buffer.seek(0)
-        s3.put_object(Bucket=BUCKET_NAME, Key=LOG_FILE, Body=csv_buffer.getvalue())
-        print("Fetch logged successfully.")
-    except Exception as e:
-        print(f"Error logging fetch: {e}")
 
 # ======================================================
 # Scrollable HTML wrapper
@@ -154,37 +113,14 @@ INDEX_REQ = [
 ]
 
 # ======================================================
-# Update UI based on mode
-# ======================================================
-def update_on_mode(mode):
-    if mode == "stock":
-        return (
-            gr.update(choices=STOCK_REQ, value="info"),
-            gr.update(value="ITC"),
-            gr.update(value=yesterday_str())
-        )
-    elif mode == "index":
-        return (
-            gr.update(choices=INDEX_REQ, value="indices"),
-            gr.update(value="NIFTY 50"),
-            gr.update(value=yesterday_str())
-        )
-    return (
-        gr.update(choices=[], value=""),
-        gr.update(value=""),
-        gr.update(value="")
-    )
-
-# ======================================================
 # Data Fetcher
 # ======================================================
 def fetch_data(mode, req_type, name, date_str):
-    req_type = req_type.lower()
-    name = name.strip()
-    date_str = date_str.strip() or yesterday_str()
+    mode = mode or "stock"
+    req_type = req_type.lower() if req_type else "info"
+    name = name.strip() if name else "ITC"
+    date_str = date_str.strip() if date_str else yesterday_str()
     date_start = last_year_date(date_str)
-
-    # Detect client
     client = "gradio"
 
     # =====================
@@ -263,9 +199,37 @@ def fetch_data(mode, req_type, name, date_str):
         result = wrap(f"<h3>No valid mode: {mode}</h3>")
 
     # =====================
-    # Log fetch in CSV
+    # Log fetch AFTER serving API
     # =====================
-    log_fetch(client, mode, req_type, name, date_str)
+    try:
+        # Read existing log
+        try:
+            obj = s3.get_object(Bucket=BUCKET_NAME, Key=LOG_FILE)
+            data = obj['Body'].read()
+            df = pd.read_csv(BytesIO(data))
+        except Exception:
+            df = pd.DataFrame(columns=["Sr","Datetime","Client","Mode","Req_Type","Name","Date"])
+
+        # Append new row
+        df = df.append({
+            "Sr": len(df)+1,
+            "Datetime": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+            "Client": client,
+            "Mode": mode,
+            "Req_Type": req_type,
+            "Name": name,
+            "Date": date_str
+        }, ignore_index=True)
+
+        # Save back to B2
+        csv_buffer = BytesIO()
+        df.to_csv(csv_buffer, index=False)
+        csv_buffer.seek(0)
+        s3.put_object(Bucket=BUCKET_NAME, Key=LOG_FILE, Body=csv_buffer.getvalue())
+        print("Fetch logged successfully.")
+    except Exception as e:
+        print(f"Error logging fetch: {e}")
+
     return result
 
 # ======================================================
@@ -276,18 +240,16 @@ with gr.Blocks(title="Stock / Index App") as iface:
 
     with gr.Row():
         mode_input = gr.Radio(["stock", "index"], label="Mode", value="stock", scale=1)
-        name_input = gr.Textbox(label="Symbol / Index Name", scale=2)
-        req_type_input = gr.Dropdown(label="Request Type", allow_custom_value=True, scale=2)
+        name_input = gr.Textbox(label="Symbol / Index Name", placeholder="Enter symbol or index", scale=2)
+        req_type_input = gr.Dropdown(label="Request Type", choices=STOCK_REQ, value="info", allow_custom_value=True, scale=2)
         date_input = gr.Textbox(label="Date (DD-MM-YYYY)", placeholder="Leave empty = yesterday", scale=1)
         fetch_btn = gr.Button("Fetch", scale=1)
 
     output = gr.HTML(label="Output")
 
-    # Mode change → auto defaults
-    mode_input.change(update_on_mode, inputs=mode_input, outputs=[req_type_input, name_input, date_input])
-    iface.load(update_on_mode, inputs=mode_input, outputs=[req_type_input, name_input, date_input])
-
-    # Fetch
+    # =====================
+    # Only Fetch triggers data
+    # =====================
     fetch_btn.click(fetch_data, inputs=[mode_input, req_type_input, name_input, date_input], outputs=output)
 
 # ======================================================
