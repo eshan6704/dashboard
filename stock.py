@@ -1,5 +1,5 @@
 # stock.py  — compact, merged, single-file
-
+from common import *
 import yfinance as yf
 import pandas as pd
 import traceback
