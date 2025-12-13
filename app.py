@@ -12,7 +12,6 @@ import datetime
 from io import BytesIO
 from datetime import datetime
 import boto3
-import os
 
 # ======================================================
 # Backblaze B2 Setup
@@ -86,7 +85,7 @@ INDEX_REQ = [
 ]
 
 # ======================================================
-# Update UI on mode change (set defaults)
+# Update UI based on mode
 # ======================================================
 def update_on_mode(mode):
     if mode == "stock":
@@ -109,17 +108,19 @@ def update_on_mode(mode):
         )
 
 # ======================================================
-# Data Fetcher
+# Data Fetcher with log update at the end
 # ======================================================
 def fetch_data(mode, req_type, name, date_str):
-    mode = mode or "stock"
-    req_type = req_type.lower() if req_type else "info"
-    name = name.strip() if name else ("ITC" if mode == "stock" else "NIFTY 50")
-    date_str = date_str.strip() if date_str else yesterday_str()
+    req_type = req_type.lower()
+    name = name.strip()
+    date_str = date_str.strip()
+    if not date_str:
+        date_str = yesterday_str()
     date_start = last_year_date(date_str)
-    client = "gradio"
 
-    # ========== INDEX ==========
+    # ==========================
+    # Fetch the requested data
+    # ==========================
     if mode == "index":
         if req_type == "indices":
             result = build_indices_html()
@@ -158,7 +159,6 @@ def fetch_data(mode, req_type, name, date_str):
         else:
             result = wrap(f"<h3>No handler for {req_type}</h3>")
 
-    # ========== STOCK ==========
     elif mode == "stock":
         if req_type == "daily":
             result = wrap(fetch_daily(name))
@@ -190,9 +190,11 @@ def fetch_data(mode, req_type, name, date_str):
     else:
         result = wrap(f"<h3>No valid mode: {mode}</h3>")
 
-    # ========== Log fetch AFTER serving API ==========
+    # ==========================
+    # Update fetch log at the END
+    # ==========================
     try:
-        # Read existing log
+        # Read existing log from B2
         try:
             obj = s3.get_object(Bucket=BUCKET_NAME, Key=LOG_FILE)
             data = obj['Body'].read()
@@ -204,7 +206,7 @@ def fetch_data(mode, req_type, name, date_str):
         df = df.append({
             "Sr": len(df)+1,
             "Datetime": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
-            "Client": client,
+            "Client": "gradio",
             "Mode": mode,
             "Req_Type": req_type,
             "Name": name,
@@ -216,30 +218,36 @@ def fetch_data(mode, req_type, name, date_str):
         df.to_csv(csv_buffer, index=False)
         csv_buffer.seek(0)
         s3.put_object(Bucket=BUCKET_NAME, Key=LOG_FILE, Body=csv_buffer.getvalue())
+
     except Exception as e:
         print(f"Error logging fetch: {e}")
 
+    # Return the fetched result to Gradio
     return result
 
 # ======================================================
 # UI
 # ======================================================
 with gr.Blocks(title="Stock / Index App") as iface:
+
     gr.Markdown("### **Stock / Index Data Fetcher**")
 
     with gr.Row():
         mode_input = gr.Radio(["stock", "index"], label="Mode", value="stock", scale=1)
-        name_input = gr.Textbox(label="Symbol / Index Name", placeholder="Enter symbol or index", scale=2)
-        req_type_input = gr.Dropdown(label="Request Type", choices=STOCK_REQ, value="info", allow_custom_value=True, scale=2)
+        name_input = gr.Textbox(label="Symbol / Index Name", scale=2)
+        req_type_input = gr.Dropdown(label="Request Type", allow_custom_value=True, scale=2)
         date_input = gr.Textbox(label="Date (DD-MM-YYYY)", placeholder="Leave empty = yesterday", scale=1)
         fetch_btn = gr.Button("Fetch", scale=1)
 
     output = gr.HTML(label="Output")
 
-    # ======= Mode change updates defaults only =======
+    # Mode change → auto defaults
     mode_input.change(update_on_mode, inputs=mode_input, outputs=[req_type_input, name_input, date_input])
 
-    # ======= Only Fetch triggers fetch_data ==========
+    # Initial load defaults
+    iface.load(update_on_mode, inputs=mode_input, outputs=[req_type_input, name_input, date_input])
+
+    # Fetch
     fetch_btn.click(fetch_data, inputs=[mode_input, req_type_input, name_input, date_input], outputs=output)
 
 # ======================================================
