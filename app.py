@@ -7,6 +7,7 @@ from eq_html import *
 import pandas as pd
 from bhavcopy_html import *
 from nsepython import *
+from yahooinfo import fetch_info
 
 # ======================================================
 # Scrollable HTML wrapper
