@@ -37,14 +37,14 @@ MAIN_ICONS = {
 }
 
 # ==============================
-# Column layout wrapper
+# Responsive column layout
 # ==============================
-def column_layout(html, min_width=260):
+def column_layout(html, min_width=320):
     return f"""
     <div style="
         display:grid;
         grid-template-columns:repeat(auto-fit,minmax({min_width}px,1fr));
-        gap:8px;
+        gap:10px;
         align-items:start;
     ">
         {html}
@@ -89,7 +89,7 @@ def html_card(title, body, mini=False, shade=0):
     """
 
 # ==============================
-# Number formatting
+# Formatting
 # ==============================
 def format_number(x):
     try:
@@ -103,18 +103,15 @@ def format_number(x):
         return str(x)
 
 # ==============================
-# Compact inline table (Field : Value)
+# Compact inline key:value view
 # ==============================
 def make_table(df):
     rows = ""
     for _, r in df.iterrows():
-        val = r[1]
         color = "#0d1f3c"
-
-        # Highlight change values
         if any(x in r[0].lower() for x in ["chg", "%"]):
             try:
-                color = "#0a7d32" if float(val) >= 0 else "#b00020"
+                color = "#0a7d32" if float(r[1]) >= 0 else "#b00020"
             except:
                 pass
 
@@ -137,11 +134,10 @@ def make_table(df):
                 border-radius:4px;
                 white-space:nowrap;
             ">
-                {val}
+                {r[1]}
             </span>
         </div>
         """
-
     return f"<div>{rows}</div>"
 
 # ==============================
@@ -158,7 +154,7 @@ def is_noise(k):
     return k in NOISE_KEYS
 
 # ==============================
-# Duplicate resolution
+# Duplicate resolver
 # ==============================
 DUPLICATE_PRIORITY = {
     "price": ["regularMarketPrice","currentPrice"],
@@ -238,6 +234,25 @@ def build_grouped_info(info):
     return groups
 
 # ==============================
+# Balanced column splitter (UTILISATION FIRST)
+# ==============================
+def split_df_evenly(df):
+    if df is None or df.empty:
+        return []
+
+    n = len(df)
+
+    if n <= 6:
+        cols = 1
+    elif n <= 14:
+        cols = 2
+    else:
+        cols = 3
+
+    chunk = (n + cols - 1) // cols
+    return [df.iloc[i:i+chunk] for i in range(0, n, chunk)]
+
+# ==============================
 # DataFrame builder
 # ==============================
 def build_df_from_dict(data):
@@ -288,17 +303,27 @@ def fetch_info(symbol):
 
         # -------- FUNDAMENTALS --------
         if groups["fundamental"]:
+            chunks = split_df_evenly(build_df_from_dict(groups["fundamental"]))
+            cols = "".join(
+                html_card("📊 Fundamentals", make_table(c), mini=True, shade=i)
+                for i,c in enumerate(chunks)
+            )
             html += html_card(
                 f"{MAIN_ICONS['Fundamentals']} Fundamentals",
-                make_table(build_df_from_dict(groups["fundamental"])),
+                column_layout(cols),
                 shade=1
             )
 
-        # -------- PROFILE --------
+        # -------- COMPANY PROFILE --------
         if groups["profile"]:
+            chunks = split_df_evenly(build_df_from_dict(groups["profile"]))
+            cols = "".join(
+                html_card("🏢 Profile", make_table(c), mini=True, shade=i)
+                for i,c in enumerate(chunks)
+            )
             html += html_card(
                 f"{MAIN_ICONS['Company Profile']} Company Profile",
-                make_table(build_df_from_dict(groups["profile"])),
+                column_layout(cols),
                 shade=2
             )
 
@@ -308,5 +333,5 @@ def fetch_info(symbol):
 
         return html
 
-    except Exception as e:
+    except Exception:
         return f"<pre>{traceback.format_exc()}</pre>"
