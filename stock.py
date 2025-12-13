@@ -57,70 +57,6 @@ from chart_builder import build_chart
 from ta_indi_pat import talib_df
 
 
-# -------------------------- INFO ------------------------------
-
-def fetch_info2(symbol):
-    try:
-        info = yfinfo(symbol)
-        if not info:
-            return html_error(f"No information found for {symbol}")
-
-        basic = {
-            "Symbol": symbol,
-            "Name": safe_get(info, "longName"),
-            "Sector": safe_get(info, "sector"),
-            "Industry": safe_get(info, "industry"),
-            "Website": safe_get(info, "website"),
-            "Employee Count": format_large_number(safe_get(info, "fullTimeEmployees")),
-        }
-        df_basic = pd.DataFrame(basic.items(), columns=["Field", "Value"])
-
-        price_info = {
-            "Current Price": format_number(safe_get(info, "currentPrice")),
-            "Previous Close": format_number(safe_get(info, "previousClose")),
-            "Open": format_number(safe_get(info, "open")),
-            "Day High": format_number(safe_get(info, "dayHigh")),
-            "Day Low": format_number(safe_get(info, "dayLow")),
-            "52W High": format_number(safe_get(info, "fiftyTwoWeekHigh")),
-            "52W Low": format_number(safe_get(info, "fiftyTwoWeekLow")),
-            "Volume": format_large_number(safe_get(info, "volume")),
-            "Avg Volume": format_large_number(safe_get(info, "averageVolume")),
-        }
-        df_price = pd.DataFrame(price_info.items(), columns=["Field", "Value"])
-
-        valuation = {
-            "Market Cap": format_large_number(safe_get(info, "marketCap")),
-            "PE Ratio": format_number(safe_get(info, "trailingPE")),
-            "EPS": format_number(safe_get(info, "trailingEps")),
-            "PB Ratio": format_number(safe_get(info, "priceToBook")),
-            "Dividend Yield": format_number(safe_get(info, "dividendYield")),
-            "ROE": format_number(safe_get(info, "returnOnEquity")),
-            "ROA": format_number(safe_get(info, "returnOnAssets")),
-        }
-        df_val = pd.DataFrame(valuation.items(), columns=["Field", "Value"])
-
-        extra = {
-            "Beta": format_number(safe_get(info, "beta")),
-            "Revenue": format_large_number(safe_get(info, "totalRevenue")),
-            "Gross Margins": format_number(safe_get(info, "grossMargins")),
-            "Operating Margins": format_number(safe_get(info, "operatingMargins")),
-            "Profit Margins": format_number(safe_get(info, "profitMargins")),
-            "Book Value": format_number(safe_get(info, "bookValue")),
-        }
-        df_extra = pd.DataFrame(extra.items(), columns=["Field", "Value"])
-
-        final_html = (
-            html_card("Basic Information", make_table(df_basic))
-            + html_card("Price Details", make_table(df_price))
-            + html_card("Valuation Metrics", make_table(df_val))
-            + html_card("Additional Company Data", make_table(df_extra))
-        )
-        return final_html
-
-    except Exception as e:
-        return html_error(f"INFO ERROR: {e}<br><pre>{traceback.format_exc()}</pre>")
-
-
 # -------------------------- INTRADAY ------------------------------
 
 def fetch_intraday(symbol, indicators=None):
@@ -132,7 +68,7 @@ def fetch_intraday(symbol, indicators=None):
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        chart_html = build_chart(df, indicators=indicators, volume=True)
+        chart_html = build_chart(df, indicators=indicators)
         table_html = make_table(df.tail(50))
 
         return wrap_html(f"{chart_html}<h2>Last 50 Rows</h2>{table_html}",
