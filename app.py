@@ -59,13 +59,13 @@ def update_on_mode(mode):
 def fetch_data(mode, req_type, name, date_str):
     req_type = req_type.lower()
     name = name.strip()
-    date_str = date_str.strip()
+    to_date = date_str.strip()
 
     # ✅ Frontend may send empty date → auto yesterday
     if not date_str:
-        date_str = today_date()
+        to_date = today_str()
 
-    date_start = last_year_date(date_str)
+    from_date = last_year_str(to_date)
 
     if mode == "index":
 
@@ -79,7 +79,7 @@ def fetch_data(mode, req_type, name, date_str):
             return build_preopen_html()
 
         elif req_type == "nse_fno":
-            return nse_fno_html(date_str,name)
+            return nse_fno_html(to_date,name)
 
         elif req_type == "nse_events":
             return nse_events().to_html()
@@ -91,10 +91,10 @@ def fetch_data(mode, req_type, name, date_str):
             return wrap(nse_future(name))
 
         elif req_type == "nse_highlow":
-            return nse_highlow(date_str).to_html()
+            return nse_highlow(to_date).to_html()
 
         elif req_type == "nse_bhav":
-            return build_bhavcopy_html(date_str)
+            return build_bhavcopy_html(to_date)
 
         elif req_type == "nse_largedeals":
             return nse_largedeals().to_html()
@@ -109,16 +109,16 @@ def fetch_data(mode, req_type, name, date_str):
             return nse_most_active().to_html()
 
         elif req_type == "index_history":
-            return index_history("NIFTY 50", date_start, date_str).to_html()
+            return index_history("NIFTY 50", from_date, to_date).to_html()
 
         elif req_type == "largedeals_historical":
-            return nse_largedeals_historical(date_start, date_str).to_html()
+            return nse_largedeals_historical(from_date, to_date).to_html()
 
         elif req_type == "index_pe_pb_div":
-            return index_pe_pb_div("NIFTY 50", date_start, date_str).to_html()
+            return index_pe_pb_div("NIFTY 50", from_date, to_date).to_html()
 
         elif req_type == "index_total_returns":
-            return index_total_returns("NIFTY 50", date_start, date_str).to_html()
+            return index_total_returns("NIFTY 50", from_date, to_date).to_html()
 
         else:
             return wrap(f"<h3>No handler for {req_type}</h3>")
@@ -159,7 +159,7 @@ def fetch_data(mode, req_type, name, date_str):
             return wrap(fetch_other(name))
 
         elif req_type == "stock_hist":
-            return nse_stock_hist(date_start, date_str, name).to_html()
+            return nse_stock_hist(from_date, to_date, name).to_html()
 
         else:
             return wrap(f"<h3>No handler for {req_type}</h3>")
