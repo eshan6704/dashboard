@@ -200,4 +200,40 @@ SCROLL_WRAP = """
 {{HTML}}
 </div>
 """
+# ======================================================
+# Date helpers
+# ======================================================
+def today_str():
+    return datetime.date.today().strftime("%d-%m-%Y")
 
+def yesterday_str():
+    return (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d-%m-%Y")
+
+import datetime
+
+def last_year_date(d: str) -> str:
+    """
+    Input  : DD-MM-YYYY
+    Output : (same date last year) + 1 day
+             → max difference = 364 days
+    """
+    dt = datetime.datetime.strptime(d, "%d-%m-%Y")
+
+    try:
+        last_year = dt.replace(year=dt.year - 1)
+    except ValueError:
+        # Handles 29 Feb → 28 Feb
+        last_year = dt.replace(year=dt.year - 1, day=28)
+
+    last_year_plus_one = last_year + datetime.timedelta(days=1)
+
+    return last_year_plus_one.strftime("%d-%m-%Y")
+
+
+# ======================================================
+# HTML wrapper
+# ======================================================
+def wrap(html):
+    if html is None:
+        return "<h3>No Data</h3>"
+    return SCROLL_WRAP.replace("{{HTML}}", html)
