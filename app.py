@@ -91,7 +91,7 @@ def fetch_data(mode, req_type, name, date_str):
             return wrap(nse_future(name))
 
         elif req_type == "nse_highlow":
-            return wrap(nse_highlow(date_str))
+            return nse_highlow(date_str).to_html()
 
         elif req_type == "nse_bhav":
             return build_bhavcopy_html(date_str)
