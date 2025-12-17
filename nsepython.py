@@ -185,9 +185,22 @@ def nse_bulkdeals(): return pd.read_csv("https://archives.nseindia.com/content/e
 def nse_blockdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/block.csv")
 #nse daily report
 def nse_bhavcopy(d): return pd.read_csv("https://archives.nseindia.com/products/content/sec_bhavdata_full_"+d.replace("-","")+".csv")
-def nse_highlow(d): 
-    df= pd.read_csv("https://archives.nseindia.com/content/CM_52_wk_High_low_"+d.replace("-","")+".csv")
-    print(df)
+
+def nse_highlow(d: str) -> pd.DataFrame:
+    """
+    NSE 52-week High/Low CSV
+    Real header starts from row 3
+    """
+    date_str = d.replace("-", "")
+    url = f"https://archives.nseindia.com/content/CM_52_wk_High_low_{date_str}.csv"
+
+    df = pd.read_csv(
+        url,
+        skiprows=2,     # 🔥 key fix
+        engine="python"
+    )
+
+    df.columns = df.columns.str.strip()
     return df
 
 
