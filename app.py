@@ -63,7 +63,7 @@ def fetch_data(mode, req_type, name, date_str):
 
     # ✅ Frontend may send empty date → auto yesterday
     if not date_str:
-        date_str = yesterday_str()
+        date_str = today_date()
 
     date_start = last_year_date(date_str)
 
