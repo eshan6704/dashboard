@@ -211,7 +211,7 @@ def yesterday_str():
 
 import datetime
 
-def last_year_date(d: str) -> str:
+def last_year_str(d: str) -> str:
     """
     Input  : DD-MM-YYYY
     Output : (same date last year) + 1 day
