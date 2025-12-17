@@ -9,6 +9,7 @@ import pandas as pd
 from bhavcopy_html import *
 from nsepython import *
 from yahooinfo import fetch_info
+from build_nse_fno import nse_fno_html
 import datetime
 
 
@@ -78,7 +79,7 @@ def fetch_data(mode, req_type, name, date_str):
             return build_preopen_html()
 
         elif req_type == "nse_fno":
-            return wrap(nse_fno(name))
+            return nse_fno_html(name,date_str)
 
         elif req_type == "nse_events":
             return nse_events().to_html()
