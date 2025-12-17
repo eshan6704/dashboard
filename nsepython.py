@@ -180,9 +180,15 @@ def index_total_returns(sym,sd,ed):
     p=json.loads(requests.post('https://niftyindices.com/Backpage.aspx/getTotalReturnIndexString', headers=niftyindices_headers, json=d).json()["d"])
     return pd.DataFrame.from_records(p)
 
-def nse_bhavcopy(d): return pd.read_csv("https://archives.nseindia.com/products/content/sec_bhavdata_full_"+d.replace("-","")+".csv")
+
 def nse_bulkdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/bulk.csv")
 def nse_blockdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/block.csv")
+#nse daily report
+def nse_bhavcopy(d): return pd.read_csv("https://archives.nseindia.com/products/content/sec_bhavdata_full_"+d.replace("-","")+".csv")
+def nse_highlow(d): return pd.read_csv("https://archives.nseindia.com/content/CM_52_wk_High_low_"+d.replace("-","")+".csv")
+
+
+
 
 def nse_preopen(key="NIFTY"):
     p=nsefetch("https://www.nseindia.com/api/market-data-pre-open?key="+key)
