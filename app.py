@@ -11,27 +11,7 @@ from nsepython import *
 from yahooinfo import fetch_info
 from build_nse_fno import nse_fno_html
 import datetime
-# ======================================================
-# Date helpers
-# ======================================================
-def today_str():
-    return datetime.date.today().strftime("%d-%m-%Y")
 
-def yesterday_str():
-    return (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d-%m-%Y")
-
-def last_year_date(d):
-    dt = datetime.datetime.strptime(d, "%d-%m-%Y")
-    new_dt = dt.replace(year=dt.year - 1)
-    return new_dt.strftime("%d-%m-%Y")
-
-# ======================================================
-# HTML wrapper
-# ======================================================
-def wrap(html):
-    if html is None:
-        return "<h3>No Data</h3>"
-    return SCROLL_WRAP.replace("{{HTML}}", html)
 
 # ======================================================
 # Request Type Options
