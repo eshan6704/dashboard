@@ -79,7 +79,7 @@ def fetch_data(mode, req_type, name, date_str):
             return build_preopen_html()
 
         elif req_type == "nse_fno":
-            return nse_fno_html(name,date_str)
+            return nse_fno_html(date_str,name)
 
         elif req_type == "nse_events":
             return nse_events().to_html()
