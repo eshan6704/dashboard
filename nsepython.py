@@ -185,7 +185,10 @@ def nse_bulkdeals(): return pd.read_csv("https://archives.nseindia.com/content/e
 def nse_blockdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/block.csv")
 #nse daily report
 def nse_bhavcopy(d): return pd.read_csv("https://archives.nseindia.com/products/content/sec_bhavdata_full_"+d.replace("-","")+".csv")
-def nse_highlow(d): return pd.read_csv("https://archives.nseindia.com/content/CM_52_wk_High_low_"+d.replace("-","")+".csv")
+def nse_highlow(d): 
+    df= pd.read_csv("https://archives.nseindia.com/content/CM_52_wk_High_low_"+d.replace("-","")+".csv")
+    print(df)
+    return df
 
 
 
