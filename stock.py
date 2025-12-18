@@ -37,7 +37,7 @@ def split(symbol):
 from datetime import datetime
 import yfinance as yf
 
-def daily(symbol):
+def intraday(symbol):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] yf called for {symbol}")
     return yf.download(symbol + ".NS", period="1y", interval="1d").round(2)
 
@@ -73,16 +73,7 @@ def wrap_html(content, title="Market Data"):
 def make_table(df: pd.DataFrame):
     return df.to_html(index=False)
 
-def intraday(symbol):
-    """Fetch 1-day intraday data (1-min interval)"""
-    
-        df = yf.download(symbol + ".NS", period="1d", interval="5m", progress=False)
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] fetching from yfinance intraday: {e}")
-        return df.round(2)
 
-=========
-# Fetch Intraday
-# ==============================
 def fetch_intraday(symbol, indicators=None):
     key = f"intraday_{symbol}"
 
