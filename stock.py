@@ -66,27 +66,44 @@ from ta_indi_pat import talib_df
 # -------------------------- INTRADAY ------------------------------
 
 def fetch_intraday(symbol, indicators=None):
-    if exists("intraday_"+symbol, "html"):
-        intra_html = load("intraday_"+symbol, "html")
-    else:     
-        try:
-            df = intraday(symbol)
-            if df.empty:
-                return wrap_html(f"<h1>No intraday data for {symbol}</h1>")
+    key = f"intraday_{symbol}"
 
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
-            file_name = f"intraday/{symbol}.csv"
-            upload_file("eshanhf",file_name,df)
-            #chart_html = build_chart(df, indicators=indicators)
-            table_html = make_table(df.tail(50))
-            intra_html= wrap_html(f"<h2>Last 50 Rows</h2>{table_html}",
-                         title=f"{symbol} Intraday")
-            save("intraday_"+symbol,intra_html, "html")
-        except Exception as e:
-            return wrap_html(f"<h1>Error:{e}</h1>")
+    # 1️⃣ Check cache (HTML only)
+    if exists(key, "html"):
+        intra_html = load(key, "html")
+        if intra_html is not False:
+            return intra_html
 
-    return intra_html
+    # 2️⃣ Fetch fresh data
+    try:
+        df = intraday(symbol)
+
+        if df is False or df is None or df.empty:
+            return wrap_html(f"<h1>No intraday data for {symbol}</h1>")
+
+        # Flatten columns if MultiIndex
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        # Optional upload (unchanged)
+        file_name = f"intraday/{symbol}.csv"
+        upload_file("eshanhf", file_name, df)
+
+        # Build HTML
+        table_html = make_table(df.tail(50))
+        intra_html = wrap_html(
+            f"<h2>Last 50 Rows</h2>{table_html}",
+            title=f"{symbol} Intraday"
+        )
+
+        # 3️⃣ Save HTML cache
+        save(key, intra_html, "html")
+
+        return intra_html
+
+    except Exception as e:
+        return wrap_html(f"<h1>Error: {e}</h1>")
+
 # -------------------------- DAILY ------------------------------
 
 def fetch_daily(symbol, source="yfinance", max_rows=200):
