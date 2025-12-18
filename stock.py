@@ -73,65 +73,69 @@ def wrap_html(content, title="Market Data"):
 
 def make_table(df: pd.DataFrame):
     return df.to_html(index=False)
+from datetime import datetime
+import pandas as pd
+import yfinance as yf
 
+# Assumes save, load, exists, upload_file, wrap_html, make_table, intraday, daily, result, qresult,
+# balance, cashflow, dividend, split, format_large_number, html_error are already defined
 
+# -------------------------- INTRADAY ------------------------------
 def fetch_intraday(symbol, indicators=None):
     key = f"intraday_{symbol}"
-
     if exists(key, "html"):
-        intra_html = load(key, "html")
-        if intra_html is not False:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached HTML for {symbol}")
-            return intra_html
+        cached = load(key, "html")
+        if cached is not False:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached intraday for {symbol}")
+            return cached
 
     try:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Fetching intraday data for {symbol}")
         df = intraday(symbol)
-        if df is None or df.empty:
+        if df is False or df is None or df.empty:
             return wrap_html(f"<h1>No intraday data for {symbol}</h1>")
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        table_html = make_table(df.tail(50))
-        intra_html = wrap_html(f"<h2>Last 50 Rows</h2>{table_html}", title=f"{symbol} Intraday")
+        # Optional upload
+        upload_file("eshanhf", f"intraday/{symbol}.csv", df)
 
-        save(key, intra_html, "html")
+        # Preserve index in HTML
+        df_display = df.tail(50).copy()
+        df_display.reset_index(inplace=True)
+        html = wrap_html(f"<h2>Last 50 Rows</h2>{make_table(df_display)}", title=f"{symbol} Intraday")
 
-        return intra_html
+        save(key, html, "html")
+        return html
     except Exception as e:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error in fetch_intraday: {e}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_intraday: {e}")
         return wrap_html(f"<h1>Error: {e}</h1>")
 
-# ==============================
-# Fetch Daily
-# ==============================
+
+# -------------------------- DAILY ------------------------------
 def fetch_daily(symbol):
     key = f"daily_{symbol}"
-
     if exists(key, "html"):
-        daily_html = load(key, "html")
-        if daily_html is not False:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached HTML for {symbol} daily")
-            return daily_html
+        cached = load(key, "html")
+        if cached is not False:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached daily for {symbol}")
+            return cached
 
     try:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Fetching daily data for {symbol}")
         df = daily(symbol)
-        if df is None or df.empty:
+        if df is False or df is None or df.empty:
             return wrap_html(f"<h1>No daily data for {symbol}</h1>")
 
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
+        upload_file("eshanhf", f"daily/{symbol}.csv", df)
 
-        table_html = make_table(df.tail(50))
-        daily_html = wrap_html(f"<h2>Last 50 Rows</h2>{table_html}", title=f"{symbol} Daily")
+        df_display = df.tail(50).copy()
+        df_display.reset_index(inplace=True)
+        html = wrap_html(f"<h2>Last 50 Rows</h2>{make_table(df_display)}", title=f"{symbol} Daily")
 
-        save(key, daily_html, "html")
-
-        return daily_html
+        save(key, html, "html")
+        return html
     except Exception as e:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error in fetch_daily: {e}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_daily: {e}")
         return wrap_html(f"<h1>Error: {e}</h1>")
 
 
@@ -149,18 +153,15 @@ def fetch_qresult(symbol):
         if df.empty:
             return wrap_html(f"<h1>No quarterly results for {symbol}</h1>")
 
-        # Optional upload
         upload_file("eshanhf", f"qresult/{symbol}.csv", df)
 
-        # Format
-        df_fmt = df.copy()
-        for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
-        df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
+        df_display = df.copy()
+        for col in df_display.columns:
+            df_display[col] = df_display[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
+        df_display.reset_index(inplace=True)  # preserve original index
 
-        html = wrap_html(make_table(df_fmt), title=f"{symbol} Quarterly Results")
+        html = wrap_html(make_table(df_display), title=f"{symbol} Quarterly Results")
         save(key, html, "html")
-
         return html
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_qresult: {e}")
@@ -183,14 +184,13 @@ def fetch_result(symbol):
 
         upload_file("eshanhf", f"result/{symbol}.csv", df)
 
-        df_fmt = df.copy()
-        for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
-        df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
+        df_display = df.copy()
+        for col in df_display.columns:
+            df_display[col] = df_display[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
+        df_display.reset_index(inplace=True)
 
-        html = wrap_html(make_table(df_fmt), title=f"{symbol} Annual Results")
+        html = wrap_html(make_table(df_display), title=f"{symbol} Annual Results")
         save(key, html, "html")
-
         return html
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_result: {e}")
@@ -213,14 +213,13 @@ def fetch_balance(symbol):
 
         upload_file("eshanhf", f"balance/{symbol}.csv", df)
 
-        df_fmt = df.copy()
-        for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
-        df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
+        df_display = df.copy()
+        for col in df_display.columns:
+            df_display[col] = df_display[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
+        df_display.reset_index(inplace=True)
 
-        html = wrap_html(make_table(df_fmt), title=f"{symbol} Balance Sheet")
+        html = wrap_html(make_table(df_display), title=f"{symbol} Balance Sheet")
         save(key, html, "html")
-
         return html
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_balance: {e}")
@@ -243,14 +242,13 @@ def fetch_cashflow(symbol):
 
         upload_file("eshanhf", f"cashflow/{symbol}.csv", df)
 
-        df_fmt = df.copy()
-        for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
-        df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
+        df_display = df.copy()
+        for col in df_display.columns:
+            df_display[col] = df_display[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
+        df_display.reset_index(inplace=True)
 
-        html = wrap_html(make_table(df_fmt), title=f"{symbol} Cash Flow")
+        html = wrap_html(make_table(df_display), title=f"{symbol} Cash Flow")
         save(key, html, "html")
-
         return html
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_cashflow: {e}")
@@ -271,14 +269,13 @@ def fetch_dividend(symbol):
         if df.empty:
             return wrap_html(f"<h1>No dividend history for {symbol}</h1>")
 
-        df_fmt = df.copy()
-        for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
-        df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
+        df_display = df.copy()
+        for col in df_display.columns:
+            df_display[col] = df_display[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
+        df_display.reset_index(inplace=True)
 
-        html = wrap_html(make_table(df_fmt), title=f"{symbol} Dividends")
+        html = wrap_html(make_table(df_display), title=f"{symbol} Dividends")
         save(key, html, "html")
-
         return html
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_dividend: {e}")
@@ -299,14 +296,13 @@ def fetch_split(symbol):
         if df.empty:
             return wrap_html(f"<h1>No splits for {symbol}</h1>")
 
-        df_fmt = df.copy()
-        for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
-        df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
+        df_display = df.copy()
+        for col in df_display.columns:
+            df_display[col] = df_display[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
+        df_display.reset_index(inplace=True)
 
-        html = wrap_html(make_table(df_fmt), title=f"{symbol} Splits")
+        html = wrap_html(make_table(df_display), title=f"{symbol} Splits")
         save(key, html, "html")
-
         return html
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_split: {e}")
@@ -328,15 +324,14 @@ def fetch_other(symbol):
         if df.empty:
             return wrap_html(f"<h1>No earnings data for {symbol}</h1>")
 
-        df_fmt = df.copy()
-        for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
+        df_display = df.copy()
+        for col in df_display.columns:
+            df_display[col] = df_display[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
+        df_display.reset_index(inplace=True)
 
-        html = wrap_html(make_table(df_fmt), title=f"{symbol} Earnings")
+        html = wrap_html(make_table(df_display), title=f"{symbol} Earnings")
         save(key, html, "html")
-
         return html
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_other: {e}")
         return wrap_html(html_error(f"Earnings Error: {e}"))
-
