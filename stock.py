@@ -8,6 +8,7 @@ from persist import *
 
 #file_name = f"bhav/bhav_{date_str.replace('-', '_')}.csv"
 #upload_file("eshanhf",file_name,df)
+
 # ================================================================
 #                    BASIC YFINANCE FETCHERS
 # ================================================================
@@ -39,11 +40,11 @@ import yfinance as yf
 
 def intraday(symbol):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] yf called for {symbol}")
-    return yf.download(symbol + ".NS", period="1y", interval="1d").round(2)
+    return yf.download(symbol + ".NS", period="1d", interval="5m").round(2)
 
 
 def daily(symbol):
-    print("yf called")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] yf called for {symbol}")
     return yf.download(symbol + ".NS", period="1y", interval="1d").round(2)
 
 
@@ -135,100 +136,136 @@ def fetch_daily(symbol):
 
 
 # -------------------------- QUARTERLY ------------------------------
-
 def fetch_qresult(symbol):
+    key = f"qresult_{symbol}"
+    if exists(key, "html"):
+        cached = load(key, "html")
+        if cached is not False:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached quarterly for {symbol}")
+            return cached
+
     try:
         df = qresult(symbol)
         if df.empty:
             return wrap_html(f"<h1>No quarterly results for {symbol}</h1>")
-        file_name = f"qresult/{symbol}.csv"
-        upload_file("eshanhf",file_name,df)
+
+        # Optional upload
+        upload_file("eshanhf", f"qresult/{symbol}.csv", df)
+
+        # Format
         df_fmt = df.copy()
         for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(
-                lambda x: format_large_number(x) if isinstance(x, (int, float)) else x
-            )
+            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
         df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
 
-        return wrap_html(make_table(df_fmt),
-                         title=f"{symbol} Quarterly Results")
+        html = wrap_html(make_table(df_fmt), title=f"{symbol} Quarterly Results")
+        save(key, html, "html")
 
+        return html
     except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_qresult: {e}")
         return wrap_html(html_error(f"Quarterly Error: {e}"))
 
 
 # -------------------------- ANNUAL ------------------------------
-
 def fetch_result(symbol):
+    key = f"result_{symbol}"
+    if exists(key, "html"):
+        cached = load(key, "html")
+        if cached is not False:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached annual for {symbol}")
+            return cached
+
     try:
         df = result(symbol)
         if df.empty:
             return wrap_html(f"<h1>No annual results for {symbol}</h1>")
-        file_name = f"result/{symbol}.csv"
-        upload_file("eshanhf",file_name,df)
+
+        upload_file("eshanhf", f"result/{symbol}.csv", df)
+
         df_fmt = df.copy()
         for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(
-                lambda x: format_large_number(x) if isinstance(x, (int, float)) else x
-            )
+            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
         df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
 
-        return wrap_html(make_table(df_fmt),
-                         title=f"{symbol} Annual Results")
+        html = wrap_html(make_table(df_fmt), title=f"{symbol} Annual Results")
+        save(key, html, "html")
 
+        return html
     except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_result: {e}")
         return wrap_html(html_error(f"Annual Error: {e}"))
 
 
 # -------------------------- BALANCE ------------------------------
-
 def fetch_balance(symbol):
+    key = f"balance_{symbol}"
+    if exists(key, "html"):
+        cached = load(key, "html")
+        if cached is not False:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached balance for {symbol}")
+            return cached
+
     try:
         df = balance(symbol)
         if df.empty:
             return wrap_html(f"<h1>No balance sheet for {symbol}</h1>")
-        file_name = f"balance/{symbol}.csv"
-        upload_file("eshanhf",file_name,df)
+
+        upload_file("eshanhf", f"balance/{symbol}.csv", df)
+
         df_fmt = df.copy()
         for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(
-                lambda x: format_large_number(x) if isinstance(x, (int, float)) else x
-            )
+            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
         df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
 
-        return wrap_html(make_table(df_fmt),
-                         title=f"{symbol} Balance Sheet")
+        html = wrap_html(make_table(df_fmt), title=f"{symbol} Balance Sheet")
+        save(key, html, "html")
 
+        return html
     except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_balance: {e}")
         return wrap_html(html_error(f"Balance Error: {e}"))
 
 
 # -------------------------- CASHFLOW ------------------------------
-
 def fetch_cashflow(symbol):
+    key = f"cashflow_{symbol}"
+    if exists(key, "html"):
+        cached = load(key, "html")
+        if cached is not False:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached cashflow for {symbol}")
+            return cached
+
     try:
         df = cashflow(symbol)
         if df.empty:
             return wrap_html(f"<h1>No cashflow for {symbol}</h1>")
-        file_name = f"cashflow/{symbol}.csv"
-        upload_file("eshanhf",file_name,df)
+
+        upload_file("eshanhf", f"cashflow/{symbol}.csv", df)
+
         df_fmt = df.copy()
         for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(
-                lambda x: format_large_number(x) if isinstance(x, (int, float)) else x
-            )
+            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
         df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
 
-        return wrap_html(make_table(df_fmt),
-                         title=f"{symbol} Cash Flow")
+        html = wrap_html(make_table(df_fmt), title=f"{symbol} Cash Flow")
+        save(key, html, "html")
 
+        return html
     except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_cashflow: {e}")
         return wrap_html(html_error(f"Cash Flow Error: {e}"))
 
 
 # -------------------------- DIVIDEND ------------------------------
-
 def fetch_dividend(symbol):
+    key = f"dividend_{symbol}"
+    if exists(key, "html"):
+        cached = load(key, "html")
+        if cached is not False:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached dividend for {symbol}")
+            return cached
+
     try:
         df = dividend(symbol)
         if df.empty:
@@ -236,21 +273,27 @@ def fetch_dividend(symbol):
 
         df_fmt = df.copy()
         for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(
-                lambda x: format_large_number(x) if isinstance(x, (int, float)) else x
-            )
+            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
         df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
 
-        return wrap_html(make_table(df_fmt),
-                         title=f"{symbol} Dividends")
+        html = wrap_html(make_table(df_fmt), title=f"{symbol} Dividends")
+        save(key, html, "html")
 
+        return html
     except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_dividend: {e}")
         return wrap_html(html_error(f"Dividend Error: {e}"))
 
 
 # -------------------------- SPLIT ------------------------------
-
 def fetch_split(symbol):
+    key = f"split_{symbol}"
+    if exists(key, "html"):
+        cached = load(key, "html")
+        if cached is not False:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached split for {symbol}")
+            return cached
+
     try:
         df = split(symbol)
         if df.empty:
@@ -258,36 +301,42 @@ def fetch_split(symbol):
 
         df_fmt = df.copy()
         for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(
-                lambda x: format_large_number(x) if isinstance(x, (int, float)) else x
-            )
+            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
         df_fmt.index = [str(i.date()) if hasattr(i, "date") else str(i) for i in df_fmt.index]
 
-        return wrap_html(make_table(df_fmt),
-                         title=f"{symbol} Splits")
+        html = wrap_html(make_table(df_fmt), title=f"{symbol} Splits")
+        save(key, html, "html")
 
+        return html
     except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_split: {e}")
         return wrap_html(html_error(f"Split Error: {e}"))
 
 
 # -------------------------- OTHER (EARNINGS) ------------------------------
-
 def fetch_other(symbol):
+    key = f"other_{symbol}"
+    if exists(key, "html"):
+        cached = load(key, "html")
+        if cached is not False:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached earnings for {symbol}")
+            return cached
+
     try:
         ticker = yf.Ticker(symbol + ".NS")
         df = ticker.earnings
-
         if df.empty:
             return wrap_html(f"<h1>No earnings data for {symbol}</h1>")
 
         df_fmt = df.copy()
         for col in df_fmt.columns:
-            df_fmt[col] = df_fmt[col].apply(
-                lambda x: format_large_number(x) if isinstance(x, (int, float)) else x
-            )
+            df_fmt[col] = df_fmt[col].apply(lambda x: format_large_number(x) if isinstance(x, (int, float)) else x)
 
-        return wrap_html(make_table(df_fmt),
-                         title=f"{symbol} Earnings")
+        html = wrap_html(make_table(df_fmt), title=f"{symbol} Earnings")
+        save(key, html, "html")
 
+        return html
     except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_other: {e}")
         return wrap_html(html_error(f"Earnings Error: {e}"))
+
