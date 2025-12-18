@@ -4,6 +4,7 @@ import yfinance as yf
 import pandas as pd
 import traceback
 from ta_indi_pat import *
+from persist import *
 
 #file_name = f"bhav/bhav_{date_str.replace('-', '_')}.csv"
 #upload_file("eshanhf",file_name,df)
@@ -62,27 +63,33 @@ from ta_indi_pat import talib_df
 # -------------------------- INTRADAY ------------------------------
 
 def fetch_intraday(symbol, indicators=None):
-    try:
-        df = intraday(symbol)
-        if df.empty:
-            return wrap_html(f"<h1>No intraday data for {symbol}</h1>")
+    if exists("intraday_"+symbol, "html"):
+        intra_html = load("intraday_"+symbol, "html")
+    else:     
+        try:
+            df = intraday(symbol)
+            if df.empty:
+                return wrap_html(f"<h1>No intraday data for {symbol}</h1>")
 
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-        file_name = f"intraday/{symbol}.csv"
-        upload_file("eshanhf",file_name,df)
-        #chart_html = build_chart(df, indicators=indicators)
-        table_html = make_table(df.tail(50))
-        return wrap_html(f"<h2>Last 50 Rows</h2>{table_html}",
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+            file_name = f"intraday/{symbol}.csv"
+            upload_file("eshanhf",file_name,df)
+            #chart_html = build_chart(df, indicators=indicators)
+            table_html = make_table(df.tail(50))
+            intra_html= wrap_html(f"<h2>Last 50 Rows</h2>{table_html}",
                          title=f"{symbol} Intraday")
+            save("intraday_"+symbol,intra_html, "html")
+        except Exception as e:
+            return wrap_html(f"<h1>Error:{e}</h1>")
 
-    except Exception as e:
-        return wrap_html(f"<h1>Error:{e}</h1>")
-
-
+    return intra_html
 # -------------------------- DAILY ------------------------------
 
 def fetch_daily(symbol, source="yfinance", max_rows=200):
+  if exists("daily_"+symbol, "html"):
+        daily_html = load("daily_"+symbol, "html")
+  else:  
     try:
         df = daily(symbol)
         
@@ -104,11 +111,11 @@ def fetch_daily(symbol, source="yfinance", max_rows=200):
         </div>
         """
 
-        return wrap_html(f"<h2>{symbol} Daily</h2>" + html_card("TA-Lib", scroll))
-
+        daily_html= wrap_html(f"<h2>{symbol} Daily</h2>" + html_card("TA-Lib", scroll))
+        save("daily_"+symbol,daily_html, "html")
     except Exception as e:
-        return html_card("Error", str(e))
-
+        daily_html= html_card("Error", str(e))
+  return daily_html
 
 # -------------------------- QUARTERLY ------------------------------
 
