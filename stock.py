@@ -34,9 +34,13 @@ def dividend(symbol):
 def split(symbol):
     return yf.Ticker(symbol + ".NS").splits.to_frame("Split")
 
-def intraday(symbol):
-    print("yf called")
-    return yf.download(symbol + ".NS", period="1d", interval="5m").round(2)
+from datetime import datetime
+import yfinance as yf
+
+def daily(symbol):
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] yf called for {symbol}")
+    return yf.download(symbol + ".NS", period="1y", interval="1d").round(2)
+
 
 def daily(symbol):
     print("yf called")
