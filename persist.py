@@ -105,23 +105,34 @@ def load(name: str, ftype: str):
 # Exists with TTL
 # ==============================
 def exists(name: str, ftype: str) -> bool:
+    """
+    Checks if a file exists AND is valid within TTL based on parent type + symbol.
+    Example:
+      name = INTRADAY_RELIANCE
+      matches any file starting with INTRADAY_RELIANCE_YYYY_MM_DD_HH_MM_SS.csv
+      TTL applied according to parent type (INTRADAY -> 15 minutes)
+    """
+
+    # Pick the latest matching file for this type+symbol
     filename = _latest(name, ftype)
     if not filename:
-        print(f"[EXISTS] No file found for {name}.{ftype}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] No file found for {name}.{ftype}")
         return False
 
     path = _path(filename)
     if not os.path.exists(path):
-        print(f"[EXISTS] File not present: {filename}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] File not present: {filename}")
         return False
 
-    mtime = datetime.fromtimestamp(os.path.getmtime(path))
-    func_name = name.split("_")[0]
-    validity = VALIDITY_MAP.get(func_name)
+    # Extract parent type for TTL
+    parent_func = name.split("_")[0].lower()  # INTRADAY, RESULT, etc.
+    validity = VALIDITY_MAP.get(parent_func)
     if not validity:
-        print(f"[EXISTS] File exists with no TTL: {filename}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] File exists with no TTL: {filename}")
         return True
 
+    # Check TTL
+    mtime = datetime.fromtimestamp(os.path.getmtime(path))
     now = datetime.now()
     is_valid = True
     if "minutes" in validity:
@@ -132,11 +143,12 @@ def exists(name: str, ftype: str) -> bool:
         is_valid = (now - mtime) <= timedelta(days=validity["days"])
 
     if is_valid:
-        print(f"[EXISTS] File exists and valid: {filename}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] File exists and valid: {filename}")
     else:
-        print(f"[EXISTS] File expired: {filename}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] File expired: {filename}")
 
     return is_valid
+
 
 # ==============================
 # Utilities
