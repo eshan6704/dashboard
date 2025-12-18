@@ -4,6 +4,7 @@ import pickle
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import Any
+import yfinance as yf
 
 # ==============================
 # Configuration
@@ -11,7 +12,7 @@ from typing import Any
 BASE_DIR = "./data/store"
 os.makedirs(BASE_DIR, exist_ok=True)
 
-# TTL validity map
+# TTL validity map (per parent type)
 VALIDITY_MAP = {
     "result": {"days": 7},
     "qresult": {"days": 7},
@@ -41,7 +42,7 @@ def _latest(prefix: str, ext: str):
     return max(files) if files else None
 
 # ==============================
-# Save function
+# Save / Load / Exists
 # ==============================
 def save(name: str, data: Any, ftype: str) -> bool:
     ts = _ts()
@@ -50,7 +51,7 @@ def save(name: str, data: Any, ftype: str) -> bool:
     try:
         if ftype == "csv":
             if not isinstance(data, pd.DataFrame):
-                print(f"[SAVE FAILED] CSV requires pandas DataFrame for {filename}")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [SAVE FAILED] CSV requires pandas DataFrame for {filename}")
                 return False
             data.to_csv(path, index=False)
         elif ftype == "json":
@@ -63,22 +64,19 @@ def save(name: str, data: Any, ftype: str) -> bool:
             with open(path, "wb") as f:
                 pickle.dump(data, f)
         else:
-            print(f"[SAVE FAILED] Unsupported file type: {ftype} for {filename}")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [SAVE FAILED] Unsupported file type: {ftype} for {filename}")
             return False
-        print(f"[SAVE OK] {filename}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [SAVE OK] {filename}")
         return True
     except Exception as e:
-        print(f"[SAVE FAILED] {filename} - Exception: {e}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [SAVE FAILED] {filename} - Exception: {e}")
         return False
 
-# ==============================
-# Load function
-# ==============================
 def load(name: str, ftype: str):
     filename = _latest(name, ftype) if "." not in name else name
     path = _path(filename)
     if not os.path.exists(path):
-        print(f"[LOAD FAILED] File does not exist: {filename}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOAD FAILED] File does not exist: {filename}")
         return False
     try:
         if filename.endswith(".csv"):
@@ -93,17 +91,14 @@ def load(name: str, ftype: str):
             with open(path, "rb") as f:
                 df = pickle.load(f)
         else:
-            print(f"[LOAD FAILED] Unsupported file type: {filename}")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOAD FAILED] Unsupported file type: {filename}")
             return False
-        print(f"[LOAD OK] {filename}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOAD OK] {filename}")
         return df
     except Exception as e:
-        print(f"[LOAD FAILED] {filename} - Exception: {e}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOAD FAILED] {filename} - Exception: {e}")
         return False
 
-# ==============================
-# Exists with TTL
-# ==============================
 def exists(name: str, ftype: str) -> bool:
     """
     Checks if a file exists AND is valid within TTL based on parent type + symbol.
@@ -112,8 +107,6 @@ def exists(name: str, ftype: str) -> bool:
       matches any file starting with INTRADAY_RELIANCE_YYYY_MM_DD_HH_MM_SS.csv
       TTL applied according to parent type (INTRADAY -> 15 minutes)
     """
-
-    # Pick the latest matching file for this type+symbol
     filename = _latest(name, ftype)
     if not filename:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] No file found for {name}.{ftype}")
@@ -124,14 +117,12 @@ def exists(name: str, ftype: str) -> bool:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] File not present: {filename}")
         return False
 
-    # Extract parent type for TTL
     parent_func = name.split("_")[0].lower()  # INTRADAY, RESULT, etc.
     validity = VALIDITY_MAP.get(parent_func)
     if not validity:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] File exists with no TTL: {filename}")
         return True
 
-    # Check TTL
     mtime = datetime.fromtimestamp(os.path.getmtime(path))
     now = datetime.now()
     is_valid = True
@@ -149,10 +140,6 @@ def exists(name: str, ftype: str) -> bool:
 
     return is_valid
 
-
-# ==============================
-# Utilities
-# ==============================
 def list_files(name=None, ftype=None):
     files = sorted(_list_files())
     if name:
@@ -160,3 +147,5 @@ def list_files(name=None, ftype=None):
     if ftype:
         files = [f for f in files if f.endswith("." + ftype)]
     return files
+
+
