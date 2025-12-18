@@ -16,7 +16,7 @@ def yfinfo(symbol):
     return yf.Ticker(symbol + ".NS").info
 
 def qresult(symbol):
-    print(yf called)
+    
     return yf.Ticker(symbol + ".NS").quarterly_financials
 
 def result(symbol):
@@ -35,11 +35,11 @@ def split(symbol):
     return yf.Ticker(symbol + ".NS").splits.to_frame("Split")
 
 def intraday(symbol):
-    print(yf called)
+    print("yf called")
     return yf.download(symbol + ".NS", period="1d", interval="5m").round(2)
 
 def daily(symbol):
-    print(yf called)
+    print("yf called")
     return yf.download(symbol + ".NS", period="1y", interval="1d").round(2)
 
 
