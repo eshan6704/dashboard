@@ -33,32 +33,36 @@ def _latest(prefix, ext):
 # ==============================
 # SAVE
 # ==============================
-def save(name: str, data: Any, ftype: str = "csv") -> str:
+def save(name: str, data: Any, ftype: str = "csv") -> str | bool:
     ts = _ts()
     filename = f"{name}_{ts}.{ftype}"
     path = _path(filename)
 
-    if ftype == "csv":
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError("CSV requires pandas DataFrame")
-        data.to_csv(path, index=False)
+    try:
+        if ftype == "csv":
+            if not isinstance(data, pd.DataFrame):
+                raise TypeError("CSV requires pandas DataFrame")
+            data.to_csv(path, index=False)
 
-    elif ftype == "json":
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        elif ftype == "json":
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
 
-    elif ftype == "html":
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(str(data))
+        elif ftype == "html":
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(str(data))
 
-    elif ftype == "pkl":
-        with open(path, "wb") as f:
-            pickle.dump(data, f)
+        elif ftype == "pkl":
+            with open(path, "wb") as f:
+                pickle.dump(data, f)
 
-    else:
-        raise ValueError(f"Unsupported file type: {ftype}")
+        else:
+            raise ValueError("Unsupported file type")
 
-    return filename
+        return filename
+
+    except Exception:
+        return False
 
 # ==============================
 # LOAD (STRICT)
@@ -70,39 +74,65 @@ def load(name: str, ftype: str | None = None):
       load("nifty", "csv")
     """
 
-    # Case 1: full filename
+    # Full filename
     if "." in name:
-        path = _path(name)
-        if not os.path.exists(path):
-            return None
         filename = name
 
-    # Case 2: base name + type
+    # Base name + type
     else:
         if not ftype:
-            raise ValueError("File type must be provided when filename is not full")
+            return False
         filename = _latest(name, ftype)
         if not filename:
-            return None
-        path = _path(filename)
+            return False
 
-    # Load by extension
-    if filename.endswith(".csv"):
-        return pd.read_csv(path)
+    path = _path(filename)
+    if not os.path.exists(path):
+        return False
 
-    if filename.endswith(".json"):
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+    try:
+        if filename.endswith(".csv"):
+            return pd.read_csv(path)
 
-    if filename.endswith(".html"):
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
+        if filename.endswith(".json"):
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
 
-    if filename.endswith(".pkl"):
-        with open(path, "rb") as f:
-            return pickle.load(f)
+        if filename.endswith(".html"):
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
 
-    raise ValueError(f"Unsupported file type: {filename}")
+        if filename.endswith(".pkl"):
+            with open(path, "rb") as f:
+                return pickle.load(f)
+
+        return False
+
+    except Exception:
+        return False
+
+# ==============================
+# EXISTS (NEW FUNCTION)
+# ==============================
+def exists(name: str, ftype: str | None = None) -> bool:
+    """
+    True  -> file exists
+    False -> file not present
+
+    Allowed:
+      exists("nifty_YYYY_MM_DD_HH_MM_SS.csv")
+      exists("nifty", "csv")
+    """
+
+    # Full filename
+    if "." in name:
+        return os.path.exists(_path(name))
+
+    # Base name + type
+    if not ftype:
+        return False
+
+    return _latest(name, ftype) is not None
 
 # ==============================
 # UTILITIES
@@ -114,13 +144,14 @@ def list_files(name=None, ftype=None):
     if ftype:
         files = [f for f in files if f.endswith("." + ftype)]
     return files
-
-
+    
 # SAVE
-#save("nifty", df, ftype="csv")
+#save("nifty", df, "csv")
 
-# LOAD latest
-#df_latest = load("nifty", "csv")
+# CHECK existence (NO load)
+#if exists("nifty", "csv"):
+    #df = load("nifty", "csv")
 
-# LOAD specific version
-#df_old = load("nifty_2025_12_18_10_30_00.csv")
+# CHECK specific file
+#if exists("nifty_2025_12_18_10_30_00.csv"):
+    #df_old = load("nifty_2025_12_18_10_30_00.csv")
