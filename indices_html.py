@@ -2,8 +2,12 @@ import json
 import pandas as pd
 from nsepython import *
 import html
-import html
-import pandas as pd
+from datetime import datetime as dt
+from collections import defaultdict
+
+# persist helpers (already exist in your project)
+from persist import exists, load, save
+
 
 def build_indices_html():
     """
@@ -13,8 +17,19 @@ def build_indices_html():
       - tables for all categories
       - charts ONLY for key == "INDICES ELIGIBLE IN DERIVATIVES"
       - flexible chart layout (no grid, auto-fit)
+      - DAILY CACHE ENABLED
     """
 
+    # ================= CACHE =================
+    today = dt.now().strftime("%Y-%m-%d")
+    cache_key = "indices_html"
+
+    if exists(cache_key):
+        cached = load(cache_key)
+        if isinstance(cached, dict) and cached.get("date") == today:
+            return cached.get("html")
+
+    # ================= FETCH DATA =================
     p = indices()  # your existing function
     data_df = p.get("data", pd.DataFrame())
     dates_df = p.get("dates", pd.DataFrame())
@@ -61,10 +76,6 @@ def build_indices_html():
 
     # ----------- FLEXIBLE CHART BLOCK -----------
     def build_chart_grid_for_record(r):
-        """
-        Flexible chart layout: auto-fit, no fixed grid.
-        ONLY for INDICES ELIGIBLE IN DERIVATIVES category.
-        """
 
         def iframe_if_exists(src, label):
             if src and isinstance(src, str) and src.strip():
@@ -78,7 +89,7 @@ def build_indices_html():
 
         today_src   = r.get("chartTodayPath")  or r.get("chartToday")  or ""
         month30_src = r.get("chart30dPath")    or r.get("chart30Path") or ""
-        year365_src = r.get("chart365dPath")   or r.get("chart365")    or ""
+        year365_src = r.get("chart365dPath")   or r.get("chart365")   or ""
 
         block = (
             iframe_if_exists(today_src, "Today Chart") +
@@ -106,11 +117,11 @@ def build_indices_html():
     # ----------- DATES TABLE -----------
     dates_table_html = ""
     if not dates_df.empty:
-        dates_records = dates_df.to_dict(orient="records")
-        dates_table_html = build_table_from_records(dates_records)
+        dates_table_html = build_table_from_records(
+            dates_df.to_dict(orient="records")
+        )
 
     # ----------- GROUP BY KEY ----------
-    from collections import defaultdict
     groups = defaultdict(list)
     for r in records:
         groups[r.get("key") or "UNCLASSIFIED"].append(r)
@@ -120,27 +131,19 @@ def build_indices_html():
     # ----------- PER CATEGORY SECTIONS ----------
     for key_name, recs in groups.items():
 
-        # Determine visible columns
         first = recs[0]
         cols = [c for c in first.keys() if c not in hidden_cols]
 
-        # Preferred order
         preferred = ["indexSymbol", "index", "symbol", "name"]
-        ordered = []
-        for pkey in preferred:
-            if pkey in cols:
-                ordered.append(pkey)
-        for c in cols:
-            if c not in ordered:
-                ordered.append(c)
+        ordered = [c for c in preferred if c in cols] + [c for c in cols if c not in preferred]
 
         table_html = build_table_from_records(recs, ordered)
 
-        # CHARTS ONLY FOR INDICES ELIGIBLE IN DERIVATIVES
+        # Charts only for derivative-eligible indices
         if str(key_name).strip().upper() == "INDICES ELIGIBLE IN DERIVATIVES":
             charts_html = "\n".join(build_chart_grid_for_record(r) for r in recs)
         else:
-            charts_html = ""  # no charts for other categories
+            charts_html = ""
 
         per_key_sections.append(f"""
         <section class="key-section">
@@ -169,7 +172,6 @@ def build_indices_html():
         margin-bottom: 30px;
     }
 
-    /* FLEXIBLE CHART LAYOUT */
     .chart-flex-block {
         border: 1px solid #ddd;
         background: #fff;
@@ -202,27 +204,29 @@ def build_indices_html():
     </style>
     """
 
-    # ----------- FINAL HTML ASSEMBLY -----------
-    html_parts = [
+    # ----------- FINAL HTML -----------
+    html_out = "\n".join([
         "<!DOCTYPE html>",
         "<html><head><meta charset='utf-8'><title>NSE Indices</title>",
         css,
         "</head><body>",
         "<h1>NSE Indices — Full Static Render</h1>",
-        f"<div class='meta'>Generated: {html.escape(pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'))}</div>",
-
+        f"<div class='meta'>Generated: {html.escape(dt.now().strftime('%Y-%m-%d %H:%M:%S'))}</div>",
         "<h2>Main Indices Table</h2>",
         "<div class='scroll'>", main_table_html, "</div>",
-
         "<h2>Dates / Meta</h2>" if dates_table_html else "",
         "<div class='scroll'>" if dates_table_html else "",
         dates_table_html,
         "</div>" if dates_table_html else "",
-
         "<h2>Categories</h2>",
         *per_key_sections,
-
         "</body></html>"
-    ]
+    ])
 
-    return "\n".join(str(x) for x in html_parts)
+    # ================= SAVE CACHE =================
+    save(cache_key, {
+        "date": today,
+        "html": html_out
+    })
+
+    return html_out
