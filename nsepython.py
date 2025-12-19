@@ -286,7 +286,7 @@ def nse_blockdeals():
 def nse_stock_hist(f,t,symbol,series="ALL"):
     url=f"https://www.nseindia.com/api/historical/securityArchives?from={f}&to={t}&symbol={symbol.upper()}&dataType=priceVolumeDeliverable&series={series}"
     payload=nsefetch(url)
-    print(df)
+    print(payload)
     df=pd.DataFrame(payload["data"])
     return df
     
