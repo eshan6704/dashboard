@@ -1,29 +1,87 @@
 from nsepython import *
+import os
+import pickle
+import pandas as pd
+from datetime import datetime
+
+# =====================================================
+# CACHE CONFIG (DAILY VALIDITY)
+# =====================================================
+CACHE_DIR = "./cache/eq"
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+
+def _today_key():
+    return datetime.now().strftime("%Y%m%d")
+
+
+def _path(name):
+    return os.path.join(CACHE_DIR, name)
+
+
+def cache_load(name):
+    try:
+        with open(_path(name), "rb") as f:
+            return pickle.load(f)
+    except Exception:
+        return None
+
+
+def cache_save(name, obj):
+    with open(_path(name), "wb") as f:
+        pickle.dump(obj, f)
+
+
+# =====================================================
+# MAIN FUNCTION (DO NOT RENAME)
+# =====================================================
 def build_eq_html(symbol):
-    """Build full HTML page for eq(symbol) output, similar to build_indices_html."""
+    """
+    Build full HTML page for eq(symbol)
+    Cache rules:
+    - HTML cached per (symbol + day)
+    - EQ raw output cached per (symbol + day)
+    """
 
-    import json
-    import pandas as pd
+    day = _today_key()
+    symbol = symbol.upper()
 
-    # -------------------------------------------------------
-    # CALL eq() function internally
-    # -------------------------------------------------------
-    out = eq(symbol)        # <-- your existing eq(symbol)
-    print(out)
-    if not isinstance(out, dict):
-        return "<h3>Error: EQ data not available</h3>"
+    html_key = f"eq_html_{symbol}_{day}.pkl"
+    raw_key = f"eq_raw_{symbol}_{day}.pkl"
 
-    # -------------------------------------------------------
-    # Helper to convert DF → HTML table
-    # -------------------------------------------------------
+    # --------------------------------------------------
+    # 1️⃣ HTML CACHE FIRST
+    # --------------------------------------------------
+    html = cache_load(html_key)
+    if html:
+        return html
+
+    # --------------------------------------------------
+    # 2️⃣ RAW EQ CACHE
+    # --------------------------------------------------
+    out = cache_load(raw_key)
+    if not out:
+        out = eq(symbol)   # 🔥 existing nsepython function
+        if not isinstance(out, dict):
+            return "<h3>Error: EQ data not available</h3>"
+        cache_save(raw_key, out)
+
+    # --------------------------------------------------
+    # 3️⃣ DF → HTML TABLE
+    # --------------------------------------------------
     def df_to_table(df):
-        if df is None or len(df) == 0:
+        if df is None or df.empty:
             return '<div class="empty">No data</div>'
-        return df.to_html(index=False, escape=False, border=0, classes="tbl")
+        return df.to_html(
+            index=False,
+            escape=False,
+            border=0,
+            classes="tbl"
+        )
 
-    # -------------------------------------------------------
-    # ORDER — metadata FIRST (date table)
-    # -------------------------------------------------------
+    # --------------------------------------------------
+    # 4️⃣ SECTION ORDER (METADATA FIRST)
+    # --------------------------------------------------
     section_order = [
         "metadata",
         "securityInfo",
@@ -35,10 +93,9 @@ def build_eq_html(symbol):
         "preOpenMarket"
     ]
 
-    # Normalize all values into DataFrame
     normalized = {}
     for sec in section_order:
-        val = out.get(sec, None)
+        val = out.get(sec)
         if isinstance(val, pd.DataFrame):
             normalized[sec] = val
         elif isinstance(val, list):
@@ -48,27 +105,28 @@ def build_eq_html(symbol):
         else:
             normalized[sec] = pd.DataFrame()
 
-    # -------------------------------------------------------
-    # Build sections HTML
-    # -------------------------------------------------------
+    # --------------------------------------------------
+    # 5️⃣ BUILD SECTION HTML
+    # --------------------------------------------------
     section_html = ""
     for sec in section_order:
-        df = normalized[sec]
         section_html += f"""
         <div class="section">
             <div class="section-header">
                 <div class="section-title">{sec}</div>
-                <button class="toggle-btn" onclick="toggleSection('{sec}')">View / Hide</button>
+                <button class="toggle-btn" onclick="toggleSection('{sec}')">
+                    View / Hide
+                </button>
             </div>
             <div id="{sec}" class="section-body">
-                {df_to_table(df)}
+                {df_to_table(normalized[sec])}
             </div>
         </div>
         """
 
-    # -------------------------------------------------------
-    # FINAL HTML PAGE
-    # -------------------------------------------------------
+    # --------------------------------------------------
+    # 6️⃣ FINAL HTML
+    # --------------------------------------------------
     html = f"""
     <html>
     <head>
@@ -109,9 +167,6 @@ def build_eq_html(symbol):
             border-radius: 5px;
             cursor: pointer;
         }}
-        .section-body {{
-            margin-top: 6px;
-        }}
         .tbl {{
             border-collapse: collapse;
             width: 100%;
@@ -134,24 +189,23 @@ def build_eq_html(symbol):
     </style>
 
     <script>
-    function toggleSection(id) {{
-        let e = document.getElementById(id);
-        if (e.style.display === "none") {{
-            e.style.display = "block";
-        }} else {{
-            e.style.display = "none";
+        function toggleSection(id) {{
+            const e = document.getElementById(id);
+            e.style.display = (e.style.display === "none") ? "block" : "none";
         }}
-    }}
     </script>
     </head>
 
     <body>
         <h2>Equity Report — {symbol}</h2>
-
         {section_html}
-
     </body>
     </html>
     """
+
+    # --------------------------------------------------
+    # 7️⃣ SAVE HTML CACHE
+    # --------------------------------------------------
+    cache_save(html_key, html)
 
     return html
