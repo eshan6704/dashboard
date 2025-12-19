@@ -1,22 +1,28 @@
-from nsepython import *
+import json
 import pandas as pd
-import re
+from nsepython import *
+import html
 from datetime import datetime as dt
+from collections import defaultdict
 
-# persist helpers (ALREADY EXIST IN YOUR PROJECT)
+# persist helpers (already exist in your project)
 from persist import exists, load, save
 
 
-def build_preopen_html(key="NIFTY"):
+def build_indices_html():
     """
-    Build full Pre-Open HTML with daily cache.
-    If cached HTML exists for today → return it.
-    Else → fetch, rebuild, save, return.
+    Generate HTML:
+      - main table
+      - dates table
+      - tables for all categories
+      - charts ONLY for key == "INDICES ELIGIBLE IN DERIVATIVES"
+      - flexible chart layout (no grid, auto-fit)
+      - DAILY CACHE ENABLED
     """
 
     # ================= CACHE =================
     today = dt.now().strftime("%Y-%m-%d")
-    cache_key = f"preopen_html_{key}"
+    cache_key = "indices_html"
 
     if exists(cache_key):
         cached = load(cache_key)
@@ -24,164 +30,203 @@ def build_preopen_html(key="NIFTY"):
             return cached.get("html")
 
     # ================= FETCH DATA =================
-    p = nsefetch(f"https://www.nseindia.com/api/market-data-pre-open?key={key}")
+    p = indices()  # your existing function
+    data_df = p.get("data", pd.DataFrame())
+    dates_df = p.get("dates", pd.DataFrame())
 
-    data_df = df_from_data(p.pop("data"))
-    rem_df  = df_from_data([p])
+    records = data_df.to_dict(orient="records") if not data_df.empty else []
 
-    main_df  = data_df.iloc[[0]] if not data_df.empty else pd.DataFrame()
-    const_df = data_df.iloc[1:] if len(data_df) > 1 else pd.DataFrame()
+    # Columns to hide in category tables
+    hidden_cols = {
+        "key","chartTodayPath","chart30dPath","chart30Path","chart365dPath",
+        "date365dAgo","date30dAgo","previousDay","oneWeekAgo","oneMonthAgoVal",
+        "oneWeekAgoVal","oneYearAgoVal","index","indicativeClose"
+    }
 
-    # ================= REMOVE PATTERN COLUMNS =================
-    pattern_remove = re.compile(r"^(price_|buyQty_|sellQty_|iep_)\d+$")
+    # ----------- BASIC TABLE BUILDER -----------
+    def build_table_from_records(recs, cols=None):
+        if not recs:
+            return "<p>No data available.</p>"
 
-    def remove_pattern_cols(df):
-        if df is None or df.empty:
-            return df
-        return df[[c for c in df.columns if not pattern_remove.match(c)]]
+        if cols is None:
+            cols = []
+            for r in recs:
+                for k in r.keys():
+                    if k not in cols:
+                        cols.append(k)
 
-    main_df  = remove_pattern_cols(main_df)
-    const_df = remove_pattern_cols(const_df)
-    rem_df   = remove_pattern_cols(rem_df)
+        header = "".join(f"<th>{html.escape(str(c))}</th>" for c in cols)
 
-    # ================= TABLE COLOR HELPER =================
-    def df_to_html_color(df, metric_col=None):
-        if df is None or df.empty:
-            return "<i>No data</i>"
+        body_rows = []
+        for r in recs:
+            tds = []
+            for c in cols:
+                v = r.get(c, "")
+                if isinstance(v, (list, dict)):
+                    v = str(v)
+                tds.append(f"<td>{html.escape('' if v is None else str(v))}</td>")
+            body_rows.append("<tr>" + "".join(tds) + "</tr>")
 
-        df_html = df.copy()
-        top3_up, top3_down = [], []
+        return f"""
+        <table>
+            <thead><tr>{header}</tr></thead>
+            <tbody>{''.join(body_rows)}</tbody>
+        </table>
+        """
 
-        if metric_col and metric_col in df_html.columns:
-            if pd.api.types.is_numeric_dtype(df_html[metric_col]):
-                col_numeric = df_html[metric_col].dropna()
-                top3_up = col_numeric.nlargest(3).index.tolist()
-                top3_down = col_numeric.nsmallest(3).index.tolist()
+    # ----------- FLEXIBLE CHART BLOCK -----------
+    def build_chart_grid_for_record(r):
 
-        for idx, row in df_html.iterrows():
-            for col in df_html.columns:
-                val = row[col]
-                style = ""
-
-                if isinstance(val, (int, float)):
-                    val_fmt = f"{val:.2f}"
-                    if val > 0:
-                        style = "numeric-positive"
-                    elif val < 0:
-                        style = "numeric-negative"
-
-                    if col == metric_col:
-                        if idx in top3_up:
-                            style += " top-up"
-                        elif idx in top3_down:
-                            style += " top-down"
-
-                    df_html.at[idx, col] = f'<span class="{style.strip()}">{val_fmt}</span>'
-                else:
-                    df_html.at[idx, col] = str(val)
-
-        return df_html.to_html(index=False, escape=False, classes="compact-table")
-
-    # ================= MINI CARDS =================
-    def build_info_cards(rem_df, main_df):
-        combined = pd.concat([rem_df, main_df], axis=1)
-        combined = combined.loc[:, ~combined.columns.duplicated()]
-        combined = remove_pattern_cols(combined)
-
-        cards = '<div class="mini-card-container">'
-        for col in combined.columns:
-            val = combined.at[0, col] if not combined.empty else ""
-            cards += f"""
-            <div class="mini-card">
-                <div class="card-key">{col}</div>
-                <div class="card-val">{val}</div>
-            </div>
-            """
-        cards += '</div>'
-        return cards
-
-    info_cards_html = build_info_cards(rem_df, main_df)
-
-    # ================= CONSTITUENTS TABLE =================
-    cons_html = df_to_html_color(const_df)
-
-    # ================= METRIC TABLES =================
-    metric_cols_allowed = [
-        "pChange",
-        "totalTurnover",
-        "marketCap",
-        "totalTradedVolume"
-    ]
-
-    metric_tables = ""
-    for col in metric_cols_allowed:
-        if col in const_df.columns and pd.api.types.is_numeric_dtype(const_df[col]):
-            df_metric = const_df.copy()
-            df_metric[col] = pd.to_numeric(df_metric[col], errors="coerce")
-            df_metric = df_metric.sort_values(col, ascending=False)
-
-            show_cols = ["symbol", col] if "symbol" in df_metric.columns else [col]
-            metric_tables += f"""
-            <div class="small-table">
-                <div class="st-title">{col}</div>
-                <div class="st-body">
-                    {df_to_html_color(df_metric[show_cols], metric_col=col)}
+        def iframe_if_exists(src, label):
+            if src and isinstance(src, str) and src.strip():
+                return f"""
+                <div class="chart-flex-item">
+                    <iframe src="{html.escape(src)}" loading="lazy"
+                            frameborder="0" title="{html.escape(label)}"></iframe>
                 </div>
+                """
+            return ""
+
+        today_src   = r.get("chartTodayPath")  or r.get("chartToday")  or ""
+        month30_src = r.get("chart30dPath")    or r.get("chart30Path") or ""
+        year365_src = r.get("chart365dPath")   or r.get("chart365")   or ""
+
+        block = (
+            iframe_if_exists(today_src, "Today Chart") +
+            iframe_if_exists(month30_src, "30d Chart") +
+            iframe_if_exists(year365_src, "365d Chart")
+        )
+
+        if not block.strip():
+            return ""
+
+        title = r.get("index") or r.get("indexSymbol") or r.get("symbol") or ""
+
+        return f"""
+        <div class="chart-flex-block">
+            <div class="chart-title"><strong>{html.escape(str(title))}</strong></div>
+            <div class="chart-flex-container">
+                {block}
             </div>
-            """
+        </div>
+        """
 
-    # ================= FINAL HTML =================
-    html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-body {{ font-family: Arial; margin: 12px; background: #f5f5f5; font-size: 14px; }}
-h2, h3 {{ margin: 10px 0; }}
-table {{ border-collapse: collapse; width: 100%; }}
-th, td {{ border: 1px solid #bbb; padding: 6px; font-size: 13px; }}
-th {{ background: #333; color: #fff; }}
+    # ----------- MAIN TABLE -----------
+    main_table_html = build_table_from_records(records)
 
-.compact-table td.numeric-positive {{ color: green; font-weight: bold; }}
-.compact-table td.numeric-negative {{ color: red; font-weight: bold; }}
-.compact-table td.top-up {{ background: #b6f2b6; }}
-.compact-table td.top-down {{ background: #f2b6b6; }}
+    # ----------- DATES TABLE -----------
+    dates_table_html = ""
+    if not dates_df.empty:
+        dates_table_html = build_table_from_records(
+            dates_df.to_dict(orient="records")
+        )
 
-.grid {{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }}
-.small-table {{ background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #ddd; }}
-.st-title {{ text-align: center; font-weight: bold; background: #222; color: #fff; padding: 6px; border-radius: 4px; }}
-.st-body {{ max-height: 300px; overflow-y: auto; }}
+    # ----------- GROUP BY KEY ----------
+    groups = defaultdict(list)
+    for r in records:
+        groups[r.get("key") or "UNCLASSIFIED"].append(r)
 
-.mini-card-container {{ display: flex; flex-wrap: wrap; gap: 10px; }}
-.mini-card {{ background: #fff; padding: 8px 10px; border-radius: 6px; border: 1px solid #ddd; min-width: 120px; }}
-.card-key {{ font-weight: bold; }}
-</style>
-</head>
+    per_key_sections = []
 
-<body>
+    # ----------- PER CATEGORY SECTIONS ----------
+    for key_name, recs in groups.items():
 
-<h2>Pre-Open Market — {key}</h2>
+        first = recs[0]
+        cols = [c for c in first.keys() if c not in hidden_cols]
 
-<h3>Info</h3>
-{info_cards_html}
+        preferred = ["indexSymbol", "index", "symbol", "name"]
+        ordered = [c for c in preferred if c in cols] + [c for c in cols if c not in preferred]
 
-<h3>Constituents</h3>
-{cons_html}
+        table_html = build_table_from_records(recs, ordered)
 
-<h3>Key Metrics</h3>
-<div class="grid">
-{metric_tables}
-</div>
+        # Charts only for derivative-eligible indices
+        if str(key_name).strip().upper() == "INDICES ELIGIBLE IN DERIVATIVES":
+            charts_html = "\n".join(build_chart_grid_for_record(r) for r in recs)
+        else:
+            charts_html = ""
 
-</body>
-</html>
-"""
+        per_key_sections.append(f"""
+        <section class="key-section">
+            <h3>Category: {html.escape(str(key_name))} (Total: {len(recs)})</h3>
+            <div class="key-table">{table_html}</div>
+            {charts_html}
+        </section>
+        """)
+
+    # ----------- CSS -----------
+    css = """
+    <style>
+    body { font-family: Arial; padding: 16px; background: #fff; color: #111; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 14px; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 13px; }
+    th { background: #007bff; color: white; position: sticky; top: 0; }
+
+    .scroll { max-height: 420px; overflow: auto; padding: 6px; background: #fafafa;
+              margin-bottom: 16px; border: 1px solid #ddd; }
+
+    .key-section {
+        border: 1px solid #e6eef6;
+        background: #fbfeff;
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 30px;
+    }
+
+    .chart-flex-block {
+        border: 1px solid #ddd;
+        background: #fff;
+        padding: 8px;
+        border-radius: 6px;
+        margin-bottom: 14px;
+    }
+
+    .chart-title { margin-bottom: 6px; font-size: 14px; }
+
+    .chart-flex-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .chart-flex-item {
+        flex: 1 1 300px;
+        min-height: 180px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .chart-flex-item iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+    }
+    </style>
+    """
+
+    # ----------- FINAL HTML -----------
+    html_out = "\n".join([
+        "<!DOCTYPE html>",
+        "<html><head><meta charset='utf-8'><title>NSE Indices</title>",
+        css,
+        "</head><body>",
+        "<h1>NSE Indices — Full Static Render</h1>",
+        f"<div class='meta'>Generated: {html.escape(dt.now().strftime('%Y-%m-%d %H:%M:%S'))}</div>",
+        "<h2>Main Indices Table</h2>",
+        "<div class='scroll'>", main_table_html, "</div>",
+        "<h2>Dates / Meta</h2>" if dates_table_html else "",
+        "<div class='scroll'>" if dates_table_html else "",
+        dates_table_html,
+        "</div>" if dates_table_html else "",
+        "<h2>Categories</h2>",
+        *per_key_sections,
+        "</body></html>"
+    ])
 
     # ================= SAVE CACHE =================
     save(cache_key, {
         "date": today,
-        "html": html
+        "html": html_out
     })
 
-    return html
+    return html_out
