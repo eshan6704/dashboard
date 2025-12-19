@@ -1,14 +1,23 @@
 # ==============================
-# Imports
+# Imports (kept same style)
 # ==============================
 import yfinance as yf
 import pandas as pd
 import traceback
+import time
+
+# persist helpers
+from persist import exists, load, save
+
 
 # ==============================
-# Yahoo Finance info fetch
+# Yahoo Finance info fetch (RAW)
 # ==============================
 def yfinfo(symbol):
+    """
+    Low-level Yahoo Finance info fetch.
+    Returns raw dict or {"__error__": "..."}
+    """
     try:
         t = yf.Ticker(symbol + ".NS")
         info = t.info
@@ -17,6 +26,7 @@ def yfinfo(symbol):
         return info
     except Exception as e:
         return {"__error__": str(e)}
+
 
 # ==============================
 # Icons
@@ -36,6 +46,7 @@ MAIN_ICONS = {
     "Company Profile": "🏢"
 }
 
+
 # ==============================
 # Responsive column layout
 # ==============================
@@ -50,6 +61,7 @@ def column_layout(html, min_width=320):
         {html}
     </div>
     """
+
 
 # ==============================
 # Card renderer
@@ -88,8 +100,9 @@ def html_card(title, body, mini=False, shade=0):
     </div>
     """
 
+
 # ==============================
-# Formatting
+# Formatting helpers
 # ==============================
 def format_number(x):
     try:
@@ -101,6 +114,7 @@ def format_number(x):
         return f"{x:.4f}"
     except:
         return str(x)
+
 
 # ==============================
 # Compact inline key:value view
@@ -123,7 +137,7 @@ def make_table(df):
             padding:2px 0;
             border-bottom:1px dashed #bcd0ea;
         ">
-            <span style="color:#1a4f8a;font-weight:500;white-space:nowrap;">
+            <span style="color:#1a4f8a;font-weight:500;">
                 {r[0]}
             </span>
             <span style="
@@ -132,7 +146,6 @@ def make_table(df):
                 background:#f1f6ff;
                 padding:1px 6px;
                 border-radius:4px;
-                white-space:nowrap;
             ">
                 {r[1]}
             </span>
@@ -140,8 +153,9 @@ def make_table(df):
         """
     return f"<div>{rows}</div>"
 
+
 # ==============================
-# Noise keys
+# Noise filtering
 # ==============================
 NOISE_KEYS = {
     "maxAge","priceHint","triggerable",
@@ -150,8 +164,9 @@ NOISE_KEYS = {
     "esgPopulated"
 }
 
-def is_noise(k): 
+def is_noise(k):
     return k in NOISE_KEYS
+
 
 # ==============================
 # Duplicate resolver
@@ -178,25 +193,32 @@ def resolve_duplicates(data):
             resolved[k] = v
     return resolved
 
+
 # ==============================
-# Short names
+# Short key names
 # ==============================
 SHORT_NAMES = {
-    "regularMarketPrice":"Price","regularMarketChange":"Chg",
+    "regularMarketPrice":"Price",
+    "regularMarketChange":"Chg",
     "regularMarketChangePercent":"Chg%",
     "regularMarketPreviousClose":"Prev",
     "regularMarketOpen":"Open",
-    "regularMarketDayHigh":"High","regularMarketDayLow":"Low",
+    "regularMarketDayHigh":"High",
+    "regularMarketDayLow":"Low",
     "regularMarketVolume":"Vol",
     "averageDailyVolume10Day":"AvgV10",
     "averageDailyVolume3Month":"AvgV3M",
-    "fiftyDayAverage":"50DMA","twoHundredDayAverage":"200DMA",
-    "fiftyTwoWeekLow":"52WL","fiftyTwoWeekHigh":"52WH",
-    "beta":"Beta","targetMeanPrice":"Target"
+    "fiftyDayAverage":"50DMA",
+    "twoHundredDayAverage":"200DMA",
+    "fiftyTwoWeekLow":"52WL",
+    "fiftyTwoWeekHigh":"52WH",
+    "beta":"Beta",
+    "targetMeanPrice":"Target"
 }
 
 def pretty_key(k):
     return SHORT_NAMES.get(k, k[:12])
+
 
 # ==============================
 # Classifiers
@@ -209,6 +231,7 @@ def classify_price_volume_subgroup(key):
     if "target" in k or "recommend" in k: return "Bid / Analyst"
     return "Live Price"
 
+
 def classify_key(key, value):
     k = key.lower()
     if isinstance(value,(int,float)) and any(x in k for x in [
@@ -219,64 +242,82 @@ def classify_key(key, value):
         "revenue","income","profit","margin","pe","pb","roe","roa","debt","equity"
     ]):
         return "fundamental"
-    if isinstance(value,str) and len(value)>80:
+    if isinstance(value,str) and len(value) > 80:
         return "long_text"
     return "profile"
+
 
 # ==============================
 # Group builder
 # ==============================
 def build_grouped_info(info):
-    groups = {"price_volume":{}, "fundamental":{}, "profile":{}, "long_text":{}}
+    groups = {
+        "price_volume":{},
+        "fundamental":{},
+        "profile":{},
+        "long_text":{}
+    }
     for k,v in info.items():
-        if v in [None,"",[],{}]: continue
+        if v in [None,"",[],{}]:
+            continue
         groups[classify_key(k,v)][k] = v
     return groups
 
+
 # ==============================
-# Balanced column splitter (UTILISATION FIRST)
+# Column splitter
 # ==============================
 def split_df_evenly(df):
     if df is None or df.empty:
         return []
 
     n = len(df)
-
-    if n <= 6:
-        cols = 1
-    elif n <= 14:
-        cols = 2
-    else:
-        cols = 3
-
+    cols = 1 if n <= 6 else 2 if n <= 14 else 3
     chunk = (n + cols - 1) // cols
     return [df.iloc[i:i+chunk] for i in range(0, n, chunk)]
+
 
 # ==============================
 # DataFrame builder
 # ==============================
 def build_df_from_dict(data):
-    rows=[]
+    rows = []
     for k,v in data.items():
-        if is_noise(k): continue
+        if is_noise(k):
+            continue
         if isinstance(v,(int,float)):
             v = format_number(v)
         rows.append([pretty_key(k), v])
     return pd.DataFrame(rows, columns=["Field","Value"])
 
+
 # ==============================
-# MAIN FUNCTION
+# MAIN FUNCTION (CACHED)
 # ==============================
 def fetch_info(symbol):
+    """
+    Cached Yahoo Finance info renderer
+    Cache validity: 1 hour
+    """
+    key = f"info_{symbol}"
+
+    # ---------- CACHE CHECK ----------
+    if exists(key, "html"):
+        cached = load(key, "html", max_age=3600)
+        if cached:
+            return cached
+
     try:
         info = yfinfo(symbol)
-        if not info:
+
+        # ---------- VALIDATION ----------
+        if not info or "__error__" in info:
             return "No data"
 
         groups = build_grouped_info(info)
         html = ""
 
-        # -------- PRICE / VOLUME --------
+        # ---------- PRICE / VOLUME ----------
         pv = resolve_duplicates(groups["price_volume"])
         sub = {}
         for k,v in pv.items():
@@ -301,7 +342,7 @@ def fetch_info(symbol):
                 shade=0
             )
 
-        # -------- FUNDAMENTALS --------
+        # ---------- FUNDAMENTALS ----------
         if groups["fundamental"]:
             chunks = split_df_evenly(build_df_from_dict(groups["fundamental"]))
             cols = "".join(
@@ -314,7 +355,7 @@ def fetch_info(symbol):
                 shade=1
             )
 
-        # -------- COMPANY PROFILE --------
+        # ---------- COMPANY PROFILE ----------
         if groups["profile"]:
             chunks = split_df_evenly(build_df_from_dict(groups["profile"]))
             cols = "".join(
@@ -327,9 +368,13 @@ def fetch_info(symbol):
                 shade=2
             )
 
-        # -------- LONG TEXT --------
+        # ---------- LONG TEXT ----------
         for k,v in groups["long_text"].items():
             html += html_card(pretty_key(k), v, shade=2)
+
+        # ---------- SAVE CACHE ----------
+        if html.strip():
+            save(key, html, "html")
 
         return html
 
