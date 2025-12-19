@@ -125,7 +125,7 @@ def fetch_data(mode, req_type, name, date_str):
         elif req_type == "other":
             return common.wrap(stock.fetch_other(name))
         elif req_type == "stock_hist":
-            return nse.nse_stock_hist(from_date, to_date, name).to_html()
+            return nsepython.nse_stock_hist(from_date, to_date, name).to_html()
         else:
             return common.wrap(f"<h3>No handler for {req_type}</h3>")
 
