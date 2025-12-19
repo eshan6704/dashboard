@@ -134,7 +134,7 @@ def build_bhavcopy_html(date_str):
 
     except Exception as e:
         print(
-            f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
+            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
             f"Error build_bhavcopy_html: {e}"
         )
         return f"<h3>Error: {e}</h3>"
