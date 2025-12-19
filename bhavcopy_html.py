@@ -3,6 +3,7 @@ import datetime
 from nsepython import *
 from persist import *
 
+
 def build_bhavcopy_html(date_str):
     key = f"bhavcopy_{date_str}"
 
@@ -20,34 +21,24 @@ def build_bhavcopy_html(date_str):
 
     try:
         # -------------------------------------------------------
-        # 1) Validate Date
-        # -------------------------------------------------------
-        try:
-            datetime.datetime.strptime(date_str, "%d-%m-%Y")
-        except:
-            html = "<h3>Invalid date format. Use DD-MM-YYYY.</h3>"
-            save(key, html, "html")
-            return html
-
-        # -------------------------------------------------------
-        # 2) Fetch Bhavcopy
+        # 1) Fetch Bhavcopy (DD-MM-YYYY passed as-is)
         # -------------------------------------------------------
         try:
             df = nse_bhavcopy(date_str)
             df.columns = df.columns.str.strip()
-        except:
+        except Exception:
             html = f"<h3>No Bhavcopy found for {date_str}.</h3>"
             save(key, html, "html")
             return html
 
         # -------------------------------------------------------
-        # 3) Drop unwanted columns
+        # 2) Drop unwanted columns
         # -------------------------------------------------------
         remove = ["DATE1", "LAST_PRICE", "AVG_PRICE"]
         df.drop(columns=[c for c in remove if c in df.columns], inplace=True)
 
         # -------------------------------------------------------
-        # 4) Convert numeric columns
+        # 3) Convert numeric columns
         # -------------------------------------------------------
         numeric_cols = [
             "PREV_CLOSE", "OPEN_PRICE", "HIGH_PRICE", "LOW_PRICE",
@@ -66,13 +57,13 @@ def build_bhavcopy_html(date_str):
                 df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
         # -------------------------------------------------------
-        # 5) Filter & sort
+        # 4) Filter & sort
         # -------------------------------------------------------
         df = df[df["TURNOVER_LACS"] > 1000]
         df = df.sort_values("TURNOVER_LACS", ascending=False)
 
         # -------------------------------------------------------
-        # 6) Computed columns
+        # 5) Computed columns
         # -------------------------------------------------------
         df["change"] = df["CLOSE_PRICE"] - df["PREV_CLOSE"]
         df["perchange"] = (df["change"] / df["PREV_CLOSE"].replace(0, 1)) * 100
@@ -82,7 +73,7 @@ def build_bhavcopy_html(date_str):
         ) * 100
 
         # -------------------------------------------------------
-        # 7) HTML Output
+        # 6) HTML Output
         # -------------------------------------------------------
         main_html = f"""
         <div class="main-table-container">
@@ -135,6 +126,9 @@ def build_bhavcopy_html(date_str):
             grid_html
         )
 
+        # -------------------------------------------------------
+        # 7) Save ONLY newly generated HTML
+        # -------------------------------------------------------
         save(key, html, "html")
         return html
 
