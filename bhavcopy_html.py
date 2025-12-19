@@ -1,7 +1,7 @@
 import pandas as pd
 import nsepython as nse
 import persist
-from datetime import datetime
+from datetime import datetime as dt
 
 
 def build_bhavcopy_html(date_str):
@@ -14,7 +14,7 @@ def build_bhavcopy_html(date_str):
         cached = persist.load(key, "html")
         if cached is not False:
             print(
-                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
+                f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] "
                 f"Using cached bhavcopy for {date_str}"
             )
             return cached
@@ -24,14 +24,14 @@ def build_bhavcopy_html(date_str):
         # 1) Validate Date (DD-MM-YYYY)
         # -------------------------------------------------------
         try:
-            datetime.strptime(date_str, "%d-%m-%Y")
+            dt.strptime(date_str, "%d-%m-%Y")
         except ValueError:
             html = "<h3>Invalid date format. Use DD-MM-YYYY.</h3>"
             persist.save(key, html, "html")
             return html
 
         # -------------------------------------------------------
-        # 2) Fetch Bhavcopy (nsepython handles DD-MM-YYYY)
+        # 2) Fetch Bhavcopy (nsepython expects DD-MM-YYYY)
         # -------------------------------------------------------
         try:
             df = nse.nse_bhavcopy(date_str)
@@ -141,7 +141,7 @@ def build_bhavcopy_html(date_str):
 
     except Exception as e:
         print(
-            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
+            f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] "
             f"Error build_bhavcopy_html: {e}"
         )
         return f"<h3>Error: {e}</h3>"
