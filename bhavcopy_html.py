@@ -1,7 +1,7 @@
 import pandas as pd
 import datetime
 import nsepython
-impot persist
+import persist
 
 
 def build_bhavcopy_html(date_str):
