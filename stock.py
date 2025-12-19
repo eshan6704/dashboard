@@ -7,7 +7,7 @@ from datetime import datetime as dt
 
 import persist
 import common
-from blackblaze import *
+from backblaze import *
 import ta_indi_pat
 
 
