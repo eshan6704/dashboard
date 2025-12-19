@@ -7,7 +7,7 @@ from datetime import datetime as dt
 
 import persist
 import common
-import chart_builder
+
 import ta_indi_pat
 
 
