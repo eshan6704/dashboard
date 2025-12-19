@@ -285,4 +285,8 @@ def nse_blockdeals():
     return pd.read_csv("https://archives.nseindia.com/content/equities/block.csv")
 def nse_stock_hist(f,t,symbol,series="ALL"):
     url=f"https://www.nseindia.com/api/historical/securityArchives?from={f}&to={t}&symbol={symbol.upper()}&dataType=priceVolumeDeliverable&series={series}"
-    return pd.DataFrame(nsefetch(url)['data'])
+    payload=nsefetch(url)
+    print(df)
+    df=pd.DataFrame(payload["data"])
+    return df
+    
