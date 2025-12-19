@@ -1,34 +1,22 @@
 from nsepython import *
 import pandas as pd
-import os
-from datetime import datetime
+from datetime import datetime as dt
 
-# ----------------- CACHE CONFIG -----------------
-CACHE_DIR = "./cache_html"
-os.makedirs(CACHE_DIR, exist_ok=True)
-CACHE_FILE = os.path.join(CACHE_DIR, "index_NIFTY50.html")
+# persist helpers (already exist)
+from persist import exists, load, save
 
-def _is_valid_daily(path):
-    if not os.path.exists(path):
-        return False
-    mtime = datetime.fromtimestamp(os.path.getmtime(path))
-    return mtime.date() == datetime.now().date()
 
-def _read_html(path):
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
-
-def _write_html(path, html):
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(html)
-
-# ----------------- MAIN FUNCTION -----------------
 def build_index_live_html():
-    # ===== 1️⃣ CACHE CHECK =====
-    if _is_valid_daily(CACHE_FILE):
-        return _read_html(CACHE_FILE)
+    # ================= CACHE =================
+    cache_key = "index_live_NIFTY50"
+    today = dt.now().strftime("%Y-%m-%d")
 
-    # ===== 2️⃣ LIVE FETCH =====
+    if exists(cache_key):
+        cached = load(cache_key)
+        if isinstance(cached, dict) and cached.get("date") == today:
+            return cached.get("html")
+
+    # ================= LIVE FETCH =================
     index_name = "NIFTY 50"
     p = nse_index_live(index_name)
 
@@ -45,13 +33,11 @@ def build_index_live_html():
         if not const_df.empty:
             const_df = const_df.iloc[:, 1:]
 
-            # Move segment / time cols
-            move_to_info = [c for c in ['segment', 'equityTime', 'preOpenTime'] if c in const_df.columns]
+            move_to_info = [c for c in ['segment','equityTime','preOpenTime'] if c in const_df.columns]
             if move_to_info:
                 rem_df = pd.concat([rem_df, const_df[move_to_info].iloc[[0]]], axis=1)
                 const_df = const_df.drop(columns=move_to_info)
 
-            # Drop cols (constituents)
             drop_cols_const = [
                 "identifier","ffmc","stockIndClosePrice","lastUpdateTime",
                 "chartTodayPath","chart30dPath","chart365dPath","series",
@@ -62,7 +48,6 @@ def build_index_live_html():
             ]
             const_df = const_df.drop(columns=[c for c in drop_cols_const if c in const_df.columns])
 
-            # Drop cols (main)
             drop_cols_main = [
                 "series","symbol_meta","companyName","industry",
                 "activeSeries","debtSeries","isFNOSec","isCASec",
@@ -73,11 +58,11 @@ def build_index_live_html():
             ]
             main_df = main_df.drop(columns=[c for c in drop_cols_main if c in main_df.columns])
 
-            if 'pChange' in const_df.columns:
-                const_df['pChange'] = pd.to_numeric(const_df['pChange'], errors='coerce')
-                const_df = const_df.sort_values('pChange', ascending=False)
+            if "pChange" in const_df.columns:
+                const_df["pChange"] = pd.to_numeric(const_df["pChange"], errors="coerce")
+                const_df = const_df.sort_values("pChange", ascending=False)
 
-    # ===== Helper: Color HTML =====
+    # ================= HTML HELPERS =================
     def df_to_html_color(df, metric_col=None):
         df_html = df.copy()
         top3_up, top3_down = [], []
@@ -138,7 +123,7 @@ def build_index_live_html():
         </div>
         """
 
-    # ===== FINAL HTML =====
+    # ================= FINAL HTML =================
     html = f"""
 <!DOCTYPE html>
 <html>
@@ -179,6 +164,10 @@ th, td {{ border: 1px solid #bbb; padding: 5px 8px; }}
 </html>
 """
 
-    # ===== 3️⃣ SAVE CACHE =====
-    _write_html(CACHE_FILE, html)
+    # ================= SAVE CACHE =================
+    save(cache_key, {
+        "date": today,
+        "html": html
+    })
+
     return html
