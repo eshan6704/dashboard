@@ -1,16 +1,17 @@
-from common import *
 import gradio as gr
-from stock import *
-from indices_html import *
-from index_live_html import *
-from preopen_html import *
-from eq_html import *
 import pandas as pd
-from bhavcopy_html import *
-from nsepython import *
-from yahooinfo import fetch_info
-from build_nse_fno import nse_fno_html
 import datetime
+
+import common
+import stock
+import indices_html
+import index_live_html
+import preopen_html
+import eq_html
+import bhavcopy_html
+import nsepython
+import yahooinfo
+import build_nse_fno
 
 
 # ======================================================
@@ -29,6 +30,7 @@ INDEX_REQ = [
     "index_pe_pb_div", "index_total_returns"
 ]
 
+
 # ======================================================
 # Update UI based on mode
 # ======================================================
@@ -37,137 +39,101 @@ def update_on_mode(mode):
         return (
             gr.update(choices=STOCK_REQ, value="info"),
             gr.update(value="ITC"),
-            gr.update(value=yesterday_str())
+            gr.update(value=common.yesterday_str())
         )
-
     elif mode == "index":
         return (
             gr.update(choices=INDEX_REQ, value="indices"),
             gr.update(value="NIFTY 50"),
-            gr.update(value=yesterday_str())
+            gr.update(value=common.yesterday_str())
         )
-
     return (
         gr.update(choices=[], value=""),
         gr.update(value=""),
         gr.update(value="")
     )
 
+
 # ======================================================
-# Data Fetcher (API logic untouched)
+# Data Fetcher
 # ======================================================
 def fetch_data(mode, req_type, name, date_str):
     req_type = req_type.lower()
     name = name.strip()
-    to_date = date_str.strip()
-
-    # ✅ Frontend may send empty date → auto yesterday
-    if not date_str:
-        to_date = today_str()
-
-    from_date = last_year_str(to_date)
+    to_date = date_str.strip() or common.today_str()
+    from_date = common.last_year_str(to_date)
 
     if mode == "index":
-
         if req_type == "indices":
-            return build_indices_html()
-
+            return indices_html.build_indices_html()
         elif req_type == "nse_open":
-            return build_index_live_html()
-
+            return index_live_html.build_index_live_html()
         elif req_type == "nse_preopen":
-            return build_preopen_html()
-
+            return preopen_html.build_preopen_html()
         elif req_type == "nse_fno":
-            return nse_fno_html(to_date,name)
-
+            return build_nse_fno.nse_fno_html(to_date, name)
         elif req_type == "nse_events":
-            return nse_events().to_html()
-
+            return nsepython.nse_events().to_html()
         elif req_type == "nse_fiidii":
-            return nse_fiidii().to_html()
-
+            return nsepython.nse_fiidii().to_html()
         elif req_type == "nse_future":
-            return wrap(nse_future(name))
-
+            return common.wrap(nsepython.nse_future(name))
         elif req_type == "nse_highlow":
-            return nse_highlow(to_date).to_html()
-
+            return nsepython.nse_highlow(to_date).to_html()
         elif req_type == "nse_bhav":
-            return build_bhavcopy_html(to_date)
-
+            return bhavcopy_html.build_bhavcopy_html(to_date)
         elif req_type == "nse_largedeals":
-            return nse_largedeals().to_html()
-
+            return nsepython.nse_largedeals().to_html()
         elif req_type == "nse_bulkdeals":
-            return nse_bulkdeals().to_html()
-
+            return nsepython.nse_bulkdeals().to_html()
         elif req_type == "nse_blockdeals":
-            return nse_blockdeals().to_html()
-
+            return nsepython.nse_blockdeals().to_html()
         elif req_type == "nse_most_active":
-            return nse_most_active().to_html()
-
+            return nsepython.nse_most_active().to_html()
         elif req_type == "index_history":
-            return index_history("NIFTY 50", from_date, to_date).to_html()
-
+            return nsepython.index_history("NIFTY 50", from_date, to_date).to_html()
         elif req_type == "largedeals_historical":
-            return nse_largedeals_historical(from_date, to_date).to_html()
-
+            return nsepython.nse_largedeals_historical(from_date, to_date).to_html()
         elif req_type == "index_pe_pb_div":
-            return index_pe_pb_div("NIFTY 50", from_date, to_date).to_html()
-
+            return nsepython.index_pe_pb_div("NIFTY 50", from_date, to_date).to_html()
         elif req_type == "index_total_returns":
-            return index_total_returns("NIFTY 50", from_date, to_date).to_html()
-
+            return nsepython.index_total_returns("NIFTY 50", from_date, to_date).to_html()
         else:
-            return wrap(f"<h3>No handler for {req_type}</h3>")
+            return common.wrap(f"<h3>No handler for {req_type}</h3>")
 
     elif mode == "stock":
-
         if req_type == "daily":
-            return wrap(fetch_daily(name))
-
+            return common.wrap(stock.fetch_daily(name))
         elif req_type == "nse_eq":
-            return build_eq_html(name)
-
+            return eq_html.build_eq_html(name)
         elif req_type == "intraday":
-            return wrap(fetch_intraday(name))
-
+            return common.wrap(stock.fetch_intraday(name))
         elif req_type == "info":
-            return wrap(fetch_info(name))
-
+            return common.wrap(yahooinfo.fetch_info(name))
         elif req_type == "qresult":
-            return wrap(fetch_qresult(name))
-
+            return common.wrap(stock.fetch_qresult(name))
         elif req_type == "result":
-            return wrap(fetch_result(name))
-
+            return common.wrap(stock.fetch_result(name))
         elif req_type == "balance":
-            return wrap(fetch_balance(name))
-
+            return common.wrap(stock.fetch_balance(name))
         elif req_type == "cashflow":
-            return wrap(fetch_cashflow(name))
-
+            return common.wrap(stock.fetch_cashflow(name))
         elif req_type == "dividend":
-            return wrap(fetch_dividend(name))
-
+            return common.wrap(stock.fetch_dividend(name))
         elif req_type == "split":
-            return wrap(fetch_split(name))
-
+            return common.wrap(stock.fetch_split(name))
         elif req_type == "other":
-            return wrap(fetch_other(name))
-
+            return common.wrap(stock.fetch_other(name))
         elif req_type == "stock_hist":
-            return nse_stock_hist(from_date, to_date, name).to_html()
-
+            return stock.nse_stock_hist(from_date, to_date, name).to_html()
         else:
-            return wrap(f"<h3>No handler for {req_type}</h3>")
+            return common.wrap(f"<h3>No handler for {req_type}</h3>")
 
-    return wrap(f"<h3>No valid mode: {mode}</h3>")
+    return common.wrap(f"<h3>No valid mode: {mode}</h3>")
+
 
 # ======================================================
-# UI
+# Gradio UI
 # ======================================================
 with gr.Blocks(title="Stock / Index App") as iface:
 
@@ -180,24 +146,9 @@ with gr.Blocks(title="Stock / Index App") as iface:
             value="stock",
             scale=1
         )
-
-        name_input = gr.Textbox(
-            label="Symbol / Index Name",
-            scale=2
-        )
-
-        req_type_input = gr.Dropdown(
-            label="Request Type",
-            allow_custom_value=True,
-            scale=2
-        )
-
-        date_input = gr.Textbox(
-            label="Date (DD-MM-YYYY)",
-            placeholder="Leave empty = yesterday",
-            scale=1
-        )
-
+        name_input = gr.Textbox(label="Symbol / Index Name", scale=2)
+        req_type_input = gr.Dropdown(label="Request Type", allow_custom_value=True, scale=2)
+        date_input = gr.Textbox(label="Date (DD-MM-YYYY)", placeholder="Leave empty = yesterday", scale=1)
         fetch_btn = gr.Button("Fetch", scale=1)
 
     output = gr.HTML(label="Output")
@@ -222,6 +173,7 @@ with gr.Blocks(title="Stock / Index App") as iface:
         inputs=[mode_input, req_type_input, name_input, date_input],
         outputs=output
     )
+
 
 # ======================================================
 # Launch
