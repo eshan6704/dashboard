@@ -67,7 +67,7 @@ clean_df = common.clean_df
 safe_get = common.safe_get
 wrap_html = common.wrap_html
 
-build_chart = chart_builder.build_chart
+#build_chart = chart_builder.build_chart
 talib_df = ta_indi_pat.talib_df
 
 
