@@ -1,7 +1,7 @@
 import pandas as pd
-import datetime
-import nsepython
+import nsepython as nse
 import persist
+from datetime import datetime
 
 
 def build_bhavcopy_html(date_str):
@@ -10,35 +10,45 @@ def build_bhavcopy_html(date_str):
     # -------------------------------------------------------
     # 0) Use cached HTML if present
     # -------------------------------------------------------
-    if exists(key, "html"):
-        cached = load(key, "html")
+    if persist.exists(key, "html"):
+        cached = persist.load(key, "html")
         if cached is not False:
             print(
-                f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
                 f"Using cached bhavcopy for {date_str}"
             )
             return cached
 
     try:
         # -------------------------------------------------------
-        # 1) Fetch Bhavcopy (DD-MM-YYYY passed as-is)
+        # 1) Validate Date (DD-MM-YYYY)
         # -------------------------------------------------------
         try:
-            df = nse_bhavcopy(date_str)
-            df.columns = df.columns.str.strip()
-        except Exception:
-            html = f"<h3>No Bhavcopy found for {date_str}.</h3>"
-            save(key, html, "html")
+            datetime.strptime(date_str, "%d-%m-%Y")
+        except ValueError:
+            html = "<h3>Invalid date format. Use DD-MM-YYYY.</h3>"
+            persist.save(key, html, "html")
             return html
 
         # -------------------------------------------------------
-        # 2) Drop unwanted columns
+        # 2) Fetch Bhavcopy (nsepython handles DD-MM-YYYY)
+        # -------------------------------------------------------
+        try:
+            df = nse.nse_bhavcopy(date_str)
+            df.columns = df.columns.str.strip()
+        except Exception:
+            html = f"<h3>No Bhavcopy found for {date_str}.</h3>"
+            persist.save(key, html, "html")
+            return html
+
+        # -------------------------------------------------------
+        # 3) Drop unwanted columns
         # -------------------------------------------------------
         remove = ["DATE1", "LAST_PRICE", "AVG_PRICE"]
         df.drop(columns=[c for c in remove if c in df.columns], inplace=True)
 
         # -------------------------------------------------------
-        # 3) Convert numeric columns
+        # 4) Convert numeric columns
         # -------------------------------------------------------
         numeric_cols = [
             "PREV_CLOSE", "OPEN_PRICE", "HIGH_PRICE", "LOW_PRICE",
@@ -57,13 +67,13 @@ def build_bhavcopy_html(date_str):
                 df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
         # -------------------------------------------------------
-        # 4) Filter & sort
+        # 5) Filter & sort
         # -------------------------------------------------------
         df = df[df["TURNOVER_LACS"] > 1000]
         df = df.sort_values("TURNOVER_LACS", ascending=False)
 
         # -------------------------------------------------------
-        # 5) Computed columns
+        # 6) Computed columns
         # -------------------------------------------------------
         df["change"] = df["CLOSE_PRICE"] - df["PREV_CLOSE"]
         df["perchange"] = (df["change"] / df["PREV_CLOSE"].replace(0, 1)) * 100
@@ -73,7 +83,7 @@ def build_bhavcopy_html(date_str):
         ) * 100
 
         # -------------------------------------------------------
-        # 6) HTML Output
+        # 7) HTML Output
         # -------------------------------------------------------
         main_html = f"""
         <div class="main-table-container">
@@ -126,10 +136,7 @@ def build_bhavcopy_html(date_str):
             grid_html
         )
 
-        # -------------------------------------------------------
-        # 7) Save ONLY newly generated HTML
-        # -------------------------------------------------------
-        save(key, html, "html")
+        persist.save(key, html, "html")
         return html
 
     except Exception as e:
