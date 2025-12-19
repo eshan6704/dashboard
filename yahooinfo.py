@@ -303,7 +303,7 @@ def fetch_info(symbol):
 
     # ---------- CACHE CHECK ----------
     if exists(key, "html"):
-        cached = load(key, "html", max_age=3600)
+        cached = load(key, "html")
         if cached:
             return cached
 
