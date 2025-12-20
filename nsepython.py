@@ -239,7 +239,8 @@ def nse_csv_fetch(url):
 # ------------------------- INDEX HIGH-LOW CSV -------------------------
 def nse_highlow(date_str):
     url="https://archives.nseindia.com/content/indices/" f"ind_close_all_{date_str}.csv"
-    return pd.DataFrame(nse_csv_fetch(url))
+    csv_text= nse_csv_fetch(url )
+    return pd.read_csv(StringIO(csv_text), header=0)
 
 # ------------------------- STOCK 52-WEEK HIGH-LOW CSV -------------------------
 def stock_highlow(date_str):
