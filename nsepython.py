@@ -239,14 +239,14 @@ def nse_csv_fetch(url):
 # ------------------------- INDEX HIGH-LOW CSV -------------------------
 def nse_highlow(date_str):
     url="https://archives.nseindia.com/content/indices/" f"ind_close_all_{date_str}.csv"
-    csv_text= nse_csv_fetch(url )
-    return pd.read_csv(StringIO(csv_text), header=0)
+
+    return pd.read_csv(url, header=0)
 
 # ------------------------- STOCK 52-WEEK HIGH-LOW CSV -------------------------
 def stock_highlow(date_str):
         url="https://archives.nseindia.com/content/"f"CM_52_wk_High_low_{date_str}.csv"
-        csv_text= nse_csv_fetch(url )
-        return pd.read_csv(StringIO(csv_text), header=2)
+
+        return pd.read_csv(url, header=2)
 # ------------------------- ZIP CSV FETCH -------------------------
 def nse_zip_csv_fetch(url):
     """
