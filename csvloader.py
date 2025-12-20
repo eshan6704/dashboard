@@ -132,7 +132,7 @@ def nse_highlow(date_str: str | None = None) -> str:
     # 2️⃣ NSE-specific parsing (header row = 2)
     df = pd.read_csv(
         StringIO(csv_text),
-        header=2
+        header=0
     )
 
     # 3️⃣ Build HTML
