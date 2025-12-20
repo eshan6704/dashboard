@@ -25,7 +25,7 @@ STOCK_REQ = [
 
 INDEX_REQ = [
     "indices", "nse_open", "nse_preopen", "nse_fno", "nse_fiidii",
-    "nse_events", "nse_future", "nse_bhav", "nse_highlow",
+    "nse_events", "nse_future", "nse_bhav", "nse_highlow","stock_highlow",
     "index_history", "nse_largedeals", "nse_most_active",
     "largedeals_historical", "nse_bulkdeals", "nse_blockdeals",
     "index_pe_pb_div", "index_total_returns"
@@ -80,7 +80,9 @@ def fetch_data(mode, req_type, name, date_str):
         elif req_type == "nse_future":
             return common.wrap(nsepython.nse_future(name))
         elif req_type == "nse_highlow":
-            return csvloader.nse_highlow(to_date)
+            return nsepython.nse_highlow(to_date).to_html()
+        elif req_type == "stock_highlow":
+            return nsepython.stock_highlow(to_date).to_html()
         elif req_type == "nse_bhav":
             return bhavcopy_html.build_bhavcopy_html(to_date)
         elif req_type == "nse_largedeals":
