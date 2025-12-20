@@ -12,6 +12,7 @@ import bhavcopy_html
 import nsepython
 import yahooinfo
 import build_nse_fno
+import csvloader
 
 
 # ======================================================
@@ -79,7 +80,7 @@ def fetch_data(mode, req_type, name, date_str):
         elif req_type == "nse_future":
             return common.wrap(nsepython.nse_future(name))
         elif req_type == "nse_highlow":
-            return nsepython.nse_highlow(to_date).to_html()
+            return csvloader.nse_highlow(to_date).to_html()
         elif req_type == "nse_bhav":
             return bhavcopy_html.build_bhavcopy_html(to_date)
         elif req_type == "nse_largedeals":
