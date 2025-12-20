@@ -1,56 +1,49 @@
-# CSV.py
-
-import pandas as pd
+# ==============================
+# Imports
+# ==============================
 import requests
 import zipfile
-from io import BytesIO
+from io import BytesIO, StringIO
 from datetime import datetime as dt
-from typing import List, Union
+from typing import Dict, Union
+
+import pandas as pd
 
 from persist import exists, load, save
 
 
-def load_csv(
-    url: str,
-    header_row: int = 0,
-    text_cols: List[str] | None = None
-) -> Union[pd.DataFrame, List[pd.DataFrame]]:
+# ==============================
+# Raw CSV Loader (NO parsing)
+# ==============================
+def load_csv(url: str) -> Union[str, Dict[str, str]]:
     """
-    Load CSV or ZIP containing CSVs
-    - .csv -> DataFrame
-    - .zip -> List[DataFrame]
-    """
-    text_cols = text_cols or []
+    Pure transport loader
+    - .csv -> raw CSV text (str)
+    - .zip -> {filename: raw CSV text}
 
-    def _clean_df(df: pd.DataFrame) -> pd.DataFrame:
-        df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
-        df.columns = (
-            df.columns
-            .str.strip()
-            .str.replace(" ", "_")
-            .str.replace("-", "_")
-        )
-        for col in df.columns:
-            if col not in text_cols:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-        return df.dropna(how="all")
+    NO parsing
+    NO cleaning
+    NO assumptions
+    """
+    r = requests.get(url)
+    r.raise_for_status()
 
     if url.lower().endswith(".zip"):
-        r = requests.get(url)
-        r.raise_for_status()
         z = zipfile.ZipFile(BytesIO(r.content))
-        dfs = []
+        out: Dict[str, str] = {}
+
         for name in z.namelist():
             if name.lower().endswith(".csv"):
                 with z.open(name) as f:
-                    df = pd.read_csv(f, header=header_row)
-                    dfs.append(_clean_df(df))
-        return dfs
+                    out[name] = f.read().decode("utf-8", errors="ignore")
+        return out
 
-    df = pd.read_csv(url, header=header_row)
-    return _clean_df(df)
+    return r.text
 
 
+# ==============================
+# NSE High-Low HTML Formatter
+# ==============================
 def _highlow_html_formatter(df: pd.DataFrame, date_str: str) -> str:
     metric = "PERCENT_CHANGE"
     df_html = df.copy()
@@ -62,17 +55,20 @@ def _highlow_html_formatter(df: pd.DataFrame, date_str: str) -> str:
         for col in df_html.columns:
             val = row[col]
             style = ""
+
             if isinstance(val, (int, float)):
                 txt = f"{val:.2f}"
                 if val > 0:
                     style = "pos"
                 elif val < 0:
                     style = "neg"
+
                 if col == metric:
                     if idx in top_up:
                         style += " top-up"
                     elif idx in top_dn:
                         style += " top-down"
+
                 df_html.at[idx, col] = f'<span class="{style.strip()}">{txt}</span>'
             else:
                 df_html.at[idx, col] = str(val)
@@ -102,10 +98,17 @@ th {{ background:#222; color:white; }}
 """
 
 
+# ==============================
+# NSE High-Low Master Function
+# ==============================
 def nse_highlow(date_str: str | None = None) -> str:
     """
     Master NSE High-Low function
-    - Uses load_csv
+
+    Responsibilities:
+    - Knows NSE CSV structure
+    - Header starts at row index 2 (skip 0 & 1)
+    - Uses raw CSV loader
     - Builds HTML
     - Persists ONLY HTML
     """
@@ -123,12 +126,19 @@ def nse_highlow(date_str: str | None = None) -> str:
         f"ind_close_all_{d.strftime('%d%m%Y')}.csv"
     )
 
-    df = load_csv(
-        url=url,
-        header_row=2,
-        text_cols=["Index_Name", "Index_Date"]
+    # 1️⃣ Load raw CSV text
+    csv_text = load_csv(url)
+
+    # 2️⃣ NSE-specific parsing (header row = 2)
+    df = pd.read_csv(
+        StringIO(csv_text),
+        header=2
     )
 
+    # 3️⃣ Build HTML
     html = _highlow_html_formatter(df, date_str)
+
+    # 4️⃣ Persist HTML only
     save(cache_key, html, "html")
+
     return html
