@@ -3,25 +3,24 @@ import pandas as pd
 import re
 from datetime import datetime as dt
 
-# persist helpers (ALREADY EXIST IN YOUR PROJECT)
+# persist helpers (HF only)
 from persist import exists, load, save
 
 
 def build_preopen_html(key="NIFTY"):
     """
-    Build full Pre-Open HTML with daily cache.
-    If cached HTML exists for today → return it.
-    Else → fetch, rebuild, save, return.
+    Build full Pre-Open HTML
+    - Daily TTL (via persist.py)
+    - HTML only cache
     """
 
-    # ================= CACHE =================
-    today = dt.now().strftime("%Y-%m-%d")
-    cache_key = f"preopen_html_{key}"
+    # ================= CACHE (TTL via persist) =================
+    cache_name = f"DAILY_PREOPEN_{key.upper()}"
 
-    if exists(cache_key):
-        cached = load(cache_key)
-        if isinstance(cached, dict) and cached.get("date") == today:
-            return cached.get("html")
+    if exists(cache_name, "html"):
+        cached_html = load(cache_name, "html")
+        if isinstance(cached_html, str):
+            return cached_html
 
     # ================= FETCH DATA =================
     p = nsefetch(f"https://www.nseindia.com/api/market-data-pre-open?key={key}")
@@ -50,55 +49,51 @@ def build_preopen_html(key="NIFTY"):
             return "<i>No data</i>"
 
         df_html = df.copy()
-        top3_up, top3_down = [], []
+        top_up, top_down = [], []
 
         if metric_col and metric_col in df_html.columns:
-            if pd.api.types.is_numeric_dtype(df_html[metric_col]):
-                col_numeric = df_html[metric_col].dropna()
-                top3_up = col_numeric.nlargest(3).index.tolist()
-                top3_down = col_numeric.nsmallest(3).index.tolist()
+            col_num = pd.to_numeric(df_html[metric_col], errors="coerce").dropna()
+            top_up = col_num.nlargest(3).index.tolist()
+            top_down = col_num.nsmallest(3).index.tolist()
 
         for idx, row in df_html.iterrows():
             for col in df_html.columns:
                 val = row[col]
-                style = ""
-
+                cls = ""
                 if isinstance(val, (int, float)):
                     val_fmt = f"{val:.2f}"
                     if val > 0:
-                        style = "numeric-positive"
+                        cls = "numeric-positive"
                     elif val < 0:
-                        style = "numeric-negative"
-
-                    if col == metric_col:
-                        if idx in top3_up:
-                            style += " top-up"
-                        elif idx in top3_down:
-                            style += " top-down"
-
-                    df_html.at[idx, col] = f'<span class="{style.strip()}">{val_fmt}</span>'
+                        cls = "numeric-negative"
+                    if metric_col and col == metric_col:
+                        if idx in top_up:
+                            cls += " top-up"
+                        elif idx in top_down:
+                            cls += " top-down"
+                    df_html.at[idx, col] = f'<span class="{cls.strip()}">{val_fmt}</span>'
                 else:
                     df_html.at[idx, col] = str(val)
 
         return df_html.to_html(index=False, escape=False, classes="compact-table")
 
-    # ================= MINI CARDS =================
+    # ================= MINI INFO CARDS =================
     def build_info_cards(rem_df, main_df):
         combined = pd.concat([rem_df, main_df], axis=1)
         combined = combined.loc[:, ~combined.columns.duplicated()]
         combined = remove_pattern_cols(combined)
 
-        cards = '<div class="mini-card-container">'
+        html = '<div class="mini-card-container">'
         for col in combined.columns:
             val = combined.at[0, col] if not combined.empty else ""
-            cards += f"""
+            html += f"""
             <div class="mini-card">
                 <div class="card-key">{col}</div>
                 <div class="card-val">{val}</div>
             </div>
             """
-        cards += '</div>'
-        return cards
+        html += '</div>'
+        return html
 
     info_cards_html = build_info_cards(rem_df, main_df)
 
@@ -115,23 +110,23 @@ def build_preopen_html(key="NIFTY"):
 
     metric_tables = ""
     for col in metric_cols_allowed:
-        if col in const_df.columns and pd.api.types.is_numeric_dtype(const_df[col]):
-            df_metric = const_df.copy()
-            df_metric[col] = pd.to_numeric(df_metric[col], errors="coerce")
-            df_metric = df_metric.sort_values(col, ascending=False)
+        if col in const_df.columns:
+            df_m = const_df.copy()
+            df_m[col] = pd.to_numeric(df_m[col], errors="coerce")
+            df_m = df_m.sort_values(col, ascending=False)
 
-            show_cols = ["symbol", col] if "symbol" in df_metric.columns else [col]
+            show_cols = ["symbol", col] if "symbol" in df_m.columns else [col]
             metric_tables += f"""
             <div class="small-table">
                 <div class="st-title">{col}</div>
                 <div class="st-body">
-                    {df_to_html_color(df_metric[show_cols], metric_col=col)}
+                    {df_to_html_color(df_m[show_cols], metric_col=col)}
                 </div>
             </div>
             """
 
     # ================= FINAL HTML =================
-    html = f"""
+    html_out = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -142,13 +137,13 @@ h2, h3 {{ margin: 10px 0; }}
 table {{ border-collapse: collapse; width: 100%; }}
 th, td {{ border: 1px solid #bbb; padding: 6px; font-size: 13px; }}
 th {{ background: #333; color: #fff; }}
-.compact-table td.numeric-positive {{ color: green; font-weight: bold; }}
-.compact-table td.numeric-negative {{ color: red; font-weight: bold; }}
-.compact-table td.top-up {{ background: #b6f2b6; }}
-.compact-table td.top-down {{ background: #f2b6b6; }}
+.numeric-positive {{ color: green; font-weight: bold; }}
+.numeric-negative {{ color: red; font-weight: bold; }}
+.top-up {{ background: #b6f2b6; }}
+.top-down {{ background: #f2b6b6; }}
 .grid {{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }}
 .small-table {{ background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #ddd; }}
-.st-title {{ text-align: center; font-weight: bold; background: #222; color: #fff; padding: 6px; border-radius: 4px; }}
+.st-title {{ text-align: center; font-weight: bold; background: #222; color: #fff; padding: 6px; }}
 .st-body {{ max-height: 300px; overflow-y: auto; }}
 .mini-card-container {{ display: flex; flex-wrap: wrap; gap: 10px; }}
 .mini-card {{ background: #fff; padding: 8px 10px; border-radius: 6px; border: 1px solid #ddd; min-width: 120px; }}
@@ -156,23 +151,25 @@ th {{ background: #333; color: #fff; }}
 </style>
 </head>
 <body>
+
 <h2>Pre-Open Market — {key}</h2>
+
 <h3>Info</h3>
 {info_cards_html}
+
 <h3>Constituents</h3>
 {cons_html}
+
 <h3>Key Metrics</h3>
 <div class="grid">
 {metric_tables}
 </div>
+
 </body>
 </html>
 """
 
-    # ================= SAVE CACHE =================
-    save(cache_key, {
-        "date": today,
-        "html": html
-    })
+    # ================= SAVE (HTML ONLY) =================
+    save(cache_name, html_out, "html")
 
-    return html
+    return html_out
