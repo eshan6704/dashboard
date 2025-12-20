@@ -1,0 +1,179 @@
+# CSV.py
+import pandas as pd
+from typing import List, Union, Optional
+from io import BytesIO
+import zipfile
+import requests
+from datetime import datetime as dt
+from persist import exists, load, save
+
+
+# ==========================
+# CSV / ZIP Loader
+# ==========================
+def load_csv(
+    url_or_path: str,
+    header_row: int = 0,
+    drop_unnamed: bool = True,
+    text_cols: Optional[List[str]] = None
+) -> Union[pd.DataFrame, List[pd.DataFrame]]:
+    """
+    Load CSV or ZIP of CSVs.
+    - If URL/path ends with .csv → returns single DataFrame
+    - If URL/path ends with .zip → returns list of DataFrames (one per CSV inside)
+    - header_row: row index for CSV header
+    - drop_unnamed: drop unnamed columns
+    - text_cols: columns to treat as text (optional)
+    """
+    text_cols = text_cols or []
+
+    # --- ZIP case ---
+    if url_or_path.lower().endswith(".zip"):
+        if url_or_path.startswith("http"):
+            r = requests.get(url_or_path)
+            r.raise_for_status()
+            z = zipfile.ZipFile(BytesIO(r.content))
+        else:
+            z = zipfile.ZipFile(url_or_path)
+
+        dfs = []
+        for name in z.namelist():
+            if name.lower().endswith(".csv"):
+                with z.open(name) as f:
+                    df = pd.read_csv(f, header=header_row)
+                    df = _clean_df(df, drop_unnamed, text_cols)
+                    dfs.append(df)
+        return dfs
+
+    # --- Single CSV case ---
+    else:
+        if url_or_path.startswith("http"):
+            df = pd.read_csv(url_or_path, header=header_row)
+        else:
+            df = pd.read_csv(url_or_path, header=header_row)
+        return _clean_df(df, drop_unnamed, text_cols)
+
+
+def _clean_df(df: pd.DataFrame, drop_unnamed: bool, text_cols: List[str]) -> pd.DataFrame:
+    """Helper to clean columns, convert numeric, drop empty rows"""
+    if drop_unnamed:
+        df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.replace(" ", "_")
+        .str.replace("-", "_")
+    )
+
+    for col in df.columns:
+        if col not in text_cols:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    return df.dropna(how="all")
+
+
+# ==========================
+# HTML Generator
+# ==========================
+def df_to_html(
+    df: pd.DataFrame,
+    metric_col: Optional[str] = None,
+    cache_key: Optional[str] = None
+) -> str:
+    """
+    Convert DataFrame to HTML table with colored numeric values.
+    - metric_col: highlights top 3 / bottom 3 for this column
+    - cache_key: optional persist key for caching HTML
+    """
+    if df is None or df.empty:
+        return "<p>No data available.</p>"
+
+    # --- CACHE CHECK ---
+    if cache_key and exists(cache_key, "html"):
+        return load(cache_key, "html")
+
+    df_html = df.copy()
+    top3_up, top3_down = [], []
+
+    if metric_col and metric_col in df_html.columns:
+        col_numeric = pd.to_numeric(df_html[metric_col], errors="coerce").dropna()
+        top3_up = col_numeric.nlargest(3).index.tolist()
+        top3_down = col_numeric.nsmallest(3).index.tolist()
+
+    for idx, row in df_html.iterrows():
+        for col in df_html.columns:
+            val = row[col]
+            style = ""
+            if isinstance(val, (int, float)):
+                val_fmt = f"{val:.2f}"
+                if val > 0:
+                    style = "pos"
+                elif val < 0:
+                    style = "neg"
+                if col == metric_col:
+                    if idx in top3_up:
+                        style += " top-up"
+                    elif idx in top3_down:
+                        style += " top-down"
+                df_html.at[idx, col] = f'<span class="{style.strip()}">{val_fmt}</span>'
+            else:
+                df_html.at[idx, col] = str(val)
+
+    html_out = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CSV Table</title>
+<style>
+body {{ font-family: Arial; background:#f5f5f5; padding:12px; }}
+table {{ border-collapse: collapse; width: 100%; background:white; }}
+th, td {{ border:1px solid #bbb; padding:6px; font-size:13px; }}
+th {{ background:#222; color:white; }}
+.pos {{ color:green; font-weight:bold; }}
+.neg {{ color:red; font-weight:bold; }}
+.top-up {{ background:#b6f2b6; }}
+.top-down {{ background:#f2b6b6; }}
+</style>
+</head>
+<body>
+{df_html.to_html(index=False, escape=False)}
+</body>
+</html>
+"""
+
+    # --- SAVE CACHE ---
+    if cache_key:
+        save(cache_key, html_out, "html")
+
+    return html_out
+
+
+# ==========================
+# NSE High-Low Master
+# ==========================
+def nse_highlow(date_str: str = None) -> str:
+    """
+    Master function to fetch NSE High-Low CSV and return HTML.
+    - date_str: "DD-MM-YYYY", default today
+    - uses caching (persist.py) for HTML
+    """
+    if date_str is None:
+        date_str = dt.now().strftime("%d-%m-%Y")
+
+    # Cache key
+    cache_key = f"highlow_{date_str}"
+
+    # --- URL for NSE High-Low CSV ---
+    dt_obj = dt.strptime(date_str, "%d-%m-%Y")
+    url_date = dt_obj.strftime("%d%m%Y")
+    url = f"https://archives.nseindia.com/content/indices/ind_close_all_{url_date}.csv"
+
+    # --- Load CSV using load_csv ---
+    df = load_csv(url, header_row=2, text_cols=["Index_Name", "Index_Date"])
+
+    # --- Generate HTML using df_to_html ---
+    html = df_to_html(df, metric_col="PERCENT_CHANGE", cache_key=cache_key)
+
+    return html
