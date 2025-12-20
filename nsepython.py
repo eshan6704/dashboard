@@ -237,40 +237,14 @@ def nse_csv_fetch(url):
         return ""
 
 # ------------------------- INDEX HIGH-LOW CSV -------------------------
-def nse_highlow(date_str=None):
-    """
-    NSE HIGH-LOW (INDEX style CSV)
-    Returns RAW CSV text
-    """
-    if not date_str:
-        date_str = datetime.datetime.now().strftime("%d%m%Y")
-    else:
-        date_str = date_str.replace("-", "")
+def nse_highlow(date_str):
 
-    url = (
-        "https://archives.nseindia.com/content/indices/"
-        f"ind_close_all_{date_str}.csv"
-    )
-
-    return nse_csv_fetch(url)
+    return nse_csv_fetch("https://archives.nseindia.com/content/indices/" f"ind_close_all_{date_str}.csv")
 
 # ------------------------- STOCK 52-WEEK HIGH-LOW CSV -------------------------
-def stock_highlow(date_str=None):
-    """
-    NSE STOCK 52-week High-Low CSV
-    Returns RAW CSV text
-    """
-    if not date_str:
-        date_str = datetime.datetime.now().strftime("%d%m%Y")
-    else:
-        date_str = date_str.replace("-", "")
+def stock_highlow(date_str):
 
-    url = (
-        "https://nsearchives.nseindia.com/content/"
-        f"CM_52_wk_High_low_{date_str}.csv"
-    )
-
-    return nse_csv_fetch(url)
+    return nse_csv_fetch( "https://nsearchives.nseindia.com/content/"f"CM_52_wk_High_low_{date_str}.csv")
 
 # ------------------------- ZIP CSV FETCH -------------------------
 def nse_zip_csv_fetch(url):
