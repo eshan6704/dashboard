@@ -214,3 +214,84 @@ def nse_stock_hist(f,t,symbol,series="ALL"):
 def nse_index_live(name="NIFTY 50"):
     p=nsefetch(f"https://www.nseindia.com/api/equity-stockIndices?index={name.replace(' ','%20')}")
     return {"data":df_from_data(p.pop("data")) if "data" in p else pd.DataFrame(), "rem":df_from_data([p])}
+
+import zipfile
+from io import BytesIO, StringIO
+import pandas as pd
+import datetime
+import requests
+
+# ------------------------- RAW CSV FETCH -------------------------
+def nse_csv_fetch(url):
+    """
+    Fetch RAW CSV text from NSE using existing headers/session logic
+    """
+    try:
+        s = requests.Session()
+        s.get("https://www.nseindia.com", headers=headers, timeout=10)
+        s.get("https://www.nseindia.com/option-chain", headers=headers, timeout=10)
+        r = s.get(url, headers=headers, timeout=10)
+        r.raise_for_status()
+        return r.text
+    except Exception:
+        return ""
+
+# ------------------------- INDEX HIGH-LOW CSV -------------------------
+def nse_highlow(date_str=None):
+    """
+    NSE HIGH-LOW (INDEX style CSV)
+    Returns RAW CSV text
+    """
+    if not date_str:
+        date_str = datetime.datetime.now().strftime("%d%m%Y")
+    else:
+        date_str = date_str.replace("-", "")
+
+    url = (
+        "https://archives.nseindia.com/content/indices/"
+        f"ind_close_all_{date_str}.csv"
+    )
+
+    return nse_csv_fetch(url)
+
+# ------------------------- STOCK 52-WEEK HIGH-LOW CSV -------------------------
+def stock_highlow(date_str=None):
+    """
+    NSE STOCK 52-week High-Low CSV
+    Returns RAW CSV text
+    """
+    if not date_str:
+        date_str = datetime.datetime.now().strftime("%d%m%Y")
+    else:
+        date_str = date_str.replace("-", "")
+
+    url = (
+        "https://nsearchives.nseindia.com/content/"
+        f"CM_52_wk_High_low_{date_str}.csv"
+    )
+
+    return nse_csv_fetch(url)
+
+# ------------------------- ZIP CSV FETCH -------------------------
+def nse_zip_csv_fetch(url):
+    """
+    Fetch ZIP file from NSE, return list of DataFrames (one per CSV inside)
+    """
+    try:
+        s = requests.Session()
+        s.get("https://www.nseindia.com", headers=headers, timeout=10)
+        s.get("https://www.nseindia.com/option-chain", headers=headers, timeout=10)
+        
+        r = s.get(url, headers=headers, timeout=10)
+        r.raise_for_status()
+        
+        z = zipfile.ZipFile(BytesIO(r.content))
+        dfs = []
+        for name in z.namelist():
+            if name.lower().endswith(".csv"):
+                with z.open(name) as f:
+                    df = pd.read_csv(f)
+                    dfs.append(df)
+        return dfs
+    except Exception:
+        return []
