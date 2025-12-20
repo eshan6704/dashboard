@@ -12,7 +12,7 @@ import bhavcopy_html
 import nsepython
 import yahooinfo
 import build_nse_fno
-import csvloader
+
 
 
 # ======================================================
