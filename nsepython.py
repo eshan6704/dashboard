@@ -183,6 +183,8 @@ def nse_index():
     return pd.DataFrame(p['data'])
 
 def index_history(sym,sd,ed):
+    sd = sd.replace("-", "")
+    ed = ed.replace("-", "")
     d={'cinfo':f"{{'name':'{sym}','startDate':'{sd}','endDate':'{ed}','indexName':'{sym}'}}"}
     p=json.loads(requests.post('https://niftyindices.com/Backpage.aspx/getHistoricaldatatabletoString', headers=niftyindices_headers, json=d).json()["d"])
     return pd.DataFrame.from_records(p)
