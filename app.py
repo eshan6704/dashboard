@@ -14,6 +14,36 @@ import yahooinfo
 import build_nse_fno
 
 
+# ======================================================
+# Date helpers
+# ======================================================
+def today_str():
+    return datetime.date.today().strftime("%d-%m-%Y")
+
+import datetime
+
+def st_ed(d: str) -> tuple[str, str]:
+    base_date = datetime.datetime.strptime(d, "%d-%m-%Y").date()
+
+    def is_working_day(x):
+        return x.weekday() < 5   # Mon–Fri
+
+    def prev_working(x):
+        while not is_working_day(x):
+            x -= datetime.timedelta(days=1)
+        return x
+
+    # -------- Last working day (before given date) --------
+    last_working = prev_working(base_date - datetime.timedelta(days=1))
+
+    # -------- 364-day back, fallback to 363, 362, ... --------
+    past_working = prev_working(base_date - datetime.timedelta(days=364))
+
+    return (
+        last_working.strftime("%d-%m-%Y"),
+        past_working.strftime("%d-%m-%Y")
+    )
+
 
 # ======================================================
 # Request Type Options
@@ -61,8 +91,8 @@ def update_on_mode(mode):
 def fetch_data(mode, req_type, name, date_str):
     req_type = req_type.lower()
     name = name.strip()
-    to_date = date_str.strip() or common.today_str()
-    from_date = common.last_year_str(to_date)
+    to_date,from_date = sd_ed(date_str.strip())
+   
 
     if mode == "index":
         if req_type == "indices":
