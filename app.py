@@ -70,13 +70,13 @@ def update_on_mode(mode):
         return (
             gr.update(choices=STOCK_REQ, value="info"),
             gr.update(value="ITC"),
-            gr.update(value=common.yesterday_str())
+            gr.update(value=today_str())
         )
     elif mode == "index":
         return (
             gr.update(choices=INDEX_REQ, value="indices"),
             gr.update(value="NIFTY 50"),
-            gr.update(value=common.yesterday_str())
+            gr.update(value=today_str())
         )
     return (
         gr.update(choices=[], value=""),
