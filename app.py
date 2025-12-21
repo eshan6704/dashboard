@@ -125,13 +125,13 @@ def fetch_data(mode, req_type, name, date_str):
         elif req_type == "nse_most_active":
             return nsepython.nse_most_active().to_html()
         elif req_type == "index_history":
-            return nsepython.index_history("NIFTY 50", from_date, to_date).to_html()
+            return nsepython.index_history("NIFTY", from_date, to_date).to_html()
         elif req_type == "largedeals_historical":
             return nsepython.nse_largedeals_historical(from_date, to_date).to_html()
         elif req_type == "index_pe_pb_div":
-            return nsepython.index_pe_pb_div("NIFTY 50", from_date, to_date).to_html()
+            return nsepython.index_pe_pb_div("NIFTY", from_date, to_date).to_html()
         elif req_type == "index_total_returns":
-            return nsepython.index_total_returns("NIFTY 50", from_date, to_date).to_html()
+            return nsepython.index_total_returns("NIFTY", from_date, to_date).to_html()
         else:
             return common.wrap(f"<h3>No handler for {req_type}</h3>")
 
