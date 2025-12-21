@@ -1,5 +1,22 @@
-import os, sys, requests, pandas as pd, json, random, datetime, time, logging, re, urllib.parse
+# ==============================
+# Standard library imports
+# ==============================
+import os
+import sys
+import json
+import random
+import datetime
+import time
+import logging
+import re
+import urllib.parse
 from collections import Counter
+
+# ==============================
+# Third-party imports
+# ==============================
+import requests
+import pandas as pd
 
 mode = 'local'
 
@@ -238,15 +255,17 @@ def nse_csv_fetch(url):
 
 # ------------------------- INDEX HIGH-LOW CSV -------------------------
 def nse_highlow(date_str):
+    date_str = date_str.replace("-", "")
     url="https://archives.nseindia.com/content/indices/" f"ind_close_all_{date_str}.csv"
 
     return pd.read_csv(url, header=0)
 
 # ------------------------- STOCK 52-WEEK HIGH-LOW CSV -------------------------
 def stock_highlow(date_str):
-        url="https://archives.nseindia.com/content/"f"CM_52_wk_High_low_{date_str}.csv"
+    date_str = date_str.replace("-", "")
+    url="https://archives.nseindia.com/content/"f"CM_52_wk_High_low_{date_str}.csv"
 
-        return pd.read_csv(url, header=2)
+    return pd.read_csv(url, header=2)
 # ------------------------- ZIP CSV FETCH -------------------------
 def nse_zip_csv_fetch(url):
     """
