@@ -207,7 +207,7 @@ def today_str():
     return datetime.date.today().strftime("%d-%m-%Y")
 
 def yesterday_str():
-    return (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d-%m-%Y")
+    return (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d%m%Y")
 
 import datetime
 
@@ -227,7 +227,7 @@ def last_year_str(d: str) -> str:
 
     last_year_plus_one = last_year + datetime.timedelta(days=1)
 
-    return last_year_plus_one.strftime("%d-%m-%Y")
+    return last_year_plus_one.strftime("%d%m%Y")
 
 
 # ======================================================
