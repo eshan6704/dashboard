@@ -199,8 +199,9 @@ def index_history(sym, sd, ed):
         headers=niftyindices_headers,
         json=payload
     )
-
-    p = json.loads(r.json()["d"])
+    
+    p = json.loads(r.json())
+    print(p)
     return pd.DataFrame.from_records(p)
 
 
