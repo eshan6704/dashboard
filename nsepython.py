@@ -181,65 +181,104 @@ def nsetools_get_quote(symbol):
 def nse_index():
     p=nsefetch('https://iislliveblob.niftyindices.com/jsonfiles/LiveIndicesWatch.json')
     return pd.DataFrame(p['data'])
-
-import json
 import requests
+import json
 import pandas as pd
 
-def index_history(sym, sd, ed):
-    sd = sd.replace("-", "")
-    ed = ed.replace("-", "")
+# ==============================
+# Headers (DO NOT MODIFY)
+# ==============================
+niftyindices_headers = {
+    'Connection': 'keep-alive',
+    'sec-ch-ua': '" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"',
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'DNT': '1',
+    'X-Requested-With': 'XMLHttpRequest',
+    'sec-ch-ua-mobile': '?0',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36',
+    'Content-Type': 'application/json; charset=UTF-8',
+    'Origin': 'https://niftyindices.com',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Dest': 'empty',
+    'Referer': 'https://niftyindices.com/reports/historical-data',
+    'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8',
+}
 
-    payload = {
-        "cinfo": f"{{'name':'{sym}','startDate':'{sd}','endDate':'{ed}','indexName':'{sym}'}}"
+# ==============================
+# Internal helper (SAFE)
+# ==============================
+def _fmt_date(d):
+    """
+    Accepts: dd-mm-yyyy or ddmmyyyy
+    Returns: ddmmyyyy
+    """
+    return d.replace("-", "")
+
+# ==============================
+# Index APIs
+# ==============================
+def index_history(symbol, start_date, end_date):
+    start_date = _fmt_date(start_date)
+    end_date   = _fmt_date(end_date)
+
+    data = {
+        'cinfo': "{'name':'" + symbol +
+                 "','startDate':'" + start_date +
+                 "','endDate':'" + end_date +
+                 "','indexName':'" + symbol + "'}"
     }
 
-    r = requests.post(
-        "https://niftyindices.com/Backpage.aspx/getHistoricaldatatabletoString",
+    payload = requests.post(
+        'https://niftyindices.com/Backpage.aspx/getHistoricaldatatabletoString',
         headers=niftyindices_headers,
-        json=payload
-    )
-    
-    p = json.loads(r.json())
-    print(p)
-    return pd.DataFrame.from_records(p)
+        json=data
+    ).json()
+
+    payload = json.loads(payload["d"])
+    return pd.DataFrame.from_records(payload)
 
 
-def index_pe_pb_div(sym, sd, ed):
-    sd = sd.replace("-", "")
-    ed = ed.replace("-", "")
+def index_pe_pb_div(symbol, start_date, end_date):
+    start_date = _fmt_date(start_date)
+    end_date   = _fmt_date(end_date)
 
-    payload = {
-        "cinfo": f"{{'name':'{sym}','startDate':'{sd}','endDate':'{ed}','indexName':'{sym}'}}"
+    data = {
+        'cinfo': "{'name':'" + symbol +
+                 "','startDate':'" + start_date +
+                 "','endDate':'" + end_date +
+                 "','indexName':'" + symbol + "'}"
     }
 
-    r = requests.post(
-        "https://niftyindices.com/Backpage.aspx/getpepbHistoricaldataDBtoString",
+    payload = requests.post(
+        'https://niftyindices.com/Backpage.aspx/getpepbHistoricaldataDBtoString',
         headers=niftyindices_headers,
-        json=payload
-    )
+        json=data
+    ).json()
 
-    p = json.loads(r.json()["d"])
-    return pd.DataFrame.from_records(p)
+    payload = json.loads(payload["d"])
+    return pd.DataFrame.from_records(payload)
 
 
-def index_total_returns(sym, sd, ed):
-    sd = sd.replace("-", "")
-    ed = ed.replace("-", "")
+def index_total_returns(symbol, start_date, end_date):
+    start_date = _fmt_date(start_date)
+    end_date   = _fmt_date(end_date)
 
-    payload = {
-        "cinfo": f"{{'name':'{sym}','startDate':'{sd}','endDate':'{ed}','indexName':'{sym}'}}"
+    data = {
+        'cinfo': "{'name':'" + symbol +
+                 "','startDate':'" + start_date +
+                 "','endDate':'" + end_date +
+                 "','indexName':'" + symbol + "'}"
     }
 
-    r = requests.post(
-        "https://niftyindices.com/Backpage.aspx/getTotalReturnIndexString",
+    payload = requests.post(
+        'https://niftyindices.com/Backpage.aspx/getTotalReturnIndexString',
         headers=niftyindices_headers,
-        json=payload
-    )
+        json=data
+    ).json()
 
-    p = json.loads(r.json()["d"])
-    return pd.DataFrame.from_records(p)
-
+    payload = json.loads(payload["d"])
+    return pd.DataFrame.from_records(payload)
 
 def nse_bhavcopy(d): return pd.read_csv("https://archives.nseindia.com/products/content/sec_bhavdata_full_"+d.replace("-","")+".csv")
 def nse_bulkdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/bulk.csv")
