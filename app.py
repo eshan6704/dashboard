@@ -3,8 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
-# Existing modules
-import common
 import stock
 import indices_html
 import index_live_html
