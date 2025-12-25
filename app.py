@@ -12,6 +12,100 @@ import bhavcopy_html
 import nsepython
 import yahooinfo
 import build_nse_fno
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, Callable, Dict
+
+app = FastAPI(title="Stock Backend")
+
+# ---------- CORS ----------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ---------- REQUEST MODEL (ONLY 4 FIELDS) ----------
+class FetchRequest(BaseModel):
+    req_type: str              # stock_info | stock_intraday | stock_daily | ...
+    name: str
+    date_end: str              # dd-mm-yyyy (ALWAYS REQUIRED)
+    date_start: Optional[str] = None  # dd-mm-yyyy (optional)
+
+# ---------- HEALTH ----------
+@app.get("/")
+def health():
+    return {"status": "ok", "service": "backend alive"}
+
+# ---------- HANDLERS ----------
+def stock_info(req: FetchRequest):
+    return {
+        "success": True,
+        "meta": {
+            "req_type": req.req_type,
+            "name": req.name,
+            "as_on": req.date_end
+        },
+        "data": {
+            "sector": "FMCG",
+            "market_cap": "5.2L Cr",
+            "pe": 28.4
+        }
+    }
+
+def stock_intraday(req: FetchRequest):
+    return {
+        "success": True,
+        "meta": {
+            "req_type": req.req_type,
+            "name": req.name,
+            "as_on": req.date_end,
+            "interval": "5min"
+        },
+        "data": [
+            {"time": "09:15", "close": 412.5, "volume": 120345},
+            {"time": "09:20", "close": 413.8, "volume": 98234},
+            {"time": "09:25", "close": 413.5, "volume": 75621}
+        ]
+    }
+
+def stock_daily(req: FetchRequest):
+    return {
+        "success": True,
+        "meta": {
+            "req_type": req.req_type,
+            "name": req.name,
+            "to": req.date_end
+        },
+        "data": [
+            {"date": "23-12-2025", "close": 410.2},
+            {"date": "24-12-2025", "close": 412.9},
+            {"date": "25-12-2025", "close": 413.5}
+        ]
+    }
+
+# ---------- ROUTER ----------
+ROUTER: Dict[str, Callable[[FetchRequest], dict]] = {
+    "stock_info": stock_info,
+    "stock_intraday": stock_intraday,
+    "stock_daily": stock_daily,
+}
+
+# ---------- MAIN ENDPOINT ----------
+@app.post("/api/fetch")
+def fetch_data(req: FetchRequest):
+
+    handler = ROUTER.get(req.req_type)
+
+    if not handler:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported req_type: {req.req_type}"
+        )
+
+    return handler(req)
 
 
 # ======================================================
