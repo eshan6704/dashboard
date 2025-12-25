@@ -1,7 +1,7 @@
 ---
 title: backendfastapi
 emoji: 📉
-colorFrom: pink
+colorFrom: indigo
 colorTo: blue
 sdk: docker
 sdk_version: 6.0.1
