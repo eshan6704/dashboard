@@ -1,4 +1,4 @@
-gradio
+
 yfinance
 pandas
 numpy
@@ -7,5 +7,6 @@ TA-Lib
 boto3
 openpyxl
 requests
-
+fastapi
+uvicorn
 
