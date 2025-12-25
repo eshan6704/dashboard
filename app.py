@@ -1,21 +1,25 @@
+import os
+import importlib
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Callable
 
-import stock
-import indices_html
-import index_live_html
-import preopen_html
-import eq_html
-import bhavcopy_html
-import nsepython
-import yahooinfo
-import build_nse_fno
+# ---------- Dynamically import all .py files ----------
+current_dir = os.path.dirname(os.path.abspath(__file__))
+modules = {}
+for file in os.listdir(current_dir):
+    if file.endswith(".py") and file != "app.py":
+        name = file[:-3]
+        try:
+            modules[name] = importlib.import_module(name)
+            print(f"Imported module: {name}")
+        except Exception as e:
+            print(f"Failed importing {name}: {e}")
 
+# ---------- FastAPI ----------
 app = FastAPI(title="Stock Backend")
 
-# ---------- CORS ----------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,157 +29,88 @@ app.add_middleware(
 
 # ---------- Request Model ----------
 class FetchRequest(BaseModel):
-    req_type: str            # From STOCK_REQ or INDEX_REQ
-    name: str
-    date_start: str          # dd-mm-yyyy
-    date_end: str            # dd-mm-yyyy
+    req_type: str           # like 'info', 'intraday', 'nse_open', etc.
+    mode: str               # 'stock' or 'index'
+    name: str               # symbol or index name
+    date_start: str         # dd-mm-yyyy
+    date_end: str           # dd-mm-yyyy
 
-# ---------- STOCK Handlers ----------
-def stock_info(req: FetchRequest):
-    return common.wrap(yahooinfo.fetch_info(req.name))
+# ---------- Health Check ----------
+@app.get("/")
+def health():
+    return {"status": "ok", "service": "backend alive"}
 
-def stock_intraday(req: FetchRequest):
-    return common.wrap(stock.fetch_intraday(req.name, req.date_start, req.date_end))
+# ---------- STOCK & INDEX Request Mapping ----------
+STOCK_REQ = [
+    "info", "intraday", "daily", "nse_eq", "qresult", "result",
+    "balance", "cashflow", "dividend", "split", "other", "stock_hist"
+]
 
-def stock_daily(req: FetchRequest):
-    return common.wrap(stock.fetch_daily(req.name, req.date_start, req.date_end))
+INDEX_REQ = [
+    "indices", "nse_open", "nse_preopen", "nse_fno", "nse_fiidii",
+    "nse_events", "nse_future", "nse_bhav", "nse_highlow","stock_highlow",
+    "index_history", "nse_largedeals", "nse_most_active",
+    "largedeals_historical", "nse_bulkdeals", "nse_blockdeals",
+    "index_pe_pb_div", "index_total_returns"
+]
 
-def stock_nse_eq(req: FetchRequest):
-    return eq_html.build_eq_html(req.name)
+# ---------- Handler Router ----------
+ROUTER: Dict[str, Callable[[FetchRequest], str]] = {}
 
-def stock_qresult(req: FetchRequest):
-    return common.wrap(stock.fetch_qresult(req.name))
+# STOCK ROUTES
+if 'stock' in modules:
+    ROUTER.update({
+        "info": lambda r: modules['yahooinfo'].fetch_info(r.name),
+        "intraday": lambda r: modules['stock'].fetch_intraday(r.name, r.date_start, r.date_end),
+        "daily": lambda r: modules['stock'].fetch_daily(r.name, r.date_start, r.date_end),
+        "nse_eq": lambda r: modules['eq_html'].build_eq_html(r.name),
+        "qresult": lambda r: modules['stock'].fetch_qresult(r.name),
+        "result": lambda r: modules['stock'].fetch_result(r.name),
+        "balance": lambda r: modules['stock'].fetch_balance(r.name),
+        "cashflow": lambda r: modules['stock'].fetch_cashflow(r.name),
+        "dividend": lambda r: modules['stock'].fetch_dividend(r.name),
+        "split": lambda r: modules['stock'].fetch_split(r.name),
+        "other": lambda r: modules['stock'].fetch_other(r.name),
+    })
 
-def stock_result(req: FetchRequest):
-    return common.wrap(stock.fetch_result(req.name))
+if 'nsepython' in modules:
+    ROUTER["stock_hist"] = lambda r: modules['nsepython'].nse_stock_hist(r.date_start, r.date_end, r.name).to_html()
 
-def stock_balance(req: FetchRequest):
-    return common.wrap(stock.fetch_balance(req.name))
+# INDEX ROUTES
+if 'indices_html' in modules:
+    ROUTER["indices"] = lambda r: modules['indices_html'].build_indices_html()
+if 'index_live_html' in modules:
+    ROUTER["nse_open"] = lambda r: modules['index_live_html'].build_index_live_html()
+if 'preopen_html' in modules:
+    ROUTER["nse_preopen"] = lambda r: modules['preopen_html'].build_preopen_html()
+if 'build_nse_fno' in modules:
+    ROUTER["nse_fno"] = lambda r: modules['build_nse_fno'].nse_fno_html(r.date_end, r.name)
+if 'nsepython' in modules:
+    ROUTER.update({
+        "nse_events": lambda r: modules['nsepython'].nse_events().to_html(),
+        "nse_fiidii": lambda r: modules['nsepython'].nse_fiidii().to_html(),
+        "nse_future": lambda r: modules['nsepython'].nse_future(r.name),
+        "nse_highlow": lambda r: modules['nsepython'].nse_highlow(r.date_end).to_html(),
+        "stock_highlow": lambda r: modules['nsepython'].stock_highlow(r.date_end).to_html(),
+        "index_history": lambda r: modules['nsepython'].index_history(r.name, r.date_start, r.date_end).to_html(),
+        "largedeals_historical": lambda r: modules['nsepython'].nse_largedeals_historical(r.date_start, r.date_end).to_html(),
+        "index_pe_pb_div": lambda r: modules['nsepython'].index_pe_pb_div(r.name, r.date_start, r.date_end).to_html(),
+        "index_total_returns": lambda r: modules['nsepython'].index_total_returns(r.name, r.date_start, r.date_end).to_html(),
+    })
+if 'bhavcopy_html' in modules:
+    ROUTER["nse_bhav"] = lambda r: modules['bhavcopy_html'].build_bhavcopy_html(r.date_end)
 
-def stock_cashflow(req: FetchRequest):
-    return common.wrap(stock.fetch_cashflow(req.name))
-
-def stock_dividend(req: FetchRequest):
-    return common.wrap(stock.fetch_dividend(req.name))
-
-def stock_split(req: FetchRequest):
-    return common.wrap(stock.fetch_split(req.name))
-
-def stock_other(req: FetchRequest):
-    return common.wrap(stock.fetch_other(req.name))
-
-def stock_hist(req: FetchRequest):
-    return nsepython.nse_stock_hist(req.date_start, req.date_end, req.name).to_html()
-
-
-# ---------- INDEX Handlers ----------
-def index_indices(req: FetchRequest):
-    return indices_html.build_indices_html()
-
-def index_nse_open(req: FetchRequest):
-    return index_live_html.build_index_live_html()
-
-def index_nse_preopen(req: FetchRequest):
-    return preopen_html.build_preopen_html()
-
-def index_nse_fno(req: FetchRequest):
-    return build_nse_fno.nse_fno_html(req.date_end, req.name)
-
-def index_nse_fiidii(req: FetchRequest):
-    return nsepython.nse_fiidii().to_html()
-
-def index_nse_events(req: FetchRequest):
-    return nsepython.nse_events().to_html()
-
-def index_nse_future(req: FetchRequest):
-    return common.wrap(nsepython.nse_future(req.name))
-
-def index_nse_bhav(req: FetchRequest):
-    return bhavcopy_html.build_bhavcopy_html(req.date_end)
-
-def index_nse_highlow(req: FetchRequest):
-    return nsepython.nse_highlow(req.date_end).to_html()
-
-def index_stock_highlow(req: FetchRequest):
-    return nsepython.stock_highlow(req.date_end).to_html()
-
-def index_history(req: FetchRequest):
-    return nsepython.index_history("NIFTY", req.date_start, req.date_end).to_html()
-
-def index_nse_largedeals(req: FetchRequest):
-    return nsepython.nse_largedeals().to_html()
-
-def index_nse_most_active(req: FetchRequest):
-    return nsepython.nse_most_active().to_html()
-
-def index_largedeals_historical(req: FetchRequest):
-    return nsepython.nse_largedeals_historical(req.date_start, req.date_end).to_html()
-
-def index_nse_bulkdeals(req: FetchRequest):
-    return nsepython.nse_bulkdeals().to_html()
-
-def index_nse_blockdeals(req: FetchRequest):
-    return nsepython.nse_blockdeals().to_html()
-
-def index_pe_pb_div(req: FetchRequest):
-    return nsepython.index_pe_pb_div("NIFTY", req.date_start, req.date_end).to_html()
-
-def index_total_returns(req: FetchRequest):
-    return nsepython.index_total_returns("NIFTY", req.date_start, req.date_end).to_html()
-
-
-# ---------- ROUTER MAPPING ----------
-ROUTER = {
-    # STOCK
-    "info": stock_info,
-    "intraday": stock_intraday,
-    "daily": stock_daily,
-    "nse_eq": stock_nse_eq,
-    "qresult": stock_qresult,
-    "result": stock_result,
-    "balance": stock_balance,
-    "cashflow": stock_cashflow,
-    "dividend": stock_dividend,
-    "split": stock_split,
-    "other": stock_other,
-    "stock_hist": stock_hist,
-
-    # INDEX
-    "indices": index_indices,
-    "nse_open": index_nse_open,
-    "nse_preopen": index_nse_preopen,
-    "nse_fno": index_nse_fno,
-    "nse_fiidii": index_nse_fiidii,
-    "nse_events": index_nse_events,
-    "nse_future": index_nse_future,
-    "nse_bhav": index_nse_bhav,
-    "nse_highlow": index_nse_highlow,
-    "stock_highlow": index_stock_highlow,
-    "index_history": index_history,
-    "nse_largedeals": index_nse_largedeals,
-    "nse_most_active": index_nse_most_active,
-    "largedeals_historical": index_largedeals_historical,
-    "nse_bulkdeals": index_nse_bulkdeals,
-    "nse_blockdeals": index_nse_blockdeals,
-    "index_pe_pb_div": index_pe_pb_div,
-    "index_total_returns": index_total_returns
-}
-
-# ---------- MAIN ENDPOINT ----------
+# ---------- Fetch Endpoint ----------
 @app.post("/api/fetch")
 def fetch_data(req: FetchRequest):
     handler = ROUTER.get(req.req_type)
     if not handler:
-        raise HTTPException(status_code=400, detail=f"Unsupported req_type: {req.req_type}")
+        raise HTTPException(status_code=400, detail=f"No handler for req_type: {req.req_type}")
+
     try:
-        html_content = handler(req)
-        return {
-            "success": True,
-            "req_type": req.req_type,
-            "name": req.name,
-            "date_start": req.date_start,
-            "date_end": req.date_end,
-            "html": html_content
-        }
+        result = handler(req)
+        if 'common' in modules and hasattr(modules['common'], 'wrap'):
+            return modules['common'].wrap(result)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
