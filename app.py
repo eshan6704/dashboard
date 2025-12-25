@@ -1,25 +1,22 @@
-import os
-import importlib
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, Dict, Callable
 
-# ---------- Dynamically import all .py files ----------
-current_dir = os.path.dirname(os.path.abspath(__file__))
-modules = {}
-for file in os.listdir(current_dir):
-    if file.endswith(".py") and file != "app.py":
-        name = file[:-3]
-        try:
-            modules[name] = importlib.import_module(name)
-            print(f"Imported module: {name}")
-        except Exception as e:
-            print(f"Failed importing {name}: {e}")
+# Import all modules from same folder
+from stock import *
+from indices_html import *
+from index_live_html import *
+from preopen_html import *
+from eq_html import *
+from bhavcopy_html import *
+from nsepython import *
+from yahooinfo import *
+from build_nse_fno import *
+from common import wrap
 
-# ---------- FastAPI ----------
-app = FastAPI(title="Stock Backend")
+app = FastAPI(title="Stock / Index Backend")
 
+# ---------- CORS ----------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,20 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------- Request Model ----------
-class FetchRequest(BaseModel):
-    req_type: str           # like 'info', 'intraday', 'nse_open', etc.
-    mode: str               # 'stock' or 'index'
-    name: str               # symbol or index name
-    date_start: str         # dd-mm-yyyy
-    date_end: str           # dd-mm-yyyy
-
-# ---------- Health Check ----------
-@app.get("/")
-def health():
-    return {"status": "ok", "service": "backend alive"}
-
-# ---------- STOCK & INDEX Request Mapping ----------
+# ---------- Valid req_type options ----------
 STOCK_REQ = [
     "info", "intraday", "daily", "nse_eq", "qresult", "result",
     "balance", "cashflow", "dividend", "split", "other", "stock_hist"
@@ -54,63 +38,72 @@ INDEX_REQ = [
     "index_pe_pb_div", "index_total_returns"
 ]
 
-# ---------- Handler Router ----------
-ROUTER: Dict[str, Callable[[FetchRequest], str]] = {}
+# ---------- Request Model ----------
+class FetchRequest(BaseModel):
+    mode: str               # stock / index
+    req_type: str
+    name: str
+    date_start: str         # dd-mm-yyyy
+    date_end: str           # dd-mm-yyyy
 
-# STOCK ROUTES
-if 'stock' in modules:
-    ROUTER.update({
-        "info": lambda r: modules['yahooinfo'].fetch_info(r.name),
-        "intraday": lambda r: modules['stock'].fetch_intraday(r.name, r.date_start, r.date_end),
-        "daily": lambda r: modules['stock'].fetch_daily(r.name, r.date_start, r.date_end),
-        "nse_eq": lambda r: modules['eq_html'].build_eq_html(r.name),
-        "qresult": lambda r: modules['stock'].fetch_qresult(r.name),
-        "result": lambda r: modules['stock'].fetch_result(r.name),
-        "balance": lambda r: modules['stock'].fetch_balance(r.name),
-        "cashflow": lambda r: modules['stock'].fetch_cashflow(r.name),
-        "dividend": lambda r: modules['stock'].fetch_dividend(r.name),
-        "split": lambda r: modules['stock'].fetch_split(r.name),
-        "other": lambda r: modules['stock'].fetch_other(r.name),
-    })
+# ---------- Health ----------
+@app.get("/")
+def health():
+    return {"status": "ok", "service": "backend alive"}
 
-if 'nsepython' in modules:
-    ROUTER["stock_hist"] = lambda r: modules['nsepython'].nse_stock_hist(r.date_start, r.date_end, r.name).to_html()
+# ---------- STOCK Handlers ----------
+def handle_stock(req: FetchRequest):
+    if req.req_type not in STOCK_REQ:
+        raise HTTPException(status_code=400, detail=f"Invalid stock req_type: {req.req_type}")
 
-# INDEX ROUTES
-if 'indices_html' in modules:
-    ROUTER["indices"] = lambda r: modules['indices_html'].build_indices_html()
-if 'index_live_html' in modules:
-    ROUTER["nse_open"] = lambda r: modules['index_live_html'].build_index_live_html()
-if 'preopen_html' in modules:
-    ROUTER["nse_preopen"] = lambda r: modules['preopen_html'].build_preopen_html()
-if 'build_nse_fno' in modules:
-    ROUTER["nse_fno"] = lambda r: modules['build_nse_fno'].nse_fno_html(r.date_end, r.name)
-if 'nsepython' in modules:
-    ROUTER.update({
-        "nse_events": lambda r: modules['nsepython'].nse_events().to_html(),
-        "nse_fiidii": lambda r: modules['nsepython'].nse_fiidii().to_html(),
-        "nse_future": lambda r: modules['nsepython'].nse_future(r.name),
-        "nse_highlow": lambda r: modules['nsepython'].nse_highlow(r.date_end).to_html(),
-        "stock_highlow": lambda r: modules['nsepython'].stock_highlow(r.date_end).to_html(),
-        "index_history": lambda r: modules['nsepython'].index_history(r.name, r.date_start, r.date_end).to_html(),
-        "largedeals_historical": lambda r: modules['nsepython'].nse_largedeals_historical(r.date_start, r.date_end).to_html(),
-        "index_pe_pb_div": lambda r: modules['nsepython'].index_pe_pb_div(r.name, r.date_start, r.date_end).to_html(),
-        "index_total_returns": lambda r: modules['nsepython'].index_total_returns(r.name, r.date_start, r.date_end).to_html(),
-    })
-if 'bhavcopy_html' in modules:
-    ROUTER["nse_bhav"] = lambda r: modules['bhavcopy_html'].build_bhavcopy_html(r.date_end)
+    t = req.req_type.lower()
+    if t == "info": return wrap(yahooinfo.fetch_info(req.name))
+    if t == "intraday": return wrap(stock.fetch_intraday(req.name, req.date_start, req.date_end))
+    if t == "daily": return wrap(stock.fetch_daily(req.name, req.date_start, req.date_end))
+    if t == "nse_eq": return eq_html.build_eq_html(req.name)
+    if t == "qresult": return wrap(stock.fetch_qresult(req.name))
+    if t == "result": return wrap(stock.fetch_result(req.name))
+    if t == "balance": return wrap(stock.fetch_balance(req.name))
+    if t == "cashflow": return wrap(stock.fetch_cashflow(req.name))
+    if t == "dividend": return wrap(stock.fetch_dividend(req.name))
+    if t == "split": return wrap(stock.fetch_split(req.name))
+    if t == "other": return wrap(stock.fetch_other(req.name))
+    if t == "stock_hist": return nsepython.nse_stock_hist(req.date_start, req.date_end, req.name).to_html()
+    return wrap(f"<h3>No handler for stock req_type: {t}</h3>")
 
-# ---------- Fetch Endpoint ----------
+# ---------- INDEX Handlers ----------
+def handle_index(req: FetchRequest):
+    if req.req_type not in INDEX_REQ:
+        raise HTTPException(status_code=400, detail=f"Invalid index req_type: {req.req_type}")
+
+    t = req.req_type.lower()
+    if t == "indices": return indices_html.build_indices_html()
+    if t == "nse_open": return index_live_html.build_index_live_html()
+    if t == "nse_preopen": return preopen_html.build_preopen_html()
+    if t == "nse_fno": return build_nse_fno.nse_fno_html(req.date_end, req.name)
+    if t == "nse_fiidii": return nsepython.nse_fiidii().to_html()
+    if t == "nse_events": return nsepython.nse_events().to_html()
+    if t == "nse_future": return wrap(nsepython.nse_future(req.name))
+    if t == "nse_highlow": return nsepython.nse_highlow(req.date_end).to_html()
+    if t == "stock_highlow": return nsepython.stock_highlow(req.date_end).to_html()
+    if t == "nse_bhav": return bhavcopy_html.build_bhavcopy_html(req.date_end)
+    if t == "nse_largedeals": return nsepython.nse_largedeals().to_html()
+    if t == "nse_bulkdeals": return nsepython.nse_bulkdeals().to_html()
+    if t == "nse_blockdeals": return nsepython.nse_blockdeals().to_html()
+    if t == "nse_most_active": return nsepython.nse_most_active().to_html()
+    if t == "index_history": return nsepython.index_history("NIFTY", req.date_start, req.date_end).to_html()
+    if t == "largedeals_historical": return nsepython.nse_largedeals_historical(req.date_start, req.date_end).to_html()
+    if t == "index_pe_pb_div": return nsepython.index_pe_pb_div("NIFTY", req.date_start, req.date_end).to_html()
+    if t == "index_total_returns": return nsepython.index_total_returns("NIFTY", req.date_start, req.date_end).to_html()
+    return wrap(f"<h3>No handler for index req_type: {t}</h3>")
+
+# ---------- Main POST Endpoint ----------
 @app.post("/api/fetch")
 def fetch_data(req: FetchRequest):
-    handler = ROUTER.get(req.req_type)
-    if not handler:
-        raise HTTPException(status_code=400, detail=f"No handler for req_type: {req.req_type}")
-
-    try:
-        result = handler(req)
-        if 'common' in modules and hasattr(modules['common'], 'wrap'):
-            return modules['common'].wrap(result)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    mode = req.mode.lower()
+    if mode == "stock":
+        return handle_stock(req)
+    elif mode == "index":
+        return handle_index(req)
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid mode: {req.mode}")
