@@ -1,9 +1,9 @@
 ---
-title: backend
+title: backendfastapi
 emoji: 📉
 colorFrom: pink
 colorTo: blue
-sdk: gradio
+sdk: docker
 sdk_version: 6.0.1
 app_file: app.py
 pinned: false
