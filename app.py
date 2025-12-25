@@ -1,21 +1,18 @@
+# Always explicitly import modules used in your endpoint
+import common
+import stock
+import indices_html
+import index_live_html
+import preopen_html
+import eq_html
+import bhavcopy_html
+import nsepython
+import yahooinfo
+import build_nse_fno
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import os
-import importlib
-
-# ---------- Auto-import all .py files in current folder ----------
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-for file in os.listdir(current_dir):
-    if file.endswith(".py") and file not in ["app.py", "__init__.py"]:
-        module_name = file[:-3]  # remove '.py'
-        try:
-            globals()[module_name] = importlib.import_module(module_name)
-            print(f"Imported module: {module_name}")
-        except Exception as e:
-            print(f"Failed to import {module_name}: {e}")
-
 
 # ---------- FastAPI app ----------
 app = FastAPI(title="Stock / Index Backend")
