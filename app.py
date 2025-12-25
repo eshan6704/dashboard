@@ -4,20 +4,17 @@ from pydantic import BaseModel
 import os
 import importlib
 
-
+# ---------- Auto-import all .py files in current folder ----------
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Optional: define explicit import order if needed
-module_order = ["common", "stock", "indices_html", "index_live_html", 
-                "preopen_html", "eq_html", "bhavcopy_html", 
-                "nsepython", "yahooinfo", "build_nse_fno"]
-
-for module_name in module_order:
-    try:
-        globals()[module_name] = importlib.import_module(module_name)
-        print(f"Imported module: {module_name}")
-    except Exception as e:
-        print(f"Failed to import {module_name}: {e}")
+for file in os.listdir(current_dir):
+    if file.endswith(".py") and file not in ["app.py", "__init__.py"]:
+        module_name = file[:-3]  # remove '.py'
+        try:
+            globals()[module_name] = importlib.import_module(module_name)
+            print(f"Imported module: {module_name}")
+        except Exception as e:
+            print(f"Failed to import {module_name}: {e}")
 
 
 # ---------- FastAPI app ----------
