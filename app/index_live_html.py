@@ -1,9 +1,9 @@
-from nsepython import *
+from . import nsepython
 import pandas as pd
 from datetime import datetime as dt
 
 # persist helpers (HF only)
-from persist import exists, load, save
+from .persist import exists, load, save
 
 
 def build_index_live_html():
