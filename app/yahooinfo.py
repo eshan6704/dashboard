@@ -7,7 +7,7 @@ import traceback
 import time
 
 # persist helpers
-from persist import exists, load, save
+from .persist import exists, load, save
 
 
 # ==============================
