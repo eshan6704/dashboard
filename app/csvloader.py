@@ -9,7 +9,7 @@ from typing import Dict, Union
 
 import pandas as pd
 
-from persist import exists, load, save
+from . import persist
 
 
 # ==============================
