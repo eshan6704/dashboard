@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import datetime
 import traceback
-from backblaze import *
+from  . import backblaze
 
 # ============================================================
 #                   NUMBER FORMATTING HELPERS
