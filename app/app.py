@@ -5,31 +5,18 @@ import os
 import importlib.util
 
 # -------------------------------------------------------
-# Explicit module loader (HF-safe)
-# -------------------------------------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-def load_module(name):
-    path = os.path.join(BASE_DIR, f"{name}.py")
-    if not os.path.exists(path):
-        raise ImportError(f"Module file not found: {path}")
-
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
+# 
 # -------------------------------------------------------
 # Load ALL local modules explicitly
 # -------------------------------------------------------
-common = load_module("common")
-stock = load_module("stock")
-indices_html = load_module("indices_html")
-index_live_html = load_module("index_live_html")
-preopen_html = load_module("preopen_html")
-eq_html = load_module("eq_html")
-bhavcopy_html = load_module("bhavcopy_html")
-build_nse_fno = load_module("build_nse_fno")
+from . import common
+from . import stock
+from . import indices_html
+from . import index_live_html
+from . import preopen_html
+from . import eq_html
+from . import bhavcopy_html
+from . import build_nse_fno
 
 # External libs (installed via requirements.txt)
 import nsepython
