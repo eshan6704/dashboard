@@ -1,5 +1,5 @@
 import pandas as pd
-from . import nsepythonmodified
+from . import nsepythonmofied
 import html
 from datetime import datetime as dt
 from collections import defaultdict
