@@ -1,5 +1,5 @@
 import pandas as pd
-from . import nsepython as nse
+from . import nsepythonmodified as nse
 from . import persist
 from datetime import datetime as dt
 
