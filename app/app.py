@@ -21,7 +21,7 @@ from . import nsepythonmodified
 
 # External libs (installed via requirements.txt)
 #import nsepython as nse
-import yahooinfo
+from . import yahooinfo
 
 # -------------------------------------------------------
 # FastAPI app
