@@ -1,6 +1,6 @@
 import pandas as pd
-import nsepython as nse
-import persist
+from . import nsepython as nse
+from . import persist
 from datetime import datetime as dt
 
 
