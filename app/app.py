@@ -17,7 +17,7 @@ from . import preopen_html
 from . import eq_html
 from . import bhavcopy_html
 from . import build_nse_fno
-from . import nsepythonmofied
+from . import nsepythonmodified
 
 # External libs (installed via requirements.txt)
 #import nsepython as nse
