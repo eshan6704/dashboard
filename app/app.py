@@ -19,7 +19,7 @@ from . import bhavcopy_html
 from . import build_nse_fno
 
 # External libs (installed via requirements.txt)
-import nsepython
+import nsepython as nse
 import yahooinfo
 
 # -------------------------------------------------------
