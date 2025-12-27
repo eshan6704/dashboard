@@ -1,16 +1,16 @@
-# build_nse_fno_live.py
+# build_nse_fno_hf.py
 import os
-import subprocess
 import zipfile
-import tempfile
+import io
 import pandas as pd
+import requests
 from datetime import datetime as dt
 
 NSE_FO_BASE = "https://archives.nseindia.com/content/fo"
 
 
 # ============================================================
-# FETCH FO BHAVCOPY (RAW DF)
+# FETCH FO BHAVCOPY (RAW DF) - HF-friendly
 # ============================================================
 def fetch_fo_bhavcopy(fo_date: str) -> pd.DataFrame:
     """
@@ -23,28 +23,17 @@ def fetch_fo_bhavcopy(fo_date: str) -> pd.DataFrame:
     zip_name = f"{file_name}.zip"
     url = f"{NSE_FO_BASE}/{zip_name}"
 
-    with tempfile.TemporaryDirectory() as tmp:
-        zip_path = os.path.join(tmp, zip_name)
+    headers = {"User-Agent": "Mozilla/5.0"}
 
-        cmd = [
-            "curl", "-L",
-            "-A", "Mozilla/5.0",
-            "--tlsv1.2",
-            "--compressed",
-            "-o", zip_path,
-            url
-        ]
+    r = requests.get(url, headers=headers, timeout=10)
+    if r.status_code != 200:
+        raise RuntimeError(f"FO bhavcopy download failed ({r.status_code})")
 
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        if res.returncode != 0 or not os.path.exists(zip_path) or os.path.getsize(zip_path) < 1024:
-            raise RuntimeError("FO bhavcopy download failed")
-
-        with zipfile.ZipFile(zip_path) as z:
-            if file_name not in z.namelist():
-                raise RuntimeError("FO bhavcopy csv missing inside zip")
-            with z.open(file_name) as f:
-                return pd.read_csv(f)
+    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+        if file_name not in z.namelist():
+            raise RuntimeError("FO bhavcopy CSV missing inside zip")
+        with z.open(file_name) as f:
+            return pd.read_csv(f)
 
 
 # ============================================================
@@ -94,7 +83,6 @@ def nse_fno_html(fo_date: str, symbol: str) -> str:
     """
     Returns LIVE HTML for NSE F&O for the given date and symbol.
     """
-
     fo_df = fetch_fo_bhavcopy(fo_date)
     if fo_df.empty:
         return "<h3>FO Bhavcopy empty</h3>"
@@ -146,5 +134,4 @@ h2,h3,h4 {{ margin:6px 0; }}
 </body>
 </html>
 """
-
     return html
