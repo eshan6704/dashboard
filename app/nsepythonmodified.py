@@ -204,12 +204,12 @@ def nse_results(index="equities",period="Quarterly"):
         return pd.json_normalize(nsefetch(f'https://www.nseindia.com/api/corporates-financial-results?index={index}&period={period}'))
     print("Invalid Input")
 
-def nse_events(): return pd.json_normalize(nsefetch('https://www.nseindia.com/api/event-calendar'))
+def nse_events(): return pd.json_normalize(nsefetch('https://www.nseindia.com/api/event-calendar')).to_html()
 def nse_past_results(symbol): return nsefetch('https://www.nseindia.com/api/results-comparision?symbol='+nsesymbolpurify(symbol))
 def nse_blockdeal(): return nsefetch('https://nseindia.com/api/block-deal')
 def nse_marketStatus(): return nsefetch('https://nseindia.com/api/marketStatus')
 def nse_circular(mode="latest"): return nsefetch('https://www.nseindia.com/api/latest-circular' if mode=="latest" else 'https://www.nseindia.com/api/circulars')
-def nse_fiidii(mode="pandas"): return pd.DataFrame(nsefetch('https://www.nseindia.com/api/fiidiiTradeReact'))
+def nse_fiidii(mode="pandas"): return pd.DataFrame(nsefetch('https://www.nseindia.com/api/fiidiiTradeReact')).to_html()
 
 def nsetools_get_quote(symbol):
     p=nsefetch('https://www.nseindia.com/api/equity-stockIndices?index=SECURITIES%20IN%20F%26O')
