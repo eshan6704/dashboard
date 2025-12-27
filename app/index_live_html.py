@@ -1,4 +1,4 @@
-from . import  nsepythonmodified
+from . import  nsepythonmodified as ns
 import pandas as pd
 from datetime import datetime as dt
 
@@ -24,7 +24,7 @@ def build_index_live_html():
 
     # ================= LIVE FETCH =================
     index_name = "NIFTY 50"
-    p = nse_index_live(index_name)
+    p = ns.nse_index_live(index_name)
 
     full_df = p.get("data", pd.DataFrame())
     rem_df  = p.get("rem", pd.DataFrame())
