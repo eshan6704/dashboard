@@ -54,23 +54,6 @@ def daily(symbol):
     return yf.download(symbol + ".NS", period="1y", interval="1d").round(2)
 
 
-# ================================================================
-#              HTML HELPERS (delegated to common)
-# ================================================================
-
-format_number = common.format_number
-format_large_number = common.format_large_number
-make_table = common.make_table
-html_card = common.html_card
-html_section = common.html_section
-html_error = common.html_error
-clean_df = common.clean_df
-safe_get = common.safe_get
-wrap_html = common.wrap_html
-
-#build_chart = chart_builder.build_chart
-talib_df = ta_indi_pat.talib_df
-
 
 # ================================================================
 #                         INTRADAY
