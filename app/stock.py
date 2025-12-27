@@ -7,9 +7,8 @@ from datetime import datetime as dt
 
 # persist helpers
 from . import persist
-from . import common
+from .common import wrap_html, make_table
 from . import backblaze as b2
-
 from . import ta_indi_pat
 
 
