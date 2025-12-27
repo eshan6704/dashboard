@@ -1,9 +1,11 @@
 from fastapi.responses import HTMLResponse
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware  # ✅ Add this
 from pydantic import BaseModel
 import os
 import importlib.util
+
 
 # -------------------------------------------------------
 # 
@@ -28,13 +30,24 @@ from . import yahooinfo
 # FastAPI app
 # -------------------------------------------------------
 app = FastAPI(title="Stock / Index Backend")
+app = FastAPI(title="Stock / Index Backend")
 
+# -------------------------------
+# Existing CORS middleware
+# -------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# -------------------------------
+# 🔥 Add GZip middleware here
+# -------------------------------
+# Compress all responses larger than 1 KB automatically
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 
 # -------------------------------------------------------
 # Valid request types
