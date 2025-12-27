@@ -90,7 +90,7 @@ def build_option_chain(df: pd.DataFrame) -> pd.DataFrame:
 # ============================================================
 # MAIN LIVE HTML BUILDER
 # ============================================================
-def build_nse_fno_live_html(fo_date: str, symbol: str) -> str:
+def nse_fno_live_html(fo_date: str, symbol: str) -> str:
     """
     Returns LIVE HTML for NSE F&O for the given date and symbol.
     """
