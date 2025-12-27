@@ -16,6 +16,9 @@ NSE_FO_BASE = "https://archives.nseindia.com/content/fo"
 # FETCH FO BHAVCOPY (RAW DF)
 # ============================================================
 def _fetch_fo_bhavcopy(fo_date: str) -> pd.DataFrame:
+    """
+    fo_date format : DD-MM-YYYY
+    """
     date = dt.strptime(fo_date, "%d-%m-%Y").date()
     ymd = date.strftime("%Y%m%d")
 
@@ -41,6 +44,9 @@ def _fetch_fo_bhavcopy(fo_date: str) -> pd.DataFrame:
             raise RuntimeError("FO bhavcopy download failed")
 
         with zipfile.ZipFile(zip_path) as z:
+            if file_name not in z.namelist():
+                raise RuntimeError("FO bhavcopy csv missing inside zip")
+
             with z.open(file_name) as f:
                 return pd.read_csv(f)
 
@@ -86,13 +92,11 @@ def _build_option_chain(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ============================================================
-# MAIN HTML BUILDER (STYLE = build_index_live_html)
+# MAIN HTML BUILDER
 # ============================================================
 def build_nse_fno_html(fo_date: str, symbol: str) -> str:
     """
-    Daily NSE F&O HTML
-    - Bhavcopy cached per DATE
-    - HTML cached per DATE + SYMBOL
+    Returns HTML ONLY
     """
 
     date_key = dt.strptime(fo_date, "%d-%m-%Y").strftime("%Y%m%d")
@@ -102,8 +106,12 @@ def build_nse_fno_html(fo_date: str, symbol: str) -> str:
     # ================= HTML CACHE =================
     if exists(cache_html, "html"):
         cached = load(cache_html, "html")
+
         if isinstance(cached, str):
             return cached
+
+        if isinstance(cached, pd.DataFrame):
+            return cached.to_html(index=False)
 
     # ================= BHAVCOPY CACHE =================
     if exists(cache_df):
@@ -112,8 +120,12 @@ def build_nse_fno_html(fo_date: str, symbol: str) -> str:
         fo_df = _fetch_fo_bhavcopy(fo_date)
         save(cache_df, fo_df)
 
+    if not isinstance(fo_df, pd.DataFrame) or fo_df.empty:
+        return "<h3>Invalid FO Bhavcopy</h3>"
+
     # ================= PROCESS =================
     fo = fo_df.copy()
+
     exp = pd.to_datetime(fo["FininstrmActlXpryDt"], errors="coerce")
     today = pd.Timestamp.today().normalize()
 
@@ -144,6 +156,7 @@ body {{ font-family: Arial; margin: 12px; background:#f5f5f5; }}
 table {{ border-collapse: collapse; width: 100%; background:white; }}
 th, td {{ border:1px solid #bbb; padding:6px; text-align:center; }}
 th {{ background:#2e7d32; color:white; }}
+h2,h3,h4 {{ margin:6px 0; }}
 </style>
 </head>
 <body>
@@ -152,10 +165,10 @@ th {{ background:#2e7d32; color:white; }}
 <h4>Expiry: {expiry}</h4>
 
 <h3>Futures</h3>
-{fut_df.to_html(index=False)}
+{fut_df.to_html(index=False) if not fut_df.empty else "<i>No Futures</i>"}
 
 <h3>Option Chain</h3>
-{opt_chain.to_html(index=False)}
+{opt_chain.to_html(index=False) if not opt_chain.empty else "<i>No Options</i>"}
 
 </body>
 </html>
