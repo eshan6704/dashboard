@@ -81,7 +81,7 @@ def handle_stock(req: FetchRequest):
     if t == "daily":
         return stock.fetch_daily(req.name, req.date_start, req.date_end)
     if t == "nse_eq":
-        return eq_html.build_eq_html(req.name)
+        return eq.build_eq_html(req.name)
     if t == "qresult":
         return stock.fetch_qresult(req.name)
     if t == "result":
@@ -97,7 +97,7 @@ def handle_stock(req: FetchRequest):
     if t == "other":
         return stock.fetch_other(req.name)
     if t == "stock_hist":
-        return nsepythonmodied.nse_stock_hist(
+        return ns.nse_stock_hist(
             req.date_start, req.date_end, req.name
         ).to_html()
 
@@ -110,45 +110,45 @@ def handle_index(req: FetchRequest):
     t = req.req_type.lower()
 
     if t == "indices":
-        return indices_html.build_indices_html()
+        return indices.build_indices_html()
     if t == "nse_open":
-        return index_live_html.build_index_live_html()
+        return live.build_index_live_html()
     if t == "nse_preopen":
-        return preopen_html.build_preopen_html()
+        return pre.build_preopen_html()
     if t == "nse_fno":
-        return build_nse_fno.nse_fno_html(req.date_end, req.name)
+        return fno.nse_fno_html(req.date_end, req.name)
     if t == "nse_fiidii":
-        return nsepythonmodied.nse_fiidii()
+        return ns.nse_fiidii()
     if t == "nse_events":
-        return nsepythonmodied.nse_events()
+        return ns.nse_events()
     if t == "nse_future":
-        return nsepython.nse_future(req.name)
+        return ns.nse_future(req.name)
     if t == "nse_highlow":
-        return nsepythonmodied.nse_highlow(req.date_end)
+        return ns.nse_highlow(req.date_end)
     if t == "stock_highlow":
-        return nsepythonmodied.stock_highlow(req.date_end)
+        return ns.stock_highlow(req.date_end)
     if t == "nse_bhav":
-        return bhavcopy_html.build_bhavcopy_html(req.date_end)
+        return bhav.build_bhavcopy_html(req.date_end)
     if t == "nse_largedeals":
-        return nsepythonmodied.nse_largedeals()
+        return ns.nse_largedeals()
     if t == "nse_bulkdeals":
-        return nsepythonmodied.nse_bulkdeals()
+        return ns.nse_bulkdeals()
     if t == "nse_blockdeals":
-        return nsepythonmodied.nse_blockdeals()
+        return ns.nse_blockdeals()
     if t == "nse_most_active":
-        return nsepython.nse_most_active()
+        return ns.nse_most_active()
     if t == "index_history":
-        return nsepythonmodied.index_history("NIFTY", req.date_start, req.date_end)
+        return ns.index_history("NIFTY", req.date_start, req.date_end)
     if t == "largedeals_historical":
-        return nsepythonmodied.nse_largedeals_historical(
+        return ns.nse_largedeals_historical(
             req.date_start, req.date_end
         )
     if t == "index_pe_pb_div":
-        return nsepythonmodied.index_pe_pb_div(
+        return ns.index_pe_pb_div(
             "NIFTY", req.date_start, req.date_end
         )
     if t == "index_total_returns":
-        return nsepythonmodied.index_total_returns(
+        return ns.index_total_returns(
             "NIFTY", req.date_start, req.date_end
         )
 
