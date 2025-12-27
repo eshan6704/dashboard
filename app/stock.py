@@ -77,7 +77,7 @@ talib_df = ta_indi_pat.talib_df
 #                         INTRADAY
 # ================================================================
 
-def fetch_intraday(symbol, indicators=None):
+def fetch_intraday(symbol, indicators=None,b2_save=False):
     key = f"intraday_{symbol}"
 
     if persist.exists(key, "html"):
@@ -93,8 +93,9 @@ def fetch_intraday(symbol, indicators=None):
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-
-        b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
+        
+        if b2_save:
+            b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
 
         df_display = df.tail(50).copy()
         df_display.reset_index(inplace=True)
@@ -116,7 +117,7 @@ def fetch_intraday(symbol, indicators=None):
 #                           DAILY
 # ================================================================
 
-def fetch_daily(symbol):
+def fetch_daily(symbol,b2_save=False):
     key = f"daily_{symbol}"
 
     if persist.exists(key, "html"):
@@ -130,7 +131,8 @@ def fetch_daily(symbol):
         if df is None or df is False or df.empty:
             return wrap_html(f"<h1>No daily data for {symbol}</h1>")
 
-        b2.upload_file("eshanhf", f"daily/{symbol}.csv", df)
+        if b2_save:
+            b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
 
         df_display = df.tail(50).copy()
         df_display.reset_index(inplace=True)
@@ -152,7 +154,7 @@ def fetch_daily(symbol):
 #                        QUARTERLY
 # ================================================================
 
-def fetch_qresult(symbol):
+def fetch_qresult(symbol,b2_save=False):
     key = f"qresult_{symbol}"
 
     if persist.exists(key, "html"):
@@ -166,7 +168,8 @@ def fetch_qresult(symbol):
         if df.empty:
             return wrap_html(f"<h1>No quarterly results for {symbol}</h1>")
 
-        b2.upload_file("eshanhf", f"qresult/{symbol}.csv", df)
+        if b2_save:
+            b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
 
         df_display = df.copy()
         for col in df_display.columns:
@@ -189,7 +192,7 @@ def fetch_qresult(symbol):
 #                          ANNUAL
 # ================================================================
 
-def fetch_result(symbol):
+def fetch_result(symbol,b2_save=False):
     key = f"result_{symbol}"
 
     if persist.exists(key, "html"):
@@ -203,7 +206,8 @@ def fetch_result(symbol):
         if df.empty:
             return wrap_html(f"<h1>No annual results for {symbol}</h1>")
 
-        b2.upload_file("eshanhf", f"result/{symbol}.csv", df)
+        if b2_save:
+            b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
 
         df_display = df.copy()
         for col in df_display.columns:
@@ -226,7 +230,7 @@ def fetch_result(symbol):
 #                        BALANCE SHEET
 # ================================================================
 
-def fetch_balance(symbol):
+def fetch_balance(symbol,b2_save=False):
     key = f"balance_{symbol}"
 
     if persist.exists(key, "html"):
@@ -240,7 +244,8 @@ def fetch_balance(symbol):
         if df.empty:
             return wrap_html(f"<h1>No balance sheet for {symbol}</h1>")
 
-        b2.upload_file("eshanhf", f"balance/{symbol}.csv", df)
+        if b2_save:
+            b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
 
         df_display = df.copy()
         for col in df_display.columns:
@@ -263,7 +268,7 @@ def fetch_balance(symbol):
 #                          CASHFLOW
 # ================================================================
 
-def fetch_cashflow(symbol):
+def fetch_cashflow(symbol,b2_save=False):
     key = f"cashflow_{symbol}"
 
     if persist.exists(key, "html"):
@@ -277,7 +282,8 @@ def fetch_cashflow(symbol):
         if df.empty:
             return wrap_html(f"<h1>No cashflow for {symbol}</h1>")
 
-        b2.upload_file("eshanhf", f"cashflow/{symbol}.csv", df)
+        if b2_save:
+            b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
 
         df_display = df.copy()
         for col in df_display.columns:
@@ -300,7 +306,7 @@ def fetch_cashflow(symbol):
 #                         DIVIDEND
 # ================================================================
 
-def fetch_dividend(symbol):
+def fetch_dividend(symbol,b2_save=False):
     key = f"dividend_{symbol}"
 
     if persist.exists(key, "html"):
@@ -316,7 +322,8 @@ def fetch_dividend(symbol):
 
         df_display = df.copy()
         df_display.reset_index(inplace=True)
-
+        if b2_save:
+            b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
         html = wrap_html(make_table(df_display), title=f"{symbol} Dividends")
         persist.save(key, html, "html")
         return html
@@ -330,7 +337,7 @@ def fetch_dividend(symbol):
 #                            SPLIT
 # ================================================================
 
-def fetch_split(symbol):
+def fetch_split(symbol,b2_save=False):
     key = f"split_{symbol}"
 
     if persist.exists(key, "html"):
@@ -346,7 +353,8 @@ def fetch_split(symbol):
 
         df_display = df.copy()
         df_display.reset_index(inplace=True)
-
+        if b2_save:
+            b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
         html = wrap_html(make_table(df_display), title=f"{symbol} Splits")
         persist.save(key, html, "html")
         return html
@@ -360,7 +368,7 @@ def fetch_split(symbol):
 #                           EARNINGS
 # ================================================================
 
-def fetch_other(symbol):
+def fetch_other(symbol,b2_save=False):
     key = f"other_{symbol}"
 
     if persist.exists(key, "html"):
@@ -378,7 +386,8 @@ def fetch_other(symbol):
 
         df_display = df.copy()
         df_display.reset_index(inplace=True)
-
+        if b2_save:
+            b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
         html = wrap_html(make_table(df_display), title=f"{symbol} Earnings")
         persist.save(key, html, "html")
         return html
