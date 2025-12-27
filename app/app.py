@@ -178,4 +178,4 @@ def fetch_data(req: FetchRequest):
         return handle_index(req)
 
     raise HTTPException(status_code=400, detail="Invalid mode")
-    ```
+'''
