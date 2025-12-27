@@ -1,5 +1,5 @@
 import pandas as pd
-from . import nsepythonmodified
+from . import nsepythonmodified as ns
 from . import persist
 from datetime import datetime as dt
 
@@ -34,7 +34,7 @@ def build_bhavcopy_html(date_str):
         # 2) Fetch Bhavcopy (nsepython expects DD-MM-YYYY)
         # -------------------------------------------------------
         try:
-            df = nse.nse_bhavcopy(date_str)
+            df = ns.nse_bhavcopy(date_str)
             df.columns = df.columns.str.strip()
         except Exception:
             html = f"<h3>No Bhavcopy found for {date_str}.</h3>"
