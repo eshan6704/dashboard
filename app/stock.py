@@ -99,17 +99,17 @@ def fetch_intraday(symbol, indicators=None,b2_save=False):
 #                           DAILY
 # ================================================================
 
-def fetch_daily(symbol,b2_save=False):
+def fetch_daily(symbol,date_end,b2_save=False):
     key = f"daily_{symbol}"
 
     if persist.exists(key, "html"):
         cached = persist.load(key, "html")
         if cached is not False:
-            print(f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] Using cached daily for {symbol}")
+            print(f"[{date_end}] Using cached daily for {symbol}")
             return cached
 
     try:
-        df = daily(symbol)
+        df = daily(symbol,date_start,date_end)
         if df is None or df is False or df.empty:
             return wrap_html(f"<h1>No daily data for {symbol}</h1>")
 
