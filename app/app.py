@@ -11,13 +11,13 @@ import importlib.util
 # -------------------------------------------------------
 from . import common
 from . import stock
-from . import indices_html
-from . import index_live_html
-from . import preopen_html
-from . import eq_html
-from . import bhavcopy_html
-from . import build_nse_fno
-from . import nsepythonmodified
+from . import indices_html as indices
+from . import index_live_html as live
+from . import preopen_html as pre
+from . import eq_html as eq
+from . import bhavcopy_html as bhav
+from . import build_nse_fno as fno
+from . import nsepythonmodified as ns
 
 # External libs (installed via requirements.txt)
 #import nsepython as nse
@@ -75,27 +75,27 @@ def handle_stock(req: FetchRequest):
     t = req.req_type.lower()
 
     if t == "info":
-        return common.wrap(yahooinfo.fetch_info(req.name))
+        return yahooinfo.fetch_info(req.name)
     if t == "intraday":
-        return common.wrap(stock.fetch_intraday(req.name, req.date_start, req.date_end))
+        return stock.fetch_intraday(req.name, req.date_start, req.date_end)
     if t == "daily":
-        return common.wrap(stock.fetch_daily(req.name, req.date_start, req.date_end))
+        return stock.fetch_daily(req.name, req.date_start, req.date_end)
     if t == "nse_eq":
         return eq_html.build_eq_html(req.name)
     if t == "qresult":
-        return common.wrap(stock.fetch_qresult(req.name))
+        return stock.fetch_qresult(req.name)
     if t == "result":
-        return common.wrap(stock.fetch_result(req.name))
+        return stock.fetch_result(req.name)
     if t == "balance":
-        return common.wrap(stock.fetch_balance(req.name))
+        return stock.fetch_balance(req.name)
     if t == "cashflow":
-        return common.wrap(stock.fetch_cashflow(req.name))
+        return stock.fetch_cashflow(req.name)
     if t == "dividend":
-        return common.wrap(stock.fetch_dividend(req.name))
+        return stock.fetch_dividend(req.name)
     if t == "split":
-        return common.wrap(stock.fetch_split(req.name))
+        return stock.fetch_split(req.name)
     if t == "other":
-        return common.wrap(stock.fetch_other(req.name))
+        return stock.fetch_other(req.name)
     if t == "stock_hist":
         return nsepythonmodied.nse_stock_hist(
             req.date_start, req.date_end, req.name
@@ -118,39 +118,39 @@ def handle_index(req: FetchRequest):
     if t == "nse_fno":
         return build_nse_fno.nse_fno_html(req.date_end, req.name)
     if t == "nse_fiidii":
-        return nsepythonmodied.nse_fiidii().to_html()
+        return nsepythonmodied.nse_fiidii()
     if t == "nse_events":
-        return nsepythonmodied.nse_events().to_html()
+        return nsepythonmodied.nse_events()
     if t == "nse_future":
-        return common.wrap(nsepython.nse_future(req.name))
+        return nsepython.nse_future(req.name)
     if t == "nse_highlow":
-        return nsepythonmodied.nse_highlow(req.date_end).to_html()
+        return nsepythonmodied.nse_highlow(req.date_end)
     if t == "stock_highlow":
-        return nsepythonmodied.stock_highlow(req.date_end).to_html()
+        return nsepythonmodied.stock_highlow(req.date_end)
     if t == "nse_bhav":
         return bhavcopy_html.build_bhavcopy_html(req.date_end)
     if t == "nse_largedeals":
-        return nsepythonmodied.nse_largedeals().to_html()
+        return nsepythonmodied.nse_largedeals()
     if t == "nse_bulkdeals":
-        return nsepythonmodied.nse_bulkdeals().to_html()
+        return nsepythonmodied.nse_bulkdeals()
     if t == "nse_blockdeals":
-        return nsepythonmodied.nse_blockdeals().to_html()
+        return nsepythonmodied.nse_blockdeals()
     if t == "nse_most_active":
-        return nsepython.nse_most_active().to_html()
+        return nsepython.nse_most_active()
     if t == "index_history":
-        return nsepythonmodied.index_history("NIFTY", req.date_start, req.date_end).to_html()
+        return nsepythonmodied.index_history("NIFTY", req.date_start, req.date_end)
     if t == "largedeals_historical":
         return nsepythonmodied.nse_largedeals_historical(
             req.date_start, req.date_end
-        ).to_html()
+        )
     if t == "index_pe_pb_div":
         return nsepythonmodied.index_pe_pb_div(
             "NIFTY", req.date_start, req.date_end
-        ).to_html()
+        )
     if t == "index_total_returns":
         return nsepythonmodied.index_total_returns(
             "NIFTY", req.date_start, req.date_end
-        ).to_html()
+        )
 
     return common.wrap(f"<h3>Unhandled index req_type: {t}</h3>")
 
