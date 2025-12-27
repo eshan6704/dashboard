@@ -225,7 +225,7 @@ def index_history(symbol, start_date, end_date):
     data = {'cinfo': f"{{'name':'{symbol}','startDate':'{start_date}','endDate':'{end_date}','indexName':'{symbol}'}}"}
     payload = nse_session.s.post('https://niftyindices.com/Backpage.aspx/getHistoricaldatatabletoString', headers=niftyindices_headers, json=data).json()
     payload = json.loads(payload["d"])
-    return pd.DataFrame.from_records(payload)
+    return pd.DataFrame.from_records(payload).to_html()
 
 def index_pe_pb_div(symbol, start_date, end_date):
     start_date = _fmt_date(start_date)
@@ -233,7 +233,7 @@ def index_pe_pb_div(symbol, start_date, end_date):
     data = {'cinfo': f"{{'name':'{symbol}','startDate':'{start_date}','endDate':'{end_date}','indexName':'{symbol}'}}"}
     payload = nse_session.s.post('https://niftyindices.com/Backpage.aspx/getpepbHistoricaldataDBtoString', headers=niftyindices_headers, json=data).json()
     payload = json.loads(payload["d"])
-    return pd.DataFrame.from_records(payload)
+    return pd.DataFrame.from_records(payload).to_html()
 
 def index_total_returns(symbol, start_date, end_date):
     start_date = _fmt_date(start_date)
@@ -241,7 +241,7 @@ def index_total_returns(symbol, start_date, end_date):
     data = {'cinfo': f"{{'name':'{symbol}','startDate':'{start_date}','endDate':'{end_date}','indexName':'{symbol}'}}"}
     payload = nse_session.s.post('https://niftyindices.com/Backpage.aspx/getTotalReturnIndexString', headers=niftyindices_headers, json=data).json()
     payload = json.loads(payload["d"])
-    return pd.DataFrame.from_records(payload)
+    return pd.DataFrame.from_records(payload).to_html()
 
 # ------------------------- CSV / BHAV -------------------------
 def nse_bhavcopy(d): return pd.read_csv("https://archives.nseindia.com/products/content/sec_bhavdata_full_"+d.replace("-","")+".csv")
@@ -269,11 +269,11 @@ def nse_largedeals(mode="bulk_deals"):
 def nse_largedeals_historical(f,t,mode="bulk_deals"):
     m = "bulk-deals" if mode=="bulk_deals" else "short-selling" if mode=="short_deals" else "block-deals"
     p=nsefetch(f'https://www.nseindia.com/api/historical/{m}?from={f}&to={t}')
-    return pd.DataFrame(p["data"])
+    return pd.DataFrame(p["data"]).to_html()
 
 def nse_stock_hist(f,t,symbol,series="ALL"):
     url=f"https://www.nseindia.com/api/historical/securityArchives?from={f}&to={t}&symbol={symbol.upper()}&dataType=priceVolumeDeliverable&series={series}"
-    return pd.DataFrame(nsefetch(url)['data'])
+    return pd.DataFrame(nsefetch(url)['data']).to_html()
 
 def nse_index_live(name="NIFTY 50"):
     p=nsefetch(f"https://www.nseindia.com/api/equity-stockIndices?index={name.replace(' ','%20')}")
@@ -282,11 +282,11 @@ def nse_index_live(name="NIFTY 50"):
 def nse_highlow(date_str):
     date_str = date_str.replace("-", "")
     url="https://archives.nseindia.com/content/indices/ind_close_all_"+date_str+".csv"
-    return pd.read_csv(url, header=0)
+    return pd.read_csv(url, header=0).to_html()
 
 def stock_highlow(date_str):
     date_str = date_str.replace("-", "")
     url="https://archives.nseindia.com/content/CM_52_wk_High_low_"+date_str+".csv"
-    return pd.read_csv(url, header=2)
+    return pd.read_csv(url, header=2).to_html()
 
 # ------------------------- END OF FILE -------------------------
