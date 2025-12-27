@@ -9,7 +9,7 @@ from datetime import datetime as dt
 from .persist import exists, load, save
 
 
-NSE_FO_BASE = "https://nsearchives.nseindia.com/content/fo"
+NSE_FO_BASE = "https://archives.nseindia.com/content/fo"
 
 
 # ============================================================
