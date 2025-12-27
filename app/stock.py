@@ -8,7 +8,7 @@ from datetime import datetime as dt
 # persist helpers
 from . import persist
 from . import common
-from . import backblaze
+from . import backblaze as b2
 
 from . import ta_indi_pat
 
@@ -94,7 +94,7 @@ def fetch_intraday(symbol, indicators=None):
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        upload_file("eshanhf", f"intraday/{symbol}.csv", df)
+        b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
 
         df_display = df.tail(50).copy()
         df_display.reset_index(inplace=True)
@@ -130,7 +130,7 @@ def fetch_daily(symbol):
         if df is None or df is False or df.empty:
             return wrap_html(f"<h1>No daily data for {symbol}</h1>")
 
-        upload_file("eshanhf", f"daily/{symbol}.csv", df)
+        b2.upload_file("eshanhf", f"daily/{symbol}.csv", df)
 
         df_display = df.tail(50).copy()
         df_display.reset_index(inplace=True)
@@ -166,7 +166,7 @@ def fetch_qresult(symbol):
         if df.empty:
             return wrap_html(f"<h1>No quarterly results for {symbol}</h1>")
 
-        upload_file("eshanhf", f"qresult/{symbol}.csv", df)
+        b2.upload_file("eshanhf", f"qresult/{symbol}.csv", df)
 
         df_display = df.copy()
         for col in df_display.columns:
@@ -203,7 +203,7 @@ def fetch_result(symbol):
         if df.empty:
             return wrap_html(f"<h1>No annual results for {symbol}</h1>")
 
-        upload_file("eshanhf", f"result/{symbol}.csv", df)
+        b2.upload_file("eshanhf", f"result/{symbol}.csv", df)
 
         df_display = df.copy()
         for col in df_display.columns:
@@ -240,7 +240,7 @@ def fetch_balance(symbol):
         if df.empty:
             return wrap_html(f"<h1>No balance sheet for {symbol}</h1>")
 
-        upload_file("eshanhf", f"balance/{symbol}.csv", df)
+        b2.upload_file("eshanhf", f"balance/{symbol}.csv", df)
 
         df_display = df.copy()
         for col in df_display.columns:
@@ -277,7 +277,7 @@ def fetch_cashflow(symbol):
         if df.empty:
             return wrap_html(f"<h1>No cashflow for {symbol}</h1>")
 
-        upload_file("eshanhf", f"cashflow/{symbol}.csv", df)
+        b2.upload_file("eshanhf", f"cashflow/{symbol}.csv", df)
 
         df_display = df.copy()
         for col in df_display.columns:
