@@ -55,7 +55,7 @@ def fo_bhavcopy(date_input) -> pd.DataFrame:
     else:
         raise ValueError("Invalid date format. Use dd-mm-yyyy")
 
-    ymd = date.strftime("%Y%m%d")
+    dmy = date.strftime("%d%m%Y")
     file_name = f"BhavCopy_NSE_FO_0_0_0_{ymd}_F_0000.csv"
     zip_name = f"{file_name}.zip"
     url = f"https://nsearchives.nseindia.com/content/fo/{zip_name}"
