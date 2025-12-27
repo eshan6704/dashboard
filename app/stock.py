@@ -79,7 +79,7 @@ def fetch_intraday(symbol, indicators=None,b2_save=False):
         if b2_save:
             b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
 
-        df_display = df.tail(50).copy()
+        df_display = df.copy()
         df_display.reset_index(inplace=True)
 
         html = wrap_html(
@@ -112,11 +112,13 @@ def fetch_daily(symbol,date_end,b2_save=False):
         df = daily(symbol)
         if df is None or df is False or df.empty:
             return wrap_html(f"<h1>No daily data for {symbol}</h1>")
-
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        
         if b2_save:
             b2.upload_file("eshanhf", f"intraday/{symbol}.csv", df)
 
-        df_display = df.tail(50).copy()
+        df_display = df.copy()
         df_display.reset_index(inplace=True)
 
         html = wrap_html(
