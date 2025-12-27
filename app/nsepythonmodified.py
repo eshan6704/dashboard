@@ -220,24 +220,40 @@ def nse_index(): return pd.DataFrame(nsefetch('https://iislliveblob.niftyindices
 
 # ------------------------- INDEX FUNCTIONS -------------------------
 def index_history(symbol, start_date, end_date):
-    start_date = _fmt_date(start_date)
-    end_date   = _fmt_date(end_date)
-    data = {'cinfo': f"{{'name':'{symbol}','startDate':'{start_date}','endDate':'{end_date}','indexName':'{symbol}'}}"}
-    payload = nse_session.s.post('https://niftyindices.com/Backpage.aspx/getHistoricaldatatabletoString', headers=niftyindices_headers, json=data).json()
+    # Convert frontend format → NSE expected format
+    start_date = datetime.strptime(start_date, "%d-%m-%Y").strftime("%d%m%Y")
+    end_date   = datetime.strptime(end_date, "%d-%m-%Y").strftime("%d%m%Y")
+
+    data = {
+        'cinfo': (
+            f"{{'name':'{symbol}',"
+            f"'startDate':'{start_date}',"
+            f"'endDate':'{end_date}',"
+            f"'indexName':'{symbol}'}}"
+        )
+    }
+
+    payload = nse_session.s.post(
+        'https://niftyindices.com/Backpage.aspx/getHistoricaldatatabletoString',
+        headers=niftyindices_headers,
+        json=data
+    ).json()
+
     payload = json.loads(payload["d"])
+
     return pd.DataFrame.from_records(payload).to_html()
 
 def index_pe_pb_div(symbol, start_date, end_date):
-    start_date = _fmt_date(start_date)
-    end_date   = _fmt_date(end_date)
+    start_date = datetime.strptime(start_date, "%d-%m-%Y").strftime("%d%m%Y")
+    end_date   = datetime.strptime(end_date, "%d-%m-%Y").strftime("%d%m%Y")
     data = {'cinfo': f"{{'name':'{symbol}','startDate':'{start_date}','endDate':'{end_date}','indexName':'{symbol}'}}"}
     payload = nse_session.s.post('https://niftyindices.com/Backpage.aspx/getpepbHistoricaldataDBtoString', headers=niftyindices_headers, json=data).json()
     payload = json.loads(payload["d"])
     return pd.DataFrame.from_records(payload).to_html()
 
 def index_total_returns(symbol, start_date, end_date):
-    start_date = _fmt_date(start_date)
-    end_date   = _fmt_date(end_date)
+    start_date = datetime.strptime(start_date, "%d-%m-%Y").strftime("%d%m%Y")
+    end_date   = datetime.strptime(end_date, "%d-%m-%Y").strftime("%d%m%Y")
     data = {'cinfo': f"{{'name':'{symbol}','startDate':'{start_date}','endDate':'{end_date}','indexName':'{symbol}'}}"}
     payload = nse_session.s.post('https://niftyindices.com/Backpage.aspx/getTotalReturnIndexString', headers=niftyindices_headers, json=data).json()
     payload = json.loads(payload["d"])
