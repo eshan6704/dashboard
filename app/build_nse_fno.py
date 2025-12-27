@@ -1,4 +1,4 @@
-# build_nse_fno.py
+# build_nse_fno_live.py
 import os
 import subprocess
 import zipfile
@@ -6,16 +6,13 @@ import tempfile
 import pandas as pd
 from datetime import datetime as dt
 
-from .persist import exists, load, save
-
-
 NSE_FO_BASE = "https://archives.nseindia.com/content/fo"
 
 
 # ============================================================
 # FETCH FO BHAVCOPY (RAW DF)
 # ============================================================
-def _fetch_fo_bhavcopy(fo_date: str) -> pd.DataFrame:
+def fetch_fo_bhavcopy(fo_date: str) -> pd.DataFrame:
     """
     fo_date format : DD-MM-YYYY
     """
@@ -46,7 +43,6 @@ def _fetch_fo_bhavcopy(fo_date: str) -> pd.DataFrame:
         with zipfile.ZipFile(zip_path) as z:
             if file_name not in z.namelist():
                 raise RuntimeError("FO bhavcopy csv missing inside zip")
-
             with z.open(file_name) as f:
                 return pd.read_csv(f)
 
@@ -54,7 +50,7 @@ def _fetch_fo_bhavcopy(fo_date: str) -> pd.DataFrame:
 # ============================================================
 # OPTION CHAIN BUILDER
 # ============================================================
-def _build_option_chain(df: pd.DataFrame) -> pd.DataFrame:
+def build_option_chain(df: pd.DataFrame) -> pd.DataFrame:
     rename = {
         "ClsPric": "close",
         "PrvsClsgPric": "pre",
@@ -92,40 +88,18 @@ def _build_option_chain(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ============================================================
-# MAIN HTML BUILDER
+# MAIN LIVE HTML BUILDER
 # ============================================================
-def build_nse_fno_html(fo_date: str, symbol: str) -> str:
+def build_nse_fno_live_html(fo_date: str, symbol: str) -> str:
     """
-    Returns HTML ONLY
+    Returns LIVE HTML for NSE F&O for the given date and symbol.
     """
 
-    date_key = dt.strptime(fo_date, "%d-%m-%Y").strftime("%Y%m%d")
-    cache_html = f"NSE_FNO_HTML_{date_key}_{symbol}"
-    cache_df   = f"NSE_FNO_BHAVCOPY_{date_key}"
+    fo_df = fetch_fo_bhavcopy(fo_date)
+    if fo_df.empty:
+        return "<h3>FO Bhavcopy empty</h3>"
 
-    # ================= HTML CACHE =================
-    if exists(cache_html, "html"):
-        cached = load(cache_html, "html")
-
-        if isinstance(cached, str):
-            return cached
-
-        if isinstance(cached, pd.DataFrame):
-            return cached.to_html(index=False)
-
-    # ================= BHAVCOPY CACHE =================
-    if exists(cache_df):
-        fo_df = load(cache_df)
-    else:
-        fo_df = _fetch_fo_bhavcopy(fo_date)
-        save(cache_df, fo_df)
-
-    if not isinstance(fo_df, pd.DataFrame) or fo_df.empty:
-        return "<h3>Invalid FO Bhavcopy</h3>"
-
-    # ================= PROCESS =================
     fo = fo_df.copy()
-
     exp = pd.to_datetime(fo["FininstrmActlXpryDt"], errors="coerce")
     today = pd.Timestamp.today().normalize()
 
@@ -143,9 +117,8 @@ def build_nse_fno_html(fo_date: str, symbol: str) -> str:
     fut_df = df[df["FinInstrmTp"].isin(["STF", "IDF"])]
     opt_df = df[df["FinInstrmTp"].isin(["STO", "IDO"])]
 
-    opt_chain = _build_option_chain(opt_df)
+    opt_chain = build_option_chain(opt_df)
 
-    # ================= HTML =================
     html = f"""
 <!DOCTYPE html>
 <html>
@@ -174,6 +147,4 @@ h2,h3,h4 {{ margin:6px 0; }}
 </html>
 """
 
-    # ================= SAVE =================
-    save(cache_html, html, "html")
     return html
