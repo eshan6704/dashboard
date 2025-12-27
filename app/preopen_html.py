@@ -1,4 +1,4 @@
-from . import nsepythonmodified
+from . import nsepythonmodified as ns
 import pandas as pd
 import re
 from datetime import datetime as dt
@@ -23,7 +23,7 @@ def build_preopen_html(key="NIFTY"):
             return cached_html
 
     # ================= FETCH DATA =================
-    p = nsefetch(f"https://www.nseindia.com/api/market-data-pre-open?key={key}")
+    p = ns.nsefetch(f"https://www.nseindia.com/api/market-data-pre-open?key={key}")
 
     data_df = df_from_data(p.pop("data"))
     rem_df  = df_from_data([p])
