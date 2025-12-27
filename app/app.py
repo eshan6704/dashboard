@@ -1,3 +1,4 @@
+from fastapi.responses import HTMLResponse
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -157,6 +158,18 @@ def handle_index(req: FetchRequest):
 # -------------------------------------------------------
 # Main API
 # -------------------------------------------------------
+@app.post("/api/fetch", response_class=HTMLResponse)
+def fetch_data(req: FetchRequest):
+    if req.mode.lower() == "stock":
+        html = handle_stock(req)
+    elif req.mode.lower() == "index":
+        html = handle_index(req)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid mode")
+
+    # FINAL GUARANTEE
+    return HTMLResponse(content=str(html))
+'''
 @app.post("/api/fetch")
 def fetch_data(req: FetchRequest):
     if req.mode.lower() == "stock":
@@ -165,3 +178,4 @@ def fetch_data(req: FetchRequest):
         return handle_index(req)
 
     raise HTTPException(status_code=400, detail="Invalid mode")
+    ```
