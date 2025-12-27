@@ -109,7 +109,7 @@ def fetch_daily(symbol,date_end,b2_save=False):
             return cached
 
     try:
-        df = daily(symbol,date_start,date_end)
+        df = daily(symbol)
         if df is None or df is False or df.empty:
             return wrap_html(f"<h1>No daily data for {symbol}</h1>")
 
