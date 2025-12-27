@@ -23,10 +23,10 @@ def build_preopen_html(key="NIFTY"):
             return cached_html
 
     # ================= FETCH DATA =================
-    p = ns.nsefetch(f"https://www.nseindia.com/api/market-data-pre-open?key={key}")
+    p = ns.nse_preopen()
 
-    data_df = df_from_data(p.pop("data"))
-    rem_df  = df_from_data([p])
+    data_df = p["data"]
+    rem_df  = p["rem"]
 
     main_df  = data_df.iloc[[0]] if not data_df.empty else pd.DataFrame()
     const_df = data_df.iloc[1:] if len(data_df) > 1 else pd.DataFrame()
