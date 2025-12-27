@@ -1,5 +1,5 @@
 import pandas as pd
-from . import nsepythonmodified
+from . import nsepythonmodified as ns
 import html
 from datetime import datetime as dt
 from collections import defaultdict
@@ -26,7 +26,7 @@ def build_indices_html():
             return cached_html
 
     # ================= FETCH DATA =================
-    p = indices()
+    p = ns.indices()
     data_df = p.get("data", pd.DataFrame())
     dates_df = p.get("dates", pd.DataFrame())
 
