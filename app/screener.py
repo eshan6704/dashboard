@@ -10,7 +10,7 @@ from . import persist
 # Screener name → URL mapping
 # ===============================
 SCREENER_MAP = {
-    "top_gainers": "https://www.screener.in/screens/7054/top-gainers/",
+    "top_gainers": "https://www.screener.in/screens/3355081/from-high/",
     "top_losers": "https://www.screener.in/screens/7055/top-losers/",
     "high_volume": "https://www.screener.in/screens/3352/high-volume-stocks/",
     "breakout_stocks": "https://www.screener.in/screens/1849/breakout-stocks/",
