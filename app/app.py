@@ -152,7 +152,7 @@ def handle_index(req: FetchRequest):
 # SCREENER handler
 # -------------------------------------------------------
 def handle_screener(req: FetchRequest):
-    return screener.fetch_screener(req.name)
+    return screener.fetch_screener(req.req_type.lower())
 
 
 # -------------------------------------------------------
