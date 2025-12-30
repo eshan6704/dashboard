@@ -1,164 +1,98 @@
-# ui_html.py
-from . import screener
-
-def build_frontend_html():
-    return """
+HTML = """
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Stock / Index Backend UI</title>
-
-<style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 10px;
-}
-.controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-select, input, button {
-    padding: 6px;
-    font-size: 14px;
-}
-#response {
-    margin-top: 15px;
-    padding: 10px;
-    border: 1px solid #ccc;
-    height: calc(100vh - 120px);
-    overflow: auto;
-}
-</style>
+<meta charset="utf-8">
+<title>Stock / Index UI</title>
 </head>
-
 <body>
 
-<h2>Stock / Index Fetcher</h2>
+<select id="mode">
+  <option value="stock">stock</option>
+  <option value="index">index</option>
+  <option value="screener">screener</option>
+</select>
 
-<div class="controls">
-    <select id="mode">
-        <option value="stock">stock</option>
-        <option value="index">index</option>
-        <option value="screener">screener</option>
-    </select>
+<select id="req_type"></select>
+<select id="name"></select>
 
-    <select id="req_type"></select>
-    <select id="name"></select>
+<input id="date_start" placeholder="dd-mm-yyyy">
+<input id="date_end" placeholder="dd-mm-yyyy">
 
-    <input id="date_start" placeholder="YYYY-MM-DD">
-    <input id="date_end" placeholder="YYYY-MM-DD">
+<button onclick="fetchData()">Fetch</button>
 
-    <button onclick="fetchData()">Fetch</button>
-</div>
-
-<div id="response">Loading req_type list...</div>
+<div id="response">Loading...</div>
 
 <script>
-const API_URL = "/api/fetch";
-let REQ_MAP = {};
+const API="/api/fetch";
+let META={stock:[],index:[],screener:[]};
 
-/* ---------------- LOAD LIST ---------------- */
-async function loadReqTypes() {
-    const res = await fetch(API_URL, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ mode: "list" })
+async function init(){
+  const r=await fetch(API,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({mode:"list"})
+  });
+  const html=await r.text();
+  const doc=new DOMParser().parseFromString(html,"text/html");
+
+  doc.querySelectorAll("li").forEach(li=>{
+    META[li.dataset.mode].push({
+      type:li.dataset.type,
+      names:(li.dataset.names||"").split(",").filter(Boolean)
     });
-
-    const html = await res.text();
-    const doc = new DOMParser().parseFromString(html, "text/html");
-
-    REQ_MAP = { stock: [], index: [], screener: [] };
-
-    doc.querySelectorAll("li").forEach(li => {
-        const mode = li.dataset.mode;
-        const type = li.dataset.type;
-        const names = (li.dataset.names || "").split(",").filter(Boolean);
-
-        if (mode && type) {
-            REQ_MAP[mode].push({ type, names });
-        }
-    });
-
-    updateReqType();
+  });
+  updateReq();
 }
 
-/* ---------------- REQ TYPE ---------------- */
-function updateReqType() {
-    const mode = document.getElementById("mode").value;
-    const sel = document.getElementById("req_type");
-    sel.innerHTML = "";
+function updateReq(){
+  req_type.innerHTML="";
+  META[mode.value].forEach(x=>{
+    let o=document.createElement("option");
+    o.value=x.type;o.text=x.type;
+    req_type.appendChild(o);
+  });
 
-    REQ_MAP[mode].forEach(r => {
-        const o = document.createElement("option");
-        o.value = r.type;
-        o.textContent = r.type;
-        sel.appendChild(o);
+  if(mode.value==="stock") req_type.value="info";
+  if(mode.value==="index") req_type.value="indices";
+  if(mode.value==="screener") req_type.value="from-high";
+  updateName();
+}
+
+function updateName(){
+  name.innerHTML="";
+  const r=META[mode.value].find(x=>x.type===req_type.value);
+  if(r && r.names.length){
+    r.names.forEach(n=>{
+      let o=document.createElement("option");
+      o.value=n;o.text=n;
+      name.appendChild(o);
     });
-
-    if (mode === "stock") sel.value = "info";
-    if (mode === "index") sel.value = "indices";
-    if (mode === "screener") sel.value = "from-high";
-
-    updateName();
+  } else {
+    name.innerHTML="<option></option>";
+  }
 }
 
-/* ---------------- NAME ---------------- */
-function updateName() {
-    const mode = document.getElementById("mode").value;
-    const rt = document.getElementById("req_type").value;
-    const sel = document.getElementById("name");
-    sel.innerHTML = "";
-
-    const entry = REQ_MAP[mode].find(r => r.type === rt);
-
-    if (entry && entry.names.length) {
-        entry.names.forEach(n => {
-            const o = document.createElement("option");
-            o.value = n;
-            o.textContent = n;
-            sel.appendChild(o);
-        });
-    } else {
-        const o = document.createElement("option");
-        o.value = "";
-        o.textContent = "-- none --";
-        sel.appendChild(o);
-    }
-
-    if (mode === "stock") sel.value = "ITC";
-    if (mode === "index") sel.value = "NIFTY 50";
+async function fetchData(){
+  const p={
+    mode:mode.value,
+    req_type:req_type.value,
+    name:name.value,
+    date_start:date_start.value,
+    date_end:date_end.value
+  };
+  const r=await fetch(API,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(p)
+  });
+  response.innerHTML=await r.text();
 }
 
-/* ---------------- FETCH ---------------- */
-async function fetchData() {
-    const payload = {
-        mode: mode.value,
-        req_type: req_type.value,
-        name: name.value,
-        date_start: date_start.value,
-        date_end: date_end.value
-    };
-
-    const res = await fetch(API_URL, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(payload)
-    });
-
-    document.getElementById("response").innerHTML = await res.text();
-}
-
-/* EVENTS */
-mode.addEventListener("change", updateReqType);
-req_type.addEventListener("change", updateName);
-
-loadReqTypes();
+mode.onchange=updateReq;
+req_type.onchange=updateName;
+init();
 </script>
-
 </body>
 </html>
 """
