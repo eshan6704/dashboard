@@ -74,9 +74,9 @@ REQ_TYPE_MAP = {
 # -------------------------------------------------------
 # Name lists for frontend
 # -------------------------------------------------------
-FNO_STOCK_LIST = yahooinfo.FNOSTOCK_LIST         # stock & nse_bhav
-OPEN_INDICES_LIST = indices.NSE_OPEN_INDEX_LIST  # nse_open
-PREOPEN_INDICES_LIST = indices.NSE_PREOPEN_LIST  # nse_preopen
+FNO_STOCK_LIST = ["ITC","ZEEL","PNB","NIFTY"]         # stock & nse_bhav
+OPEN_INDICES_LIST = ["NIFTY 50","NIFTY BANK"]  # nse_open
+PREOPEN_INDICES_LIST = ["NIFTY 50","NIFTY BANK"]  # nse_preopen
 
 # -------------------------------------------------------
 # HTML builder for req_type discovery
