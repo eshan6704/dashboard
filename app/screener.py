@@ -10,20 +10,12 @@ from . import persist
 # Screener name → URL mapping
 # ===============================
 SCREENER_MAP = {
-    "from-high": "https://www.screener.in/screens/3355081/from-high/",
-    "top_losers": "https://www.screener.in/screens/7055/top-losers/",
-    "high_volume": "https://www.screener.in/screens/3352/high-volume-stocks/",
-    "breakout_stocks": "https://www.screener.in/screens/1849/breakout-stocks/",
-    "fifty_two_wk_high": "https://www.screener.in/screens/3588/52-week-high/",
-    "fifty_two_wk_low": "https://www.screener.in/screens/3589/52-week-low/",
-    "new_highs": "https://www.screener.in/screens/4921/new-highs/",
-    "new_lows": "https://www.screener.in/screens/4922/new-lows/",
-    "rsi_oversold": "https://www.screener.in/screens/1751/rsi-oversold-stocks/",
-    "rsi_overbought": "https://www.screener.in/screens/1750/rsi-overbought-stocks/",
-    "price_above_sma": "https://www.screener.in/screens/1764/price-above-sma/",
-    "large_cap": "https://www.screener.in/screens/3360/large-cap-stocks/",
-    "mid_cap": "https://www.screener.in/screens/3361/mid-cap-stocks/",
-    "small_cap": "https://www.screener.in/screens/3362/small-cap-stocks/",
+    "from_high": "https://www.screener.in/screens/3355081/from-high/",
+    "sales_wise": "https://www.screener.in/screens/880780/sales_wise/",
+    "fii_buying": "https://www.screener.in/screens/343087/fii-buying/",
+    "debt_reduction": "https://www.screener.in/screens/126864/debt-reduction/",
+    "magic_formula": "https://www.screener.in/screens/59/magic-formula/",
+
 }
 
 
