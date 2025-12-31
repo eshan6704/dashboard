@@ -290,6 +290,35 @@ def nse_largedeals_historical(f,t,mode="bulk_deals"):
 def nse_stock_hist(f,t,symbol,series="ALL"):
     url=f"https://www.nseindia.com/api/historical/securityArchives?from={f}&to={t}&symbol={symbol.upper()}&dataType=priceVolumeDeliverable&series={series}"
     return pd.DataFrame(nsefetch(url)['data']).to_html()
+def nse_stock_hist(start, end, symbol, series="ALL"):
+    """
+    NSE Stock historical data (OR API)
+
+    start  : 'DD-MM-YYYY'
+    end    : 'DD-MM-YYYY'
+    symbol : NSE symbol (e.g. ITC)
+    series : ALL | EQ | BE | etc
+    """
+
+    symbol = nsesymbolpurify(symbol.upper())
+
+    url = (
+        "https://www.nseindia.com/api/historicalOR/"
+        "generateSecurityWiseHistoricalData"
+        f"?from={start}"
+        f"&to={end}"
+        f"&symbol={symbol}"
+        f"&type=priceVolumeDeliverable"
+        f"&series={series}"
+    )
+
+    payload = nsefetch(url)
+
+    if not payload or "data" not in payload:
+        return pd.DataFrame()
+
+    return pd.DataFrame(payload["data"])
+
 
 def nse_index_live(name="NIFTY 50"):
     p=nsefetch(f"https://www.nseindia.com/api/equity-stockIndices?index={name.replace(' ','%20')}")
