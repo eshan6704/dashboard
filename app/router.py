@@ -1,8 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
+
 # -------------------------------------------------------
 # Local modules
 # -------------------------------------------------------
@@ -18,6 +17,7 @@ from . import nsepythonmodified as ns
 from . import yahooinfo
 from . import screener   # screener owns its map
 
+router = APIRouter()
 
 # -------------------------------------------------------
 # REQ TYPE MAP (stock & index only)
@@ -39,17 +39,28 @@ REQ_TYPE_MAP = {
     ],
 }
 
-# ===============================
-# Screener name → URL mapping
-# ===============================
-SCREENER_MAP = {
-    "from_high": "https://www.screener.in/screens/3355081/from-high/",
-    "sales_wise": "https://www.screener.in/screens/880780/sales_wise/",
-    "fii_buying": "https://www.screener.in/screens/343087/fii-buying/",
-    "debt_reduction": "https://www.screener.in/screens/126864/debt-reduction/",
-    "magic_formula": "https://www.screener.in/screens/59/magic-formula/",
+# -------------------------------------------------------
+# HTML builder for req_type discovery
+# -------------------------------------------------------
+def build_req_type_list_html():
+    html = ["<div id='req_type_list'>"]
 
-}
+    for mode, items in REQ_TYPE_MAP.items():
+        html.append(f"<h3>{mode.upper()}</h3><ul>")
+        for it in items:
+            html.append(
+                f"<li class='{mode}-req' data-mode='{mode}'>{it}</li>"
+            )
+        html.append("</ul>")
+
+    html.append("<h3>SCREENER</h3><ul>")
+    for key in screener.SCREENER_MAP.keys():
+        html.append(
+            f"<li class='screener-req' data-mode='screener'>{key}</li>"
+        )
+    html.append("</ul></div>")
+
+    return "".join(html)
 
 # -------------------------------------------------------
 # Request model
@@ -60,8 +71,6 @@ class FetchRequest(BaseModel):
     name: str = ""
     date_start: str = ""
     date_end: str = ""
-
-
 
 # -------------------------------------------------------
 # STOCK handler
@@ -98,7 +107,6 @@ def handle_stock(req: FetchRequest):
 
     return common.wrap(f"<h3>Unhandled stock req_type: {t}</h3>")
 
-
 # -------------------------------------------------------
 # INDEX handler
 # -------------------------------------------------------
@@ -117,7 +125,6 @@ def handle_index(req: FetchRequest):
         return ns.nse_fiidii()
     if t == "events":
         return ns.nse_events()
-
     if t == "index_highlow":
         return ns.nse_highlow(req.date_end)
     if t == "stock_highlow":
@@ -149,36 +156,34 @@ def handle_index(req: FetchRequest):
 
     return common.wrap(f"<h3>Unhandled index req_type: {t}</h3>")
 
-
 # -------------------------------------------------------
 # SCREENER handler
 # -------------------------------------------------------
 def handle_screener(req: FetchRequest):
     return screener.fetch_screener(req.req_type.lower())
 
-
-
 # -------------------------------------------------------
-# HTML builder for req_type discovery
+# Routes
 # -------------------------------------------------------
-def build_req_type_list_html():
-    html = ["<div id='req_type_list'>"]
+@router.get("/")
+def health():
+    return {"status": "ok", "service": "backend alive"}
 
-    # STOCK & INDEX
-    for mode, items in REQ_TYPE_MAP.items():
-        html.append(f"<h3>{mode.upper()}</h3><ul>")
-        for it in items:
-            html.append(
-                f"<li class='{mode}-req' data-mode='{mode}'>{it}</li>"
-            )
-        html.append("</ul>")
+@router.post("/api/fetch", response_class=HTMLResponse)
+def fetch_data(req: FetchRequest):
 
-    # SCREENER (keys extracted from screener.py)
-    html.append("<h3>SCREENER</h3><ul>")
-    for key in SCREENER_MAP.keys():
-        html.append(
-            f"<li class='screener-req' data-mode='screener'>{key}</li>"
-        )
-    html.append("</ul></div>")
+    mode = req.mode.lower()
 
-    return "".join(html)
+    if mode == "list":
+        return HTMLResponse(content=build_req_type_list_html())
+
+    if mode == "stock":
+        html = handle_stock(req)
+    elif mode == "index":
+        html = handle_index(req)
+    elif mode == "screener":
+        html = handle_screener(req)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid mode")
+
+    return HTMLResponse(content=str(html))
