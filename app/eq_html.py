@@ -1,4 +1,4 @@
-from . import nsepythonmodified
+from . import nsepythonmodified as ns
 import pandas as pd
 from datetime import datetime
 import os
@@ -51,7 +51,7 @@ def build_eq_html(symbol):
     # -------------------------------------------------------
     # CALL eq() function
     # -------------------------------------------------------
-    out = eq(symbol)
+    out = ns.eq(symbol)
 
     if not isinstance(out, dict):
         return "<h3>Error: EQ data not available</h3>"
