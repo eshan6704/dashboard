@@ -67,13 +67,13 @@ REQ_TYPE_MAP = {
         "split", "other", "stock_hist"
     ],
     "index": [
-        "indices", "nse_open", "nse_preopen", "nse_fno",
-        "nse_fiidii", "nse_events", "nse_future",
-        "nse_highlow", "stock_highlow", "nse_bhav",
-        "nse_largedeals", "nse_bulkdeals", "nse_blockdeals",
-        "nse_most_active", "index_history",
-        "largedeals_historical", "index_pe_pb_div",
-        "index_total_returns"
+        "indices", "open", "preopen", "fno",
+        "fiidii", "events",
+        "index_highlow", "stock_highlow", "bhav",
+        "largedeals", "bulkdeals", "blockdeals",
+        "most_active", "index_history",
+        "Hlargedeals", "pe_pb",
+        "total_returns"
     ],
 }
 
@@ -148,43 +148,42 @@ def handle_index(req: FetchRequest):
 
     if t == "indices":
         return indices.build_indices_html()
-    if t == "nse_open":
+    if t == "open":
         return live.build_index_live_html()
-    if t == "nse_preopen":
+    if t == "preopen":
         return pre.build_preopen_html()
-    if t == "nse_fno":
+    if t == "fno":
         return fno.nse_fno_html(req.date_end, req.name)
-    if t == "nse_fiidii":
+    if t == "fiidii":
         return ns.nse_fiidii()
-    if t == "nse_events":
+    if t == "events":
         return ns.nse_events()
-    if t == "nse_future":
-        return ns.nse_future(req.name)
-    if t == "nse_highlow":
+
+    if t == "index_highlow":
         return ns.nse_highlow(req.date_end)
     if t == "stock_highlow":
         return ns.stock_highlow(req.date_end)
-    if t == "nse_bhav":
+    if t == "bhav":
         return bhav.build_bhavcopy_html(req.date_end)
-    if t == "nse_largedeals":
+    if t == "largedeals":
         return ns.nse_largedeals()
-    if t == "nse_bulkdeals":
+    if t == "bulkdeals":
         return ns.nse_bulkdeals()
-    if t == "nse_blockdeals":
+    if t == "blockdeals":
         return ns.nse_blockdeals()
-    if t == "nse_most_active":
+    if t == "most_active":
         return ns.nse_most_active()
     if t == "index_history":
         return ns.index_history("NIFTY", req.date_start, req.date_end)
-    if t == "largedeals_historical":
+    if t == "Hlargedeals":
         return ns.nse_largedeals_historical(
             req.date_start, req.date_end
         )
-    if t == "index_pe_pb_div":
+    if t == "pe_pb":
         return ns.index_pe_pb_div(
             "NIFTY", req.date_start, req.date_end
         )
-    if t == "index_total_returns":
+    if t == "total_returns":
         return ns.index_total_returns(
             "NIFTY", req.date_start, req.date_end
         )
