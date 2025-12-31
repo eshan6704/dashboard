@@ -122,9 +122,9 @@ def handle_index(req: FetchRequest):
     if t == "indices":
         return indices.build_indices_html()
     if t == "open":
-        return live.build_index_live_html()
+        return live.build_index_live_html(req.name)
     if t == "preopen":
-        return pre.build_preopen_html()
+        return pre.build_preopen_html(req.name)
     if t == "fno":
         return fno.nse_fno_html(req.date_end, req.name)
     if t == "fiidii":
