@@ -6,7 +6,7 @@ from datetime import datetime as dt
 from .persist import exists, load, save
 
 
-def build_index_live_html(index_name = "NIFTY 50"):
+def build_index_live_html(index_name ):
     """
     Live HTML for NIFTY 50
     - Intraday TTL (15 minutes)
