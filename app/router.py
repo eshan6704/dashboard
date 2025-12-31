@@ -52,6 +52,18 @@ SCREENER_MAP = {
 }
 
 # -------------------------------------------------------
+# Request model
+# -------------------------------------------------------
+class FetchRequest(BaseModel):
+    mode: str
+    req_type: str
+    name: str = ""
+    date_start: str = ""
+    date_end: str = ""
+
+
+
+# -------------------------------------------------------
 # STOCK handler
 # -------------------------------------------------------
 def handle_stock(req: FetchRequest):
