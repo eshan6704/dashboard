@@ -1,9 +1,5 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from pydantic import BaseModel
-from . import router
+
+from .router import *
 # -------------------------------------------------------
 # FastAPI app
 # -------------------------------------------------------
