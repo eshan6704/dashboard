@@ -7,7 +7,7 @@ from datetime import datetime as dt
 from .persist import exists, load, save
 
 
-def build_preopen_html(key="NIFTY"):
+def build_preopen_html(key):
     """
     Build full Pre-Open HTML
     - Daily TTL (via persist.py)
