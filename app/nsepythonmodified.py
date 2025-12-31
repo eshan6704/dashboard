@@ -269,7 +269,7 @@ def nse_preopen(key="NIFTY"):
     return {"data":df_from_data(p.pop("data")), "rem":df_from_data([p])}
 
 def nse_most_active(t="securities",s="value"):
-    return pd.DataFrame(nsefetch(f"https://www.nseindia.com/api/live-analysis-most-active-{t}?index={s}")["data"])
+    return pd.DataFrame(nsefetch(f"https://www.nseindia.com/api/live-analysis-most-active-{t}?index={s}")["data"]).to_html()
 
 def nse_eq_symbols():
     return pd.read_csv('https://archives.nseindia.com/content/equities/EQUITY_L.csv')['SYMBOL'].tolist()
