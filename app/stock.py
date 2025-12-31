@@ -49,9 +49,13 @@ def intraday(symbol):
     return yf.download(symbol + ".NS", period="1d", interval="5m").round(2)
 
 
-def daily(symbol):
+def daily(symbol,date_end,date_start):
     print(f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] yf called for {symbol}")
-    return yf.download(symbol + ".NS", period="1y", interval="1d").round(2)
+    
+    start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
+    end = dt.strptime(date_end, "%d-%m-%Y").strftime("%Y-%m-%d")
+    
+    return yf.download(symbol + ".NS", start=start,end=end).round(2)
 
 
 
@@ -99,7 +103,7 @@ def fetch_intraday(symbol, indicators=None,b2_save=False):
 #                           DAILY
 # ================================================================
 
-def fetch_daily(symbol,date_end,b2_save=False):
+def fetch_daily(symbol,date_end,date_start,b2_save=False):
     key = f"daily_{symbol}"
 
     if persist.exists(key, "html"):
@@ -109,7 +113,7 @@ def fetch_daily(symbol,date_end,b2_save=False):
             return cached
 
     try:
-        df = daily(symbol)
+        df = daily(symbol,date_end,date_start)
         if df is None or df is False or df.empty:
             return wrap_html(f"<h1>No daily data for {symbol}</h1>")
         if isinstance(df.columns, pd.MultiIndex):
