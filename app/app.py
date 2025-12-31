@@ -18,16 +18,6 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
-# -------------------------------------------------------
-# Request model
-# -------------------------------------------------------
-class FetchRequest(BaseModel):
-    mode: str
-    req_type: str
-    name: str = ""
-    date_start: str = ""
-    date_end: str = ""
-
 
 # -------------------------------------------------------
 # Health
