@@ -6,7 +6,7 @@ from datetime import datetime as dt
 from .persist import exists, load, save
 
 
-def build_index_live_html():
+def build_index_live_html(index_name = "NIFTY 50"):
     """
     Live HTML for NIFTY 50
     - Intraday TTL (15 minutes)
@@ -23,7 +23,7 @@ def build_index_live_html():
             return cached_html
 
     # ================= LIVE FETCH =================
-    index_name = "NIFTY 50"
+    
     p = ns.nse_index_live(index_name)
 
     full_df = p.get("data", pd.DataFrame())
