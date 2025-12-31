@@ -162,8 +162,6 @@ th, td {{ border: 1px solid #bbb; padding: 5px 8px; }}
 </head>
 <body>
 
-<h2>Live Index Data: NIFTY 50</h2>
-
 <h3>Index Info</h3>
 {info_cards_html}
 
