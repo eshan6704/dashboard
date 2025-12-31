@@ -264,7 +264,7 @@ def nse_bhavcopy(d): return pd.read_csv("https://archives.nseindia.com/products/
 def nse_bulkdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/bulk.csv").to_html()
 def nse_blockdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/block.csv").to_html()
 
-def nse_preopen(key="NIFTY"):
+def nse_preopen(key):
     p=nsefetch("https://www.nseindia.com/api/market-data-pre-open?key="+key)
     return {"data":df_from_data(p.pop("data")), "rem":df_from_data([p])}
 
@@ -320,7 +320,7 @@ def nse_stock_hist(start, end, symbol, series="ALL"):
     return pd.DataFrame(payload["data"])
 
 
-def nse_index_live(name="NIFTY 50"):
+def nse_index_live(name):
     p=nsefetch(f"https://www.nseindia.com/api/equity-stockIndices?index={name.replace(' ','%20')}")
     return {"data":df_from_data(p.pop("data")) if "data" in p else pd.DataFrame(), "rem":df_from_data([p])}
 
