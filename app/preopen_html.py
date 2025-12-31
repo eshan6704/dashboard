@@ -23,7 +23,7 @@ def build_preopen_html(key="NIFTY"):
             return cached_html
 
     # ================= FETCH DATA =================
-    p = ns.nse_preopen()
+    p = ns.nse_preopen(key)
 
     data_df = p["data"]
     rem_df  = p["rem"]
