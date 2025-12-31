@@ -42,16 +42,7 @@ REQ_TYPE_MAP = {
     ],
 }
 
-# -------------------------------------------------------
-# SCREENER MAP (OWNER = ROUTER)
-# -------------------------------------------------------
-SCREENER_MAP = {
-    "from_high": "https://www.screener.in/screens/3355081/from-high/",
-    "sales_wise": "https://www.screener.in/screens/880780/sales_wise/",
-    "fii_buying": "https://www.screener.in/screens/343087/fii-buying/",
-    "debt_reduction": "https://www.screener.in/screens/126864/debt-reduction/",
-    "magic_formula": "https://www.screener.in/screens/59/magic-formula/",
-}
+
 
 # -------------------------------------------------------
 # HTML builder for req_type discovery
@@ -59,7 +50,6 @@ SCREENER_MAP = {
 def build_req_type_list_html():
     html = ["<div id='req_type_list'>"]
 
-    # STOCK & INDEX
     for mode, items in REQ_TYPE_MAP.items():
         html.append(f"<h3>{mode.upper()}</h3><ul>")
         for it in items:
@@ -68,9 +58,9 @@ def build_req_type_list_html():
             )
         html.append("</ul>")
 
-    # SCREENER
+    # SCREENER (from screener.py)
     html.append("<h3>SCREENER</h3><ul>")
-    for key in SCREENER_MAP.keys():
+    for key in screener.SCREENER_MAP.keys():
         html.append(
             f"<li class='screener-req' data-mode='screener'>{key}</li>"
         )
@@ -176,13 +166,8 @@ def handle_index(req: FetchRequest):
 # SCREENER handler
 # -------------------------------------------------------
 def handle_screener(req: FetchRequest):
-    key = req.req_type.lower()
-    url = SCREENER_MAP.get(key)
+    return screener.fetch_screener(req.req_type.lower())
 
-    if not url:
-        return common.wrap(f"<h3>Invalid screener: {key}</h3>")
-
-    return screener.fetch_screener(url)
 
 # -------------------------------------------------------
 # Routes
