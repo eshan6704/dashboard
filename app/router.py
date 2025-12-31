@@ -89,7 +89,7 @@ def handle_stock(req: FetchRequest):
     if t == "intraday":
         return stock.fetch_intraday(req.name)
     if t == "daily":
-        return stock.fetch_daily(req.name, req.date_end)
+        return stock.fetch_daily(req.name, req.date_end,req.date_start)
     if t == "nse_eq":
         return eq.build_eq_html(req.name)
     if t == "qresult":
