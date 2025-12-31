@@ -35,6 +35,17 @@ REQ_TYPE_MAP = {
     ],
 }
 
+# ===============================
+# Screener name → URL mapping
+# ===============================
+SCREENER_MAP = {
+    "from_high": "https://www.screener.in/screens/3355081/from-high/",
+    "sales_wise": "https://www.screener.in/screens/880780/sales_wise/",
+    "fii_buying": "https://www.screener.in/screens/343087/fii-buying/",
+    "debt_reduction": "https://www.screener.in/screens/126864/debt-reduction/",
+    "magic_formula": "https://www.screener.in/screens/59/magic-formula/",
+
+}
 
 # -------------------------------------------------------
 # STOCK handler
@@ -148,7 +159,7 @@ def build_req_type_list_html():
 
     # SCREENER (keys extracted from screener.py)
     html.append("<h3>SCREENER</h3><ul>")
-    for key in screener.SCREENER_MAP.keys():
+    for key in SCREENER_MAP.keys():
         html.append(
             f"<li class='screener-req' data-mode='screener'>{key}</li>"
         )
