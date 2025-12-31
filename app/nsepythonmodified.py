@@ -261,8 +261,8 @@ def index_total_returns(symbol, start_date, end_date):
 
 # ------------------------- CSV / BHAV -------------------------
 def nse_bhavcopy(d): return pd.read_csv("https://archives.nseindia.com/products/content/sec_bhavdata_full_"+d.replace("-","")+".csv")
-def nse_bulkdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/bulk.csv")
-def nse_blockdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/block.csv")
+def nse_bulkdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/bulk.csv").to_html()
+def nse_blockdeals(): return pd.read_csv("https://archives.nseindia.com/content/equities/block.csv").to_html()
 
 def nse_preopen(key="NIFTY"):
     p=nsefetch("https://www.nseindia.com/api/market-data-pre-open?key="+key)
@@ -280,7 +280,7 @@ def nse_price_band_hitters(b="both",v="AllSec"):
 
 def nse_largedeals(mode="bulk_deals"):
     p=nsefetch('https://www.nseindia.com/api/snapshot-capital-market-largedeal')
-    return pd.DataFrame(p["BULK_DEALS_DATA" if mode=="bulk_deals" else "SHORT_DEALS_DATA" if mode=="short_deals" else "BLOCK_DEALS_DATA"])
+    return pd.DataFrame(p["BULK_DEALS_DATA" if mode=="bulk_deals" else "SHORT_DEALS_DATA" if mode=="short_deals" else "BLOCK_DEALS_DATA"]).to_html()
 
 def nse_largedeals_historical(f,t,mode="bulk_deals"):
     m = "bulk-deals" if mode=="bulk_deals" else "short-selling" if mode=="short_deals" else "block-deals"
