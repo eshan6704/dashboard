@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from typing import List, Tuple
 
 from . import persist
-from . import router
+from . import app
 
 
 
@@ -17,7 +17,7 @@ def fetch_screener(screen_name: str) -> str:
     Uses disk persistence (HTML primary, CSV secondary).
     """
 
-    if screen_name not in router.SCREENER_MAP:
+    if screen_name not in app.SCREENER_MAP:
         return _error_html(f"Invalid screener: {screen_name}")
 
     cache_name = f"SCREENER_{screen_name.upper()}"
@@ -27,7 +27,7 @@ def fetch_screener(screen_name: str) -> str:
         return persist.load(cache_name, "html")
 
     # 2️⃣ Fetch live
-    headers, rows = _fetch_table(router.SCREENER_MAP[screen_name])
+    headers, rows = _fetch_table(app.SCREENER_MAP[screen_name])
 
     if not headers or not rows:
         return _error_html("No data available")
