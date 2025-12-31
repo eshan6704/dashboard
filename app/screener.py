@@ -4,19 +4,8 @@ from bs4 import BeautifulSoup
 from typing import List, Tuple
 
 from . import persist
+from . import router
 
-
-# ===============================
-# Screener name → URL mapping
-# ===============================
-SCREENER_MAP = {
-    "from_high": "https://www.screener.in/screens/3355081/from-high/",
-    "sales_wise": "https://www.screener.in/screens/880780/sales_wise/",
-    "fii_buying": "https://www.screener.in/screens/343087/fii-buying/",
-    "debt_reduction": "https://www.screener.in/screens/126864/debt-reduction/",
-    "magic_formula": "https://www.screener.in/screens/59/magic-formula/",
-
-}
 
 
 # ===============================
@@ -28,7 +17,7 @@ def fetch_screener(screen_name: str) -> str:
     Uses disk persistence (HTML primary, CSV secondary).
     """
 
-    if screen_name not in SCREENER_MAP:
+    if screen_name not in router.SCREENER_MAP:
         return _error_html(f"Invalid screener: {screen_name}")
 
     cache_name = f"SCREENER_{screen_name.upper()}"
@@ -38,7 +27,7 @@ def fetch_screener(screen_name: str) -> str:
         return persist.load(cache_name, "html")
 
     # 2️⃣ Fetch live
-    headers, rows = _fetch_table(SCREENER_MAP[screen_name])
+    headers, rows = _fetch_table(router.SCREENER_MAP[screen_name])
 
     if not headers or not rows:
         return _error_html("No data available")
