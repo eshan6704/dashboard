@@ -15,12 +15,15 @@ from . import bhavcopy_html as bhav
 from . import build_nse_fno as fno
 from . import nsepythonmodified as ns
 from . import yahooinfo
-from . import screener   # screener owns its map
+from . import screener   # executor only
 
+# -------------------------------------------------------
+# Router
+# -------------------------------------------------------
 router = APIRouter()
 
 # -------------------------------------------------------
-# REQ TYPE MAP (stock & index only)
+# REQ TYPE MAP (stock & index)
 # -------------------------------------------------------
 REQ_TYPE_MAP = {
     "stock": [
@@ -40,11 +43,23 @@ REQ_TYPE_MAP = {
 }
 
 # -------------------------------------------------------
+# SCREENER MAP (OWNER = ROUTER)
+# -------------------------------------------------------
+SCREENER_MAP = {
+    "from_high": "https://www.screener.in/screens/3355081/from-high/",
+    "sales_wise": "https://www.screener.in/screens/880780/sales_wise/",
+    "fii_buying": "https://www.screener.in/screens/343087/fii-buying/",
+    "debt_reduction": "https://www.screener.in/screens/126864/debt-reduction/",
+    "magic_formula": "https://www.screener.in/screens/59/magic-formula/",
+}
+
+# -------------------------------------------------------
 # HTML builder for req_type discovery
 # -------------------------------------------------------
 def build_req_type_list_html():
     html = ["<div id='req_type_list'>"]
 
+    # STOCK & INDEX
     for mode, items in REQ_TYPE_MAP.items():
         html.append(f"<h3>{mode.upper()}</h3><ul>")
         for it in items:
@@ -53,8 +68,9 @@ def build_req_type_list_html():
             )
         html.append("</ul>")
 
+    # SCREENER
     html.append("<h3>SCREENER</h3><ul>")
-    for key in screener.SCREENER_MAP.keys():
+    for key in SCREENER_MAP.keys():
         html.append(
             f"<li class='screener-req' data-mode='screener'>{key}</li>"
         )
@@ -160,7 +176,13 @@ def handle_index(req: FetchRequest):
 # SCREENER handler
 # -------------------------------------------------------
 def handle_screener(req: FetchRequest):
-    return screener.fetch_screener(req.req_type.lower())
+    key = req.req_type.lower()
+    url = SCREENER_MAP.get(key)
+
+    if not url:
+        return common.wrap(f"<h3>Invalid screener: {key}</h3>")
+
+    return screener.fetch_screener(url)
 
 # -------------------------------------------------------
 # Routes
@@ -174,6 +196,7 @@ def fetch_data(req: FetchRequest):
 
     mode = req.mode.lower()
 
+    # frontend discovery call
     if mode == "list":
         return HTMLResponse(content=build_req_type_list_html())
 
