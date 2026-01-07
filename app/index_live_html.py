@@ -69,6 +69,29 @@ def build_index_live_html(index_name ="NIFTY 50"):
                 const_df = const_df.sort_values("pChange", ascending=False)
 
     # ================= HTML HELPERS =================
+    def format_number(val):
+        """
+        Format numeric values:
+        - 0 => '0'
+        - |val| < 0.001 => ±0.001
+        - large numbers >= 1e7 => Crore format 'xx.xx Cr'
+        - other => up to 3 decimals
+        """
+        if val == 0:
+            return "0"
+        # enforce minimum non-zero magnitude
+        if abs(val) < 0.001:
+            val_display = 0.001 if val > 0 else -0.001
+            return f"{val_display:.3f}"
+
+        # Crore formatting for large values
+        if abs(val) >= 1e7:
+            crores = val / 1e7
+            return f"{crores:.2f} Cr"
+
+        # normal numeric formatting with up to 3 decimals
+        return f"{val:.3f}"
+
     def df_to_html_color(df, metric_col=None):
         df_html = df.copy()
         top_up, top_down = [], []
@@ -82,19 +105,27 @@ def build_index_live_html(index_name ="NIFTY 50"):
             for col in df_html.columns:
                 val = row[col]
                 cls = ""
+                # only handle numeric types
                 if isinstance(val, (int, float)):
-                    val_fmt = f"{val:.2f}"
+                    # format with the custom formatter
+                    val_str = format_number(val)
+
+                    # apply positive/negative classes
                     if val > 0:
                         cls = "numeric-positive"
                     elif val < 0:
                         cls = "numeric-negative"
+
+                    # highlight top/bottom if metric
                     if metric_col and col == metric_col:
                         if idx in top_up:
                             cls += " top-up"
                         elif idx in top_down:
                             cls += " top-down"
-                    df_html.at[idx, col] = f'<span class="{cls.strip()}">{val_fmt}</span>'
+
+                    df_html.at[idx, col] = f'<span class="{cls.strip()}">{val_str}</span>'
                 else:
+                    # leave text values untouched
                     df_html.at[idx, col] = str(val)
 
         return df_html.to_html(index=False, escape=False, classes="compact-table")
