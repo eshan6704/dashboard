@@ -1,6 +1,7 @@
 from . import  nsepythonmodified as ns
 import pandas as pd
 from datetime import datetime as dt
+import re
 
 # persist helpers (HF only)
 from .persist import exists, load, save
@@ -69,27 +70,37 @@ def build_index_live_html(index_name ="NIFTY 50"):
                 const_df = const_df.sort_values("pChange", ascending=False)
 
     # ================= HTML HELPERS =================
-    def format_number(val):
+
+    def is_pure_number(s):
         """
-        Format numeric values:
-        - 0 => '0'
-        - |val| < 0.001 => ±0.001
-        - large numbers >= 1e7 => Crore format 'xx.xx Cr'
-        - other => up to 3 decimals
+        Returns True if s is a pure numeric string (int or decimal),
+        False if it contains letters or non-numeric characters.
         """
+        try:
+            float(s)
+        except (ValueError, TypeError):
+            return False
+        return bool(re.fullmatch(r'-?\d+(\.\d+)?', str(s)))
+
+    def format_number_string(val_str):
+        """
+        Format a pure numeric string according to:
+        0 => "0"
+        |val| < 0.001 => "±0.001"
+        large (>=1e7) => Crore
+        else => up to 3 decimals
+        """
+        val = float(val_str)
+
         if val == 0:
             return "0"
-        # enforce minimum non-zero magnitude
+
         if abs(val) < 0.001:
-            val_display = 0.001 if val > 0 else -0.001
-            return f"{val_display:.3f}"
+            val = 0.001 if val > 0 else -0.001
 
-        # Crore formatting for large values
         if abs(val) >= 1e7:
-            crores = val / 1e7
-            return f"{crores:.2f} Cr"
+            return f"{val/1e7:.2f} Cr"
 
-        # normal numeric formatting with up to 3 decimals
         return f"{val:.3f}"
 
     def df_to_html_color(df, metric_col=None):
@@ -105,18 +116,18 @@ def build_index_live_html(index_name ="NIFTY 50"):
             for col in df_html.columns:
                 val = row[col]
                 cls = ""
-                # only handle numeric types
-                if isinstance(val, (int, float)):
-                    # format with the custom formatter
-                    val_str = format_number(val)
 
-                    # apply positive/negative classes
-                    if val > 0:
+                # Only format pure numeric content
+                if is_pure_number(val):
+                    val_str = format_number_string(val)
+
+                    # assign classes
+                    num_val = float(val)
+                    if num_val > 0:
                         cls = "numeric-positive"
-                    elif val < 0:
+                    elif num_val < 0:
                         cls = "numeric-negative"
 
-                    # highlight top/bottom if metric
                     if metric_col and col == metric_col:
                         if idx in top_up:
                             cls += " top-up"
@@ -125,7 +136,7 @@ def build_index_live_html(index_name ="NIFTY 50"):
 
                     df_html.at[idx, col] = f'<span class="{cls.strip()}">{val_str}</span>'
                 else:
-                    # leave text values untouched
+                    # text stays exactly as-is
                     df_html.at[idx, col] = str(val)
 
         return df_html.to_html(index=False, escape=False, classes="compact-table")
@@ -240,7 +251,5 @@ th, td {{ border: 1px solid #bbb; padding: 5px 8px; }}
 </html>
 """
 
-    # ================= SAVE (HTML ONLY) =================
     save(cache_name, html_out, "html")
-
     return html_out
