@@ -23,7 +23,7 @@ def build_index_live_html(index_name ="NIFTY 50"):
             return cached_html
 
     # ================= LIVE FETCH =================
-    
+
     p = ns.nse_index_live(index_name)
 
     full_df = p.get("data", pd.DataFrame())
@@ -145,15 +145,47 @@ def build_index_live_html(index_name ="NIFTY 50"):
 <head>
 <meta charset="UTF-8">
 <style>
-body {{ font-family: Arial; margin: 12px; background: #f5f5f5; font-size: 14px; }}
+body {{ font-family: Arial, sans-serif; margin: 12px; background: #f5f5f5; font-size: 14px; }}
 table {{ border-collapse: collapse; width: 100%; }}
 th, td {{ border: 1px solid #bbb; padding: 5px 8px; }}
 .numeric-positive {{ color: green; font-weight: bold; }}
 .numeric-negative {{ color: red; font-weight: bold; }}
 .top-up {{ background: #a8f0a5; }}
 .top-down {{ background: #f0a8a8; }}
-.mini-card-container {{ display: flex; flex-wrap: wrap; gap: 10px; }}
-.mini-card {{ background: #fff; padding: 8px; border-radius: 6px; }}
+
+.mini-card-container {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}}
+
+.mini-card {{
+    background: #fff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    min-width: 130px;
+    flex: 1 1 150px;
+}}
+
+.mini-card .card-key {{
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}}
+
+.mini-card .card-val {{
+    font-size: 16px;
+    font-weight: bold;
+    color: #222;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+
 .grid {{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }}
 .small-table {{ background: white; padding: 8px; border-radius: 6px; }}
 .st-title {{ background: #222; color: white; text-align: center; padding: 5px; }}
