@@ -14,6 +14,7 @@ from .common import wrap_html, format_large_number
 # RAW DAILY FETCHER (from your stock.py)
 # ===========================================================
 def daily(symbol, date_end, date_start):
+    """Fetch daily OHLCV from Yahoo Finance."""
     print(f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] yf called for {symbol}")
     
     start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
@@ -24,11 +25,11 @@ def daily(symbol, date_end, date_start):
     # Flatten MultiIndex columns if present
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
-    print(df)
+    
     return df
 
 # ===========================================================
-# Candlestick Pattern Detection (scalar-safe)
+# PATTERN DETECTION (scalar-safe)
 # ===========================================================
 def detect_patterns(df):
     patterns = []
@@ -81,15 +82,24 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
     try:
         df = daily(symbol, date_end, date_start)
         if df is None or df.empty:
-            return wrap_html(f"<h1>No daily data for {symbol}</h1>")
+            return wrap_html('<div id="daily_wrapper"><h1>No daily data for {}</h1></div>'.format(symbol))
 
-        # Reset index if necessary
+        # Reset index if not simple RangeIndex
         if not isinstance(df.index, pd.RangeIndex):
             df.reset_index(inplace=True)
 
+        # Convert OHLCV to numeric safely
+        numeric_cols = ["Open","High","Low","Close","Adj Close","Volume"]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        # Drop rows with missing essential data
+        df = df.dropna(subset=["Open","High","Low","Close","Volume"]).reset_index(drop=True)
+
         # Format date
         df["Date"] = pd.to_datetime(df["Date"], errors='coerce')
-        df = df.dropna(subset=["Date"])
+        df = df.dropna(subset=["Date"]).reset_index(drop=True)
         df["Date"] = df["Date"].dt.strftime("%d-%b-%Y")
 
         if b2_save:
@@ -137,19 +147,21 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
         fig.add_trace(go.Scatter(x=df["Date"], y=df["UpperBB"], mode="lines", name="UpperBB", line=dict(dash="dot")), row=1, col=1)
         fig.add_trace(go.Scatter(x=df["Date"], y=df["LowerBB"], mode="lines", name="LowerBB", line=dict(dash="dot")), row=1, col=1)
 
-        # Highlight patterns
+        # Highlight patterns safely
         if not patterns_df.empty:
             for _, row in patterns_df.iterrows():
                 pattern_date = row["Date"]
-                high_value = df.loc[df["Date"]==pattern_date, "High"].values[0]
-                fig.add_trace(go.Scatter(
-                    x=[pattern_date], y=[high_value*1.01],
-                    mode="markers+text",
-                    marker=dict(color="red", size=10, symbol="triangle-up"),
-                    text=[row["Pattern"]],
-                    textposition="top center",
-                    showlegend=False
-                ), row=1, col=1)
+                matching = df[df["Date"]==pattern_date]
+                if not matching.empty:
+                    high_value = matching["High"].values[0]
+                    fig.add_trace(go.Scatter(
+                        x=[pattern_date], y=[high_value*1.01],
+                        mode="markers+text",
+                        marker=dict(color="red", size=10, symbol="triangle-up"),
+                        text=[row["Pattern"]],
+                        textposition="top center",
+                        showlegend=False
+                    ), row=1, col=1)
 
         # Volume
         fig.add_trace(go.Bar(x=df["Date"], y=df["Volume"], name="Volume"), row=2, col=1)
@@ -159,18 +171,19 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
         fig.add_trace(go.Scatter(x=df["Date"], y=df["ATR"], mode="lines", name="ATR"), row=4, col=1)
 
         fig.update_layout(height=1000, width=1200, title=f"{symbol} Daily Analysis Dashboard", xaxis_rangeslider_visible=False)
-        try:
-            chart_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
-        except Exception as e:
-            chart_html = f"<h2>Chart generation failed: {e}</h2>"
 
-        # Tables
-        table_html = wrap_html(f"<h2>Summary Stats</h2>{summary.to_html(index=False, escape=False)}")
-        data_table_html = wrap_html(f"<h2>OHLC Table</h2>{df.to_html(index=False, escape=False)}")
-        patterns_html = wrap_html(
-            f"<h2>Detected Patterns</h2>" +
-            (patterns_df.to_html(index=False, escape=False) if not patterns_df.empty else "<p>No patterns detected.</p>")
-        )
+        chart_html = ""
+        try:
+            chart_html = f'<div id="chart_dashboard">{fig.to_html(full_html=False, include_plotlyjs="cdn")}</div>'
+        except Exception as e:
+            chart_html = f'<div id="chart_dashboard"><h2>Chart generation failed: {e}</h2></div>'
+
+        # Tables wrapped in divs for frontend safety
+        table_html = f'<div id="summary_stats"><h2>Summary Stats</h2>{summary.to_html(index=False, escape=False)}</div>'
+        data_table_html = f'<div id="ohlc_table"><h2>OHLC Table</h2>{df.to_html(index=False, escape=False)}</div>'
+        patterns_html = f'<div id="patterns_table"><h2>Detected Patterns</h2>'
+        patterns_html += patterns_df.to_html(index=False, escape=False) if not patterns_df.empty else "<p>No patterns detected.</p>"
+        patterns_html += "</div>"
 
         full_html = chart_html + table_html + patterns_html + data_table_html
 
@@ -178,4 +191,4 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
         return full_html
 
     except Exception as e:
-        return wrap_html(f"<h1>Error fetch_daily: {e}</h1><pre>{traceback.format_exc()}</pre>")
+        return wrap_html(f'<div id="daily_wrapper"><h1>Error fetch_daily: {e}</h1><pre>{traceback.format_exc()}</pre></div>')
