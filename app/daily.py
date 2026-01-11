@@ -11,6 +11,23 @@ from . import backblaze as b2
 from .common import wrap_html, format_large_number
 
 # ===========================================================
+# RAW DAILY FETCHER (from your stock.py)
+# ===========================================================
+def daily(symbol, date_end, date_start):
+    print(f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] yf called for {symbol}")
+    
+    start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
+    end = dt.strptime(date_end, "%d-%m-%Y").strftime("%Y-%m-%d")
+    
+    df = yf.download(symbol + ".NS", start=start, end=end).round(2)
+    
+    # Flatten MultiIndex columns if present
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    
+    return df
+
+# ===========================================================
 # Candlestick Pattern Detection (scalar-safe)
 # ===========================================================
 def detect_patterns(df):
@@ -51,7 +68,7 @@ def detect_patterns(df):
     return pd.DataFrame(columns=["Date", "Pattern"])
 
 # ===========================================================
-# Daily Analysis Dashboard
+# DASHBOARD BUILDER
 # ===========================================================
 def fetch_daily(symbol, date_end, date_start, b2_save=False):
     key = f"daily_{symbol}"
@@ -62,18 +79,17 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
             return cached
 
     try:
-        start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
-        end = dt.strptime(date_end, "%d-%m-%Y").strftime("%Y-%m-%d")
-        print(f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] Fetching daily for {symbol}")
-        df = yf.download(symbol + ".NS", start=start, end=end)
-        if df.empty:
+        df = daily(symbol, date_end, date_start)
+        if df is None or df.empty:
             return wrap_html(f"<h1>No daily data for {symbol}</h1>")
 
-        # Flatten MultiIndex columns if present
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
+        # Reset index if necessary
+        if not isinstance(df.index, pd.RangeIndex):
+            df.reset_index(inplace=True)
 
-        df.reset_index(inplace=True)
+        # Format date
+        df["Date"] = pd.to_datetime(df["Date"], errors='coerce')
+        df = df.dropna(subset=["Date"])
         df["Date"] = df["Date"].dt.strftime("%d-%b-%Y")
 
         if b2_save:
@@ -113,7 +129,6 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
                             row_heights=[0.4,0.2,0.2,0.2],
                             specs=[[{}],[{}],[{}],[{}]])
 
-        # Candlestick + SMA/EMA/Bollinger
         fig.add_trace(go.Candlestick(x=df["Date"], open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="OHLC"), row=1, col=1)
         fig.add_trace(go.Scatter(x=df["Date"], y=df["SMA20"], mode="lines", name="SMA20"), row=1, col=1)
         fig.add_trace(go.Scatter(x=df["Date"], y=df["SMA50"], mode="lines", name="SMA50"), row=1, col=1)
@@ -122,7 +137,7 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
         fig.add_trace(go.Scatter(x=df["Date"], y=df["UpperBB"], mode="lines", name="UpperBB", line=dict(dash="dot")), row=1, col=1)
         fig.add_trace(go.Scatter(x=df["Date"], y=df["LowerBB"], mode="lines", name="LowerBB", line=dict(dash="dot")), row=1, col=1)
 
-        # Highlight patterns on chart
+        # Highlight patterns
         if not patterns_df.empty:
             for _, row in patterns_df.iterrows():
                 pattern_date = row["Date"]
@@ -159,7 +174,6 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
 
         full_html = chart_html + table_html + patterns_html + data_table_html
 
-        # Cache
         persist.save(key, full_html, "html")
         return full_html
 
