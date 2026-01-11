@@ -58,8 +58,6 @@ PRICE_VOLUME_GROUPS = {
     "VWAP & Gap": ["VWAP","dailyGapPercent"]
 }
 
-PIN_PRICE = ["Price","Chg","Chg%","Prev","Open"]
-
 # ==============================
 # Noise keys
 # ==============================
@@ -293,25 +291,23 @@ def fetch_info(symbol):
         html=""
         # Price / Volume
         pv=resolve_duplicates(groups["price_volume"])
-        if pv: html+=html_card(f"{MAIN_ICONS['Price / Volume']} Price / Volume",build_price_volume_section(info,pv),shade=0)
+        if pv: html+=html_card(f"{MAIN_ICONS['Price / Volume']} Price / Volume",build_price_volume_section(info,pv))
         # Fundamentals
         if groups["fundamental"]:
             df=build_df_from_dict(groups["fundamental"])
             html+=html_card(f"{MAIN_ICONS['Fundamentals']} Fundamentals",
-                            column_layout("".join(html_card("Fundamentals",make_table(c),mini=True) for c in split_df(df))),
-                            shade=1)
+                            column_layout("".join(html_card("Fundamentals",make_table(c),mini=True) for c in split_df(df))))
         # Company Profile
         if groups["profile"]:
             df=build_df_from_dict(groups["profile"])
             html+=html_card(f"{MAIN_ICONS['Company Profile']} Company Profile",
-                            column_layout("".join(html_card("Profile",make_table(c),mini=True) for c in split_df(df))),
-                            shade=2)
+                            column_layout("".join(html_card("Profile",make_table(c),mini=True) for c in split_df(df))))
         # Management
         if groups["management"].get("companyOfficers"):
             cards=""
             for o in groups["management"]["companyOfficers"]:
                 cards+=html_card(o.get("name",""),o.get("title",""),mini=True)
-            html+=html_card(f"{MAIN_ICONS['Management']} Management",column_layout(cards),shade=2)
+            html+=html_card(f"{MAIN_ICONS['Management']} Management",column_layout(cards))
         # Long Text
         for k,v in groups["long_text"].items():
             html+=html_card(SHORT_NAMES.get(k,k[:16]),v)
