@@ -22,6 +22,10 @@ def daily(symbol, date_end, date_start):
     # Flatten MultiIndex columns if present
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
+
+    # Remove column names / DataFrame name to avoid "Price" display
+    df.columns.name = None
+    df.index.name = None
     
     return df
 
@@ -55,12 +59,16 @@ def fetch_daily(symbol, date_end, date_start):
         df = df.dropna(subset=["Open","High","Low","Close","Volume"]).reset_index(drop=True)
 
         # Format date
-        df["Date"] = pd.to_datetime(df["Date"], errors='coerce')
-        df = df.dropna(subset=["Date"]).reset_index(drop=True)
-        df["Date"] = df["Date"].dt.strftime("%d-%b-%Y")
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"], errors='coerce')
+            df = df.dropna(subset=["Date"]).reset_index(drop=True)
+            df["Date"] = df["Date"].dt.strftime("%d-%b-%Y")
 
-        # Build HTML table
-        html_table = f'<div id="daily_table"><h2>{symbol} Daily Data</h2>{df.to_html(index=False, escape=False)}</div>'
+        # Remove column name again just in case
+        df.columns.name = None
+
+        # Build HTML table WITHOUT any DataFrame name
+        html_table = f'<div id="daily_table"><h2>{symbol} Daily Data</h2>{df.to_html(index=False, header=True, border=1, classes="daily-data", escape=False)}</div>'
 
         # Save to cache
         persist.save(key, html_table, "html")
