@@ -57,6 +57,7 @@ def plot_candlestick(df, symbol):
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
 
+    # Include Plotly JS only once
     return pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
 
 # ===========================================================
