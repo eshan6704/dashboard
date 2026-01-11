@@ -6,7 +6,7 @@ import traceback
 from . import persist
 
 # ============================================================
-# DAILY DATA FETCH (DO NOT CHANGE)
+# DAILY DATA FETCH (FINALIZED)
 # ============================================================
 def daily(symbol, date_end, date_start):
     start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
@@ -14,7 +14,6 @@ def daily(symbol, date_end, date_start):
 
     df = yf.download(symbol + ".NS", start=start, end=end)
 
-    # Flatten multi-index columns
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
@@ -24,7 +23,7 @@ def daily(symbol, date_end, date_start):
 
 
 # ============================================================
-# DASHBOARD
+# DAILY DASHBOARD (FULL HTML)
 # ============================================================
 def fetch_daily(symbol, date_end, date_start):
     key = f"daily_{symbol}"
@@ -37,13 +36,12 @@ def fetch_daily(symbol, date_end, date_start):
     try:
         df = daily(symbol, date_end, date_start)
         if df is None or df.empty:
-            return "<h1>No data</h1>"
+            return "<h1>No daily data</h1>"
 
         # -------------------------------
-        # CLEAN & FORMAT
+        # CLEAN DATA
         # -------------------------------
         df = df.reset_index()
-
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
 
@@ -51,19 +49,19 @@ def fetch_daily(symbol, date_end, date_start):
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
         df = df.dropna()
-        df["DateStr"] = df["Date"].dt.strftime("%d-%b-%Y")
 
+        df["DateStr"] = df["Date"].dt.strftime("%d-%b-%Y")
         df["MA20"] = df["Close"].rolling(20).mean()
         df["MA50"] = df["Close"].rolling(50).mean()
 
         # -------------------------------
-        # TABLE HTML
+        # HTML TABLE
         # -------------------------------
-        table_rows = ""
+        rows = ""
         for i, r in df.iterrows():
-            color = "#e8f5e9" if i % 2 == 0 else "#f5f5f5"
-            table_rows += f"""
-            <tr style="background:{color}">
+            bg = "#eef6ff" if i % 2 == 0 else "#ffffff"
+            rows += f"""
+            <tr style="background:{bg}">
                 <td>{r['DateStr']}</td>
                 <td>{r['Open']:.2f}</td>
                 <td>{r['High']:.2f}</td>
@@ -82,13 +80,13 @@ def fetch_daily(symbol, date_end, date_start):
                     <th>Low</th><th>Close</th><th>Volume</th>
                 </tr>
             </thead>
-            <tbody>{table_rows}</tbody>
+            <tbody>{rows}</tbody>
         </table>
         </div>
         """
 
         # -------------------------------
-        # FULL HTML (IMPORTANT)
+        # FULL HTML OUTPUT
         # -------------------------------
         html = f"""
 <!DOCTYPE html>
@@ -102,8 +100,8 @@ def fetch_daily(symbol, date_end, date_start):
 <style>
 body {{
     font-family: Arial, sans-serif;
-    margin: 10px;
     background: #f4f6f9;
+    margin: 10px;
 }}
 
 .table-wrap {{
@@ -113,8 +111,8 @@ body {{
 }}
 
 table {{
-    border-collapse: collapse;
     width: 100%;
+    border-collapse: collapse;
     background: white;
 }}
 
@@ -134,6 +132,7 @@ td {{
 td:first-child {{
     text-align: left;
 }}
+
 .chart {{
     margin-bottom: 30px;
 }}
@@ -142,7 +141,7 @@ td:first-child {{
 
 <body>
 
-<h2>{symbol} – Daily Price Table</h2>
+<h2>{symbol} – Daily Data</h2>
 {table_html}
 
 <h2>Candlestick & Volume</h2>
@@ -158,8 +157,9 @@ const highp = {df["High"].round(2).tolist()};
 const lowp  = {df["Low"].round(2).tolist()};
 const closep= {df["Close"].round(2).tolist()};
 const volume= {df["Volume"].astype(int).tolist()};
-const ma20  = {df["MA20"].round(2).fillna(None).tolist()};
-const ma50  = {df["MA50"].round(2).fillna(None).tolist()};
+
+const ma20 = {df["MA20"].round(2).where(pd.notna(df["MA20"]), None).tolist()};
+const ma50 = {df["MA50"].round(2).where(pd.notna(df["MA50"]), None).tolist()};
 
 Plotly.newPlot("candle", [
     {{
@@ -199,5 +199,5 @@ Plotly.newPlot("ma", [
         persist.save(key, html, "html")
         return html
 
-    except Exception as e:
+    except Exception:
         return f"<pre>{traceback.format_exc()}</pre>"
