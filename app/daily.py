@@ -11,37 +11,40 @@ from . import backblaze as b2
 from .common import wrap_html, format_large_number
 
 # ===========================================================
-# Candlestick Pattern Detection
+# Candlestick Pattern Detection (scalar-safe)
 # ===========================================================
 def detect_patterns(df):
     patterns = []
 
     for i in range(1, len(df)):
-        open_today, close_today = df.loc[i, "Open"], df.loc[i, "Close"]
-        open_prev, close_prev = df.loc[i-1, "Open"], df.loc[i-1, "Close"]
-        high, low = df.loc[i, "High"], df.loc[i, "Low"]
+        open_today = df.iat[i, df.columns.get_loc("Open")]
+        close_today = df.iat[i, df.columns.get_loc("Close")]
+        open_prev = df.iat[i-1, df.columns.get_loc("Open")]
+        close_prev = df.iat[i-1, df.columns.get_loc("Close")]
+        high = df.iat[i, df.columns.get_loc("High")]
+        low = df.iat[i, df.columns.get_loc("Low")]
 
         # Bullish Engulfing
         if close_prev < open_prev and close_today > open_today and close_today > open_prev and open_today < close_prev:
-            patterns.append({"Date": df.loc[i, "Date"], "Pattern": "Bullish Engulfing"})
+            patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Bullish Engulfing"})
         # Bearish Engulfing
         elif close_prev > open_prev and close_today < open_today and open_today > close_prev and close_today < open_prev:
-            patterns.append({"Date": df.loc[i, "Date"], "Pattern": "Bearish Engulfing"})
+            patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Bearish Engulfing"})
         # Doji
-        elif abs(close_today - open_today)/ (high-low+1e-6) < 0.1:
-            patterns.append({"Date": df.loc[i, "Date"], "Pattern": "Doji"})
+        elif abs(close_today - open_today) / (high - low + 1e-6) < 0.1:
+            patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Doji"})
         # Hammer / Hanging Man
         elif (high - max(open_today, close_today)) > 2*(max(open_today, close_today)-min(open_today, close_today)) and \
              (min(open_today, close_today) - low) < 0.1*(high-low):
             if close_today > open_today:
-                patterns.append({"Date": df.loc[i, "Date"], "Pattern": "Hammer"})
+                patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Hammer"})
             else:
-                patterns.append({"Date": df.loc[i, "Date"], "Pattern": "Hanging Man"})
+                patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Hanging Man"})
         # Gap Up / Gap Down
-        if df.loc[i, "Open"] > df.loc[i-1, "Close"] * 1.01:
-            patterns.append({"Date": df.loc[i, "Date"], "Pattern": "Gap Up"})
-        elif df.loc[i, "Open"] < df.loc[i-1, "Close"] * 0.99:
-            patterns.append({"Date": df.loc[i, "Date"], "Pattern": "Gap Down"})
+        if open_today > close_prev * 1.01:
+            patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Gap Up"})
+        elif open_today < close_prev * 0.99:
+            patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Gap Down"})
 
     return pd.DataFrame(patterns)
 
@@ -116,8 +119,10 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
 
         # Highlight patterns on chart
         for _, row in patterns_df.iterrows():
+            pattern_date = row["Date"]
+            high_value = df.loc[df["Date"]==pattern_date, "High"].values[0]
             fig.add_trace(go.Scatter(
-                x=[row["Date"]], y=[df.loc[df["Date"]==row["Date"], "High"].values[0]*1.01],
+                x=[pattern_date], y=[high_value*1.01],
                 mode="markers+text",
                 marker=dict(color="red", size=10, symbol="triangle-up"),
                 text=[row["Pattern"]],
