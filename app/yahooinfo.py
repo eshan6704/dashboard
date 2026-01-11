@@ -197,7 +197,7 @@ def resolve_duplicates(data):
 
 
 # ==============================
-# Short key names
+# Short key names (DISPLAY)
 # ==============================
 SHORT_NAMES = {
     "regularMarketPrice":"Price",
@@ -279,17 +279,26 @@ def split_df_evenly(df):
 
 
 # ==============================
-# DataFrame builder
+# DataFrame builder (SORT BY DISPLAY NAME)
 # ==============================
 def build_df_from_dict(data):
     rows = []
-    for k,v in data.items():
+
+    for k, v in data.items():
         if is_noise(k):
             continue
-        if isinstance(v,(int,float)):
+
+        label = pretty_key(k)   # 🔑 renamed key
+
+        if isinstance(v, (int, float)):
             v = format_number(v)
-        rows.append([pretty_key(k), v])
-    return pd.DataFrame(rows, columns=["Field","Value"])
+
+        rows.append((label, v))
+
+    # 🔑 SORT BY DISPLAY NAME
+    rows.sort(key=lambda x: x[0].lower())
+
+    return pd.DataFrame(rows, columns=["Field", "Value"])
 
 
 # ==============================
