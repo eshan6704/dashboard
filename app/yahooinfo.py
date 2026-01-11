@@ -10,7 +10,7 @@ from .persist import exists, load, save
 
 
 # ==============================
-# Yahoo Finance info fetch
+# Yahoo Finance fetch
 # ==============================
 def yfinfo(symbol):
     try:
@@ -26,13 +26,17 @@ def yfinfo(symbol):
 # ==============================
 MAIN_ICONS = {
     "Price / Volume": "📈",
+    "Fundamentals": "📊",
+    "Valuation": "💰",
+    "Trend": "📈",
+    "Signals": "🧠",
     "Company Profile": "🏢",
     "Management": "👔"
 }
 
 
 # ==============================
-# Responsive layout
+# Layout helpers
 # ==============================
 def column_layout(html):
     return f"""
@@ -48,8 +52,8 @@ def column_layout(html):
         @media(max-width:640px) {{
             .grid {{ grid-template-columns:1fr; }}
         }}
-        .pos {{ color:#0a7d32; font-weight:600; }}
-        .neg {{ color:#b00020; font-weight:600; }}
+        .pos {{ color:#0a7d32;font-weight:600; }}
+        .neg {{ color:#b00020;font-weight:600; }}
     </style>
     <div class="grid">{html}</div>
     """
@@ -69,13 +73,7 @@ def collapsible(title, body):
 def html_card(title, body, mini=False, shade=0):
     font = "12px" if mini else "14px"
     pad  = "6px" if mini else "10px"
-
-    shades = ["#e6f0fa", "#d7e3f5", "#c8d6f0"]
-    grads = [
-        "linear-gradient(to right,#1a4f8a,#4a7ac7)",
-        "linear-gradient(to right,#1f5595,#5584d6)",
-        "linear-gradient(to right,#205ca0,#6192e0)"
-    ]
+    shades = ["#e6f0fa","#d7e3f5","#c8d6f0"]
 
     return f"""
     <div style="background:{shades[shade%3]};
@@ -83,12 +81,7 @@ def html_card(title, body, mini=False, shade=0):
                 border-radius:8px;
                 padding:{pad};
                 font-size:{font};">
-        <div style="background:{grads[shade%3]};
-                    color:white;
-                    padding:4px 8px;
-                    border-radius:6px;
-                    font-weight:600;
-                    margin-bottom:6px;">
+        <div style="font-weight:600;margin-bottom:6px;">
             {title}
         </div>
         {body}
@@ -97,7 +90,7 @@ def html_card(title, body, mini=False, shade=0):
 
 
 # ==============================
-# Formatting helpers
+# Formatting
 # ==============================
 def human_number(n):
     try:
@@ -112,25 +105,19 @@ def human_number(n):
 
 def format_date(v):
     try:
-        if isinstance(v, (int, float)):
-            return datetime.fromtimestamp(v, tz=timezone.utc).strftime("%d %b %Y")
-        return v
+        return datetime.fromtimestamp(v, tz=timezone.utc).strftime("%d %b %Y")
     except:
         return v
 
 
 def format_value(k, v):
     lk = k.lower()
-    arrow = ""
     cls = ""
-
     if isinstance(v, (int, float)):
-        if v > 0: cls, arrow = "pos", "↑"
-        elif v < 0: cls, arrow = "neg", "↓"
-
+        cls = "pos" if v > 0 else "neg" if v < 0 else ""
         if "percent" in lk:
-            return f'<span class="{cls}">{arrow}{v:.2f}%</span>'
-        if "marketcap" in lk:
+            return f'<span class="{cls}">{v:.2f}%</span>'
+        if any(x in lk for x in ["marketcap","revenue","income","value"]):
             return f'<span class="{cls}">₹{human_number(v)}</span>'
         return f'<span class="{cls}">{human_number(v)}</span>'
 
@@ -140,15 +127,12 @@ def format_value(k, v):
     return v
 
 
-# ==============================
-# Table renderer
-# ==============================
 def make_table(df):
     return "".join(
         f"""
         <div style="display:flex;justify-content:space-between;
                     border-bottom:1px dashed #bcd0ea;padding:2px 0;">
-            <span style="color:#1a4f8a;">{r.Field}</span>
+            <span>{r.Field}</span>
             <span>{r.Value}</span>
         </div>
         """
@@ -157,7 +141,7 @@ def make_table(df):
 
 
 # ==============================
-# Utils
+# Keys
 # ==============================
 NOISE_KEYS = {
     "maxAge","priceHint","triggerable",
@@ -166,37 +150,40 @@ NOISE_KEYS = {
     "esgPopulated"
 }
 
-def is_noise(k): return k in NOISE_KEYS
-
-
 SHORT_NAMES = {
     "regularMarketPrice":"Price",
     "regularMarketChange":"Chg",
     "regularMarketChangePercent":"Chg%",
-    "regularMarketPreviousClose":"Prev",
     "regularMarketOpen":"Open",
     "regularMarketDayHigh":"High",
     "regularMarketDayLow":"Low",
     "regularMarketVolume":"Vol",
     "marketCap":"MCap",
-    "beta":"Beta",
-    "targetMeanPrice":"Target"
+    "trailingPE":"PE",
+    "forwardPE":"FwdPE",
+    "priceToBook":"PB",
+    "epsTrailingTwelveMonths":"EPS",
+    "returnOnEquity":"ROE",
+    "returnOnAssets":"ROA",
+    "profitMargins":"Margin",
+    "debtToEquity":"D/E"
 }
 
-# 🔑 USER CONFIGURABLE
-PINNED_FIELDS = [
-    "Price","Chg","Chg%","Open","High","Low","Vol","MCap","Beta"
-]
+PIN_PRICE = ["Price","Chg","Chg%","Open","High","Low","Vol"]
+PIN_FUND  = ["MCap","PE","PB","EPS","ROE","ROA","Margin","D/E"]
 
-def pretty_key(k): return SHORT_NAMES.get(k, k[:14])
+def pretty_key(k):
+    return SHORT_NAMES.get(k, k[:14])
 
 
 # ==============================
-# Grouping
+# Classification
 # ==============================
-def classify_key(k, v):
-    if k == "companyOfficers":
-        return "management"
+def classify(k, v):
+    lk = k.lower()
+    if k == "companyOfficers": return "management"
+    if any(x in lk for x in ["pe","pb","roe","roa","margin","debt","revenue","profit","eps","cap"]):
+        return "fundamental"
     if isinstance(v, (int, float)):
         return "price_volume"
     if isinstance(v, str) and len(v) > 80:
@@ -204,47 +191,70 @@ def classify_key(k, v):
     return "profile"
 
 
-def build_grouped_info(info):
-    g = {
-        "price_volume": {},
-        "profile": {},
-        "management": {},
-        "long_text": {}
-    }
-    for k, v in info.items():
-        if v in [None, "", [], {}]:
+def group_info(info):
+    g = {"price_volume":{}, "fundamental":{}, "profile":{},
+         "management":{}, "long_text":{}}
+    for k,v in info.items():
+        if k in NOISE_KEYS or v in [None,"",[],{}]:
             continue
-        g[classify_key(k, v)][k] = v
+        g[classify(k,v)][k] = v
     return g
 
 
 # ==============================
-# Column splitter
+# Builders
 # ==============================
-def split_df_evenly(df):
-    if df.empty: return []
+def build_df(data, pinned=None):
+    rows = []
+    for k,v in data.items():
+        rows.append((pretty_key(k), format_value(k,v)))
+    pinned = pinned or []
+    rows.sort(key=lambda x: (0 if x[0] in pinned else 1,
+                             pinned.index(x[0]) if x[0] in pinned else x[0]))
+    return pd.DataFrame(rows, columns=["Field","Value"])
+
+
+def split_df(df):
     n = len(df)
     cols = 1 if n <= 6 else 2 if n <= 14 else 3
-    chunk = (n + cols - 1) // cols
-    return [df.iloc[i:i+chunk] for i in range(0, n, chunk)]
+    size = (n + cols - 1) // cols
+    return [df.iloc[i:i+size] for i in range(0, n, size)]
 
 
 # ==============================
-# DF builder (PIN + SORT)
+# Trend & Signals
 # ==============================
-def build_df_from_dict(data):
+def build_trend(info):
     rows = []
-    for k, v in data.items():
-        if is_noise(k): continue
-        label = pretty_key(k)
-        rows.append((label, format_value(k, v)))
+    p = info.get("regularMarketPrice")
+    l = info.get("fiftyTwoWeekLow")
+    h = info.get("fiftyTwoWeekHigh")
+    d50 = info.get("fiftyDayAverage")
+    beta = info.get("beta")
 
-    rows.sort(
-        key=lambda x: (
-            0 if x[0] in PINNED_FIELDS else 1,
-            PINNED_FIELDS.index(x[0]) if x[0] in PINNED_FIELDS else x[0].lower()
-        )
-    )
+    if p and l and h:
+        rows.append(("52W Position", f"{(p-l)/(h-l)*100:.1f}%"))
+    if p and d50:
+        rows.append(("vs 50DMA", "Above ↑" if p>d50 else "Below ↓"))
+    if beta:
+        rows.append(("Risk", "High" if beta>1.3 else "Low" if beta<0.8 else "Moderate"))
+
+    return pd.DataFrame(rows, columns=["Field","Value"])
+
+
+def build_signals(info):
+    rows = []
+    pe = info.get("trailingPE")
+    roe = info.get("returnOnEquity")
+    p = info.get("regularMarketPrice")
+    d50 = info.get("fiftyDayAverage")
+
+    if pe:
+        rows.append(("Valuation","Expensive" if pe>35 else "Cheap" if pe<15 else "Fair"))
+    if p and d50:
+        rows.append(("Momentum","Strong" if p>d50 else "Weak"))
+    if roe:
+        rows.append(("Quality","High" if roe>0.18 else "Average"))
 
     return pd.DataFrame(rows, columns=["Field","Value"])
 
@@ -255,8 +265,8 @@ def build_df_from_dict(data):
 def fetch_info(symbol):
     key = f"info_{symbol}"
 
-    if exists(key, "html"):
-        cached = load(key, "html")
+    if exists(key,"html"):
+        cached = load(key,"html")
         if cached:
             return cached
 
@@ -265,54 +275,70 @@ def fetch_info(symbol):
         if "__error__" in info:
             return "No data"
 
-        g = build_grouped_info(info)
+        g = group_info(info)
         html = ""
 
-        # PRICE / VOLUME
         if g["price_volume"]:
-            df = build_df_from_dict(g["price_volume"])
-            cols = "".join(
-                html_card("📈 Price & Volume", make_table(c), mini=True, shade=i)
-                for i,c in enumerate(split_df_evenly(df))
-            )
+            df = build_df(g["price_volume"], PIN_PRICE)
             html += collapsible(
                 f"{MAIN_ICONS['Price / Volume']} Price / Volume",
-                column_layout(cols)
+                column_layout("".join(
+                    html_card("Price", make_table(c), mini=True)
+                    for c in split_df(df)
+                ))
             )
 
-        # COMPANY PROFILE
-        if g["profile"]:
-            df = build_df_from_dict(g["profile"])
-            cols = "".join(
-                html_card("🏢 Profile", make_table(c), mini=True, shade=i)
-                for i,c in enumerate(split_df_evenly(df))
+        if g["fundamental"]:
+            df = build_df(g["fundamental"], PIN_FUND)
+            html += collapsible(
+                f"{MAIN_ICONS['Fundamentals']} Fundamentals",
+                column_layout("".join(
+                    html_card("Fundamentals", make_table(c), mini=True)
+                    for c in split_df(df)
+                ))
             )
+
+        trend = build_trend(info)
+        if not trend.empty:
+            html += collapsible(
+                f"{MAIN_ICONS['Trend']} Trend Summary",
+                html_card("Trend", make_table(trend), mini=True)
+            )
+
+        sig = build_signals(info)
+        if not sig.empty:
+            html += collapsible(
+                f"{MAIN_ICONS['Signals']} Smart Signals",
+                html_card("Signals", make_table(sig), mini=True)
+            )
+
+        if g["profile"]:
+            df = build_df(g["profile"])
             html += collapsible(
                 f"{MAIN_ICONS['Company Profile']} Company Profile",
-                column_layout(cols)
+                column_layout("".join(
+                    html_card("Profile", make_table(c), mini=True)
+                    for c in split_df(df)
+                ))
             )
 
-        # MANAGEMENT
         if g["management"].get("companyOfficers"):
-            officers = ""
+            cards = ""
             for o in g["management"]["companyOfficers"]:
-                officers += html_card(
+                cards += html_card(
                     o.get("name",""),
-                    f"{o.get('title','')}<br/>Pay: ₹{human_number(o.get('totalPay',0))}",
+                    o.get("title",""),
                     mini=True
                 )
             html += collapsible(
                 f"{MAIN_ICONS['Management']} Management",
-                column_layout(officers)
+                column_layout(cards)
             )
 
-        # LONG TEXT
         for k,v in g["long_text"].items():
             html += collapsible(pretty_key(k), v)
 
-        if html.strip():
-            save(key, html, "html")
-
+        save(key, html, "html")
         return html
 
     except Exception:
