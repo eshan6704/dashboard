@@ -3,10 +3,12 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime as dt
 import traceback
+import os
+import plotly.graph_objects as go
 from . import persist
 
-# ============================================================
-# DAILY DATA FETCH (FINALIZED)
+BASE_STATIC = "/app/app/static/charts/daily"
+
 # ============================================================
 def daily(symbol, date_end, date_start):
     start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
@@ -17,13 +19,10 @@ def daily(symbol, date_end, date_start):
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
-    df.columns.name = None
     df.index.name = "Date"
     return df
 
 
-# ============================================================
-# DAILY DASHBOARD (FULL HTML)
 # ============================================================
 def fetch_daily(symbol, date_end, date_start):
     key = f"daily_{symbol}"
@@ -35,165 +34,107 @@ def fetch_daily(symbol, date_end, date_start):
 
     try:
         df = daily(symbol, date_end, date_start)
-        if df is None or df.empty:
-            return "<h1>No daily data</h1>"
+        if df.empty:
+            return "<h1>No data</h1>"
 
-        # -------------------------------
-        # CLEAN DATA
-        # -------------------------------
         df = df.reset_index()
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
 
-        for c in ["Open", "High", "Low", "Close", "Volume"]:
+        for c in ["Open","High","Low","Close","Volume"]:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
         df = df.dropna()
-
         df["DateStr"] = df["Date"].dt.strftime("%d-%b-%Y")
+
         df["MA20"] = df["Close"].rolling(20).mean()
         df["MA50"] = df["Close"].rolling(50).mean()
 
-        # -------------------------------
-        # HTML TABLE
-        # -------------------------------
+        # ------------------------------------------------
+        # IMAGE PATHS
+        # ------------------------------------------------
+        sym_dir = f"{BASE_STATIC}/{symbol}"
+        os.makedirs(sym_dir, exist_ok=True)
+
+        candle_path = f"{sym_dir}/candle.png"
+        ma_path = f"{sym_dir}/ma.png"
+
+        candle_url = f"/static/charts/daily/{symbol}/candle.png"
+        ma_url = f"/static/charts/daily/{symbol}/ma.png"
+
+        # ------------------------------------------------
+        # CANDLESTICK IMAGE
+        # ------------------------------------------------
+        fig = go.Figure()
+
+        fig.add_trace(go.Candlestick(
+            x=df["DateStr"],
+            open=df["Open"],
+            high=df["High"],
+            low=df["Low"],
+            close=df["Close"]
+        ))
+
+        fig.add_trace(go.Bar(
+            x=df["DateStr"],
+            y=df["Volume"],
+            yaxis="y2",
+            opacity=0.3
+        ))
+
+        fig.update_layout(
+            height=600,
+            yaxis=dict(title="Price"),
+            yaxis2=dict(overlaying="y", side="right", title="Volume"),
+            xaxis_rangeslider_visible=False
+        )
+
+        fig.write_image(candle_path, scale=2)
+
+        # ------------------------------------------------
+        # MA IMAGE
+        # ------------------------------------------------
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(x=df["DateStr"], y=df["Close"], name="Close"))
+        fig2.add_trace(go.Scatter(x=df["DateStr"], y=df["MA20"], name="MA20"))
+        fig2.add_trace(go.Scatter(x=df["DateStr"], y=df["MA50"], name="MA50"))
+
+        fig2.update_layout(height=500)
+        fig2.write_image(ma_path, scale=2)
+
+        # ------------------------------------------------
+        # TABLE HTML
+        # ------------------------------------------------
         rows = ""
-        for i, r in df.iterrows():
-            bg = "#eef6ff" if i % 2 == 0 else "#ffffff"
+        for r in df.tail(100).itertuples():
             rows += f"""
-            <tr style="background:{bg}">
-                <td>{r['DateStr']}</td>
-                <td>{r['Open']:.2f}</td>
-                <td>{r['High']:.2f}</td>
-                <td>{r['Low']:.2f}</td>
-                <td>{r['Close']:.2f}</td>
-                <td>{int(r['Volume'])}</td>
+            <tr>
+                <td>{r.DateStr}</td>
+                <td>{r.Open:.2f}</td>
+                <td>{r.High:.2f}</td>
+                <td>{r.Low:.2f}</td>
+                <td>{r.Close:.2f}</td>
+                <td>{int(r.Volume)}</td>
             </tr>
             """
 
-        table_html = f"""
-        <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th><th>Open</th><th>High</th>
-                    <th>Low</th><th>Close</th><th>Volume</th>
-                </tr>
-            </thead>
-            <tbody>{rows}</tbody>
-        </table>
-        </div>
-        """
-
-        # -------------------------------
-        # FULL HTML OUTPUT
-        # -------------------------------
         html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>{symbol} Daily Dashboard</title>
+<h2>{symbol} Daily Dashboard</h2>
 
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<h3>Price Table</h3>
+<table border="1" cellpadding="4">
+<tr>
+<th>Date</th><th>Open</th><th>High</th>
+<th>Low</th><th>Close</th><th>Volume</th>
+</tr>
+{rows}
+</table>
 
-<style>
-body {{
-    font-family: Arial, sans-serif;
-    background: #f4f6f9;
-    margin: 10px;
-}}
+<h3>Candlestick Chart</h3>
+<img src="{candle_url}" style="width:100%;max-width:1200px;">
 
-.table-wrap {{
-    max-height: 300px;
-    overflow-y: auto;
-    margin-bottom: 20px;
-}}
-
-table {{
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-}}
-
-th {{
-    position: sticky;
-    top: 0;
-    background: linear-gradient(to right,#1a4f8a,#4a7ac7);
-    color: white;
-    padding: 6px;
-}}
-
-td {{
-    padding: 6px;
-    text-align: right;
-}}
-
-td:first-child {{
-    text-align: left;
-}}
-
-.chart {{
-    margin-bottom: 30px;
-}}
-</style>
-</head>
-
-<body>
-
-<h2>{symbol} – Daily Data</h2>
-{table_html}
-
-<h2>Candlestick & Volume</h2>
-<div id="candle" class="chart"></div>
-
-<h2>Moving Averages</h2>
-<div id="ma" class="chart"></div>
-
-<script>
-const dates = {df["DateStr"].tolist()};
-const openp = {df["Open"].round(2).tolist()};
-const highp = {df["High"].round(2).tolist()};
-const lowp  = {df["Low"].round(2).tolist()};
-const closep= {df["Close"].round(2).tolist()};
-const volume= {df["Volume"].astype(int).tolist()};
-
-const ma20 = {df["MA20"].round(2).where(pd.notna(df["MA20"]), None).tolist()};
-const ma50 = {df["MA50"].round(2).where(pd.notna(df["MA50"]), None).tolist()};
-
-Plotly.newPlot("candle", [
-    {{
-        x: dates,
-        open: openp,
-        high: highp,
-        low: lowp,
-        close: closep,
-        type: "candlestick",
-        name: "Price"
-    }},
-    {{
-        x: dates,
-        y: volume,
-        type: "bar",
-        yaxis: "y2",
-        name: "Volume",
-        opacity: 0.3
-    }}
-], {{
-    yaxis: {{title: "Price"}},
-    yaxis2: {{overlaying: "y", side: "right", title: "Volume"}},
-    xaxis: {{rangeslider: {{visible:false}}}}
-}});
-
-Plotly.newPlot("ma", [
-    {{x: dates, y: closep, type:"scatter", name:"Close"}},
-    {{x: dates, y: ma20, type:"scatter", name:"MA20"}},
-    {{x: dates, y: ma50, type:"scatter", name:"MA50"}}
-]);
-</script>
-
-</body>
-</html>
+<h3>Moving Averages</h3>
+<img src="{ma_url}" style="width:100%;max-width:1200px;">
 """
 
         persist.save(key, html, "html")
