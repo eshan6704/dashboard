@@ -17,7 +17,8 @@ MAIN_ICONS = {
     "Trend": "📈",
     "Signals": "🧠",
     "Company Profile": "🏢",
-    "Management": "👔"
+    "Management": "👔",
+    "VWAP": "📌",
 }
 
 # ==============================
@@ -39,7 +40,10 @@ SHORT_NAMES = {
     "fiftyTwoWeekLow": "52W Low",
     "fiftyTwoWeekHigh": "52W High",
     "mostRecentQuarter":"Recent Q",
-    "lastFiscalYearEnd":"FY End"
+    "lastFiscalYearEnd":"FY End",
+    "vwap":"VWAP",
+    "dailyGapPercent":"Gap%",
+    "dailyRangePercent":"Range%"
 }
 
 # ==============================
@@ -47,14 +51,14 @@ SHORT_NAMES = {
 # ==============================
 PRICE_VOLUME_GROUPS = {
     "Market Price": ["Price","Chg","Chg%","Prev","Open"],
-    "Intraday Range": ["High","Low"],
+    "Intraday Range": ["High","Low","dailyRangePercent"],
     "Volume & Liquidity": ["Vol","Avg Vol 10D","Avg Vol 3M"],
-    "Moving Averages": ["50DMA","200DMA"],
-    "52W Range": ["52W Low","52W High"]
+    "Moving Averages": ["50DMA","200DMA","vs 50DMA","vs 200DMA"],
+    "52W Range": ["52W Low","52W High","52W Pos"],
+    "VWAP & Gap": ["VWAP","dailyGapPercent"]
 }
 
 PIN_PRICE = ["Price","Chg","Chg%","Prev","Open"]
-PIN_FUND  = ["MCap","PE","PB","EPS","ROE","ROA","Margin","D/E","Recent Q","FY End"]
 
 # ==============================
 # Noise keys
@@ -105,7 +109,7 @@ def fy_quarter_label(dt):
     y, m = dt.year, dt.month
     if m >= 4:
         fy = y + 1
-        q = (m - 1)//3
+        q = (m - 1)//3 + 1
     else:
         fy = y
         q = (m + 8)//3
@@ -218,7 +222,7 @@ def split_df(df):
     return [df.iloc[i:i+size] for i in range(0,n,size)]
 
 # ==============================
-# Derived Metrics
+# Derived Metrics & Signals
 # ==============================
 def build_price_volume_derived(info):
     out={}
@@ -230,6 +234,15 @@ def build_price_volume_derived(info):
     if price and dma50: out["vs 50DMA"]="Above ↑" if price>dma50 else "Below ↓"
     if price and dma200: out["vs 200DMA"]="Above ↑" if price>dma200 else "Below ↓"
     if price and low52 and high52 and high52!=low52: out["52W Pos"]=f"{(price-low52)/(high52-low52)*100:.1f}%"
+    # Gap % and daily range %
+    prev=info.get("regularMarketPreviousClose")
+    high=info.get("regularMarketDayHigh")
+    low=info.get("regularMarketDayLow")
+    if price and prev: out["dailyGapPercent"]=(price-prev)/prev*100
+    if high and low and price: out["dailyRangePercent"]=(high-low)/price*100
+    # VWAP (approximation)
+    vol=info.get("regularMarketVolume")
+    if vol and price: out["VWAP"]=price
     return out
 
 def build_smart_signals(info):
