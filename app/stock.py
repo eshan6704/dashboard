@@ -49,7 +49,7 @@ def intraday(symbol):
     return yf.download(symbol + ".NS", period="1d", interval="5m").round(2)
 
 
-def daily(symbol,date_end,date_start):
+def daily2(symbol,date_end,date_start):
     print(f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] yf called for {symbol}")
     
     start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
@@ -103,7 +103,7 @@ def fetch_intraday(symbol, indicators=None,b2_save=False):
 #                           DAILY
 # ================================================================
 
-def fetch_daily(symbol,date_end,date_start,b2_save=False):
+def fetch_daily2(symbol,date_end,date_start,b2_save=False):
     key = f"daily_{symbol}"
 
     if persist.exists(key, "html"):
