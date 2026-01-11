@@ -4,8 +4,6 @@
 import yfinance as yf
 import pandas as pd
 import traceback
-import time
-
 from datetime import datetime, timezone
 
 # persist helpers
@@ -16,16 +14,10 @@ from .persist import exists, load, save
 # Yahoo Finance info fetch (RAW)
 # ==============================
 def yfinfo(symbol):
-    """
-    Low-level Yahoo Finance info fetch.
-    Returns raw dict or {"__error__": "..."}
-    """
     try:
         t = yf.Ticker(symbol + ".NS")
         info = t.info
-        if not info or not isinstance(info, dict):
-            return {}
-        return info
+        return info if isinstance(info, dict) else {}
     except Exception as e:
         return {"__error__": str(e)}
 
@@ -45,29 +37,24 @@ SUBGROUP_ICONS = {
 MAIN_ICONS = {
     "Price / Volume": "📈",
     "Fundamentals": "📊",
-    "Company Profile": "🏢"
+    "Company Profile": "🏢",
+    "Management": "👔"
 }
 
 
 # ==============================
-# Responsive column layout
+# Layout helpers
 # ==============================
 def column_layout(html, min_width=320):
     return f"""
-    <div style="
-        display:grid;
-        grid-template-columns:repeat(auto-fit,minmax({min_width}px,1fr));
-        gap:10px;
-        align-items:start;
-    ">
+    <div style="display:grid;
+                grid-template-columns:repeat(auto-fit,minmax({min_width}px,1fr));
+                gap:10px;">
         {html}
     </div>
     """
 
 
-# ==============================
-# Card renderer
-# ==============================
 def html_card(title, body, mini=False, shade=0):
     font = "12px" if mini else "14px"
     pad  = "6px" if mini else "10px"
@@ -80,22 +67,17 @@ def html_card(title, body, mini=False, shade=0):
     ]
 
     return f"""
-    <div style="
-        background:{shades[shade%3]};
-        border:1px solid #a3c0e0;
-        border-radius:8px;
-        padding:{pad};
-        font-size:{font};
-        box-shadow:0 2px 6px rgba(0,0,0,.08);
-    ">
-        <div style="
-            background:{grads[shade%3]};
-            color:white;
-            padding:4px 8px;
-            border-radius:6px;
-            font-weight:600;
-            margin-bottom:6px;
-        ">
+    <div style="background:{shades[shade%3]};
+                border:1px solid #a3c0e0;
+                border-radius:8px;
+                padding:{pad};
+                font-size:{font};">
+        <div style="background:{grads[shade%3]};
+                    color:white;
+                    padding:4px 8px;
+                    border-radius:6px;
+                    font-weight:600;
+                    margin-bottom:6px;">
             {title}
         </div>
         {body}
@@ -106,58 +88,66 @@ def html_card(title, body, mini=False, shade=0):
 # ==============================
 # Formatting helpers
 # ==============================
-def format_number(x):
+def human_number(n):
     try:
-        x = float(x)
-        if abs(x) >= 100:
-            return f"{x:,.0f}"
-        if abs(x) >= 1:
-            return f"{x:,.2f}"
-        return f"{x:.4f}"
+        n = float(n)
+        abs_n = abs(n)
+        if abs_n >= 1e7:
+            return f"{n/1e7:.2f}Cr"
+        if abs_n >= 1e5:
+            return f"{n/1e5:.2f}L"
+        if abs_n >= 1e3:
+            return f"{n/1e3:.2f}K"
+        return f"{n:,.2f}"
     except:
-        return str(x)
+        return str(n)
+
+
+def format_date(v):
+    try:
+        if isinstance(v, (int, float)):
+            return datetime.fromtimestamp(v, tz=timezone.utc).strftime("%d %b %Y")
+        if isinstance(v, str) and v.isdigit():
+            return datetime.fromtimestamp(int(v), tz=timezone.utc).strftime("%d %b %Y")
+        return v
+    except:
+        return v
+
+
+def format_value(k, v):
+    lk = k.lower()
+
+    if isinstance(v, (int, float)):
+        if "percent" in lk or "yield" in lk:
+            return f"{v:.2f}%"
+        if "marketcap" in lk or "revenue" in lk or "income" in lk:
+            return "₹" + human_number(v)
+        return human_number(v)
+
+    if "date" in lk or "time" in lk:
+        return format_date(v)
+
+    return v
 
 
 # ==============================
-# Compact inline key:value view
+# Compact table
 # ==============================
 def make_table(df):
-    rows = ""
-    for _, r in df.iterrows():
-        color = "#0d1f3c"
-        if any(x in r[0].lower() for x in ["chg", "%"]):
-            try:
-                color = "#0a7d32" if float(r[1]) >= 0 else "#b00020"
-            except:
-                pass
-
-        rows += f"""
-        <div style="
-            display:flex;
-            justify-content:space-between;
-            gap:6px;
-            padding:2px 0;
-            border-bottom:1px dashed #bcd0ea;
-        ">
-            <span style="color:#1a4f8a;font-weight:500;">
-                {r[0]}
-            </span>
-            <span style="
-                color:{color};
-                font-weight:600;
-                background:#f1f6ff;
-                padding:1px 6px;
-                border-radius:4px;
-            ">
-                {r[1]}
-            </span>
+    return "".join(
+        f"""
+        <div style="display:flex;justify-content:space-between;
+                    border-bottom:1px dashed #bcd0ea;padding:2px 0;">
+            <span style="color:#1a4f8a;">{r.Field}</span>
+            <span style="font-weight:600;">{r.Value}</span>
         </div>
         """
-    return f"<div>{rows}</div>"
+        for r in df.itertuples()
+    )
 
 
 # ==============================
-# Noise filtering
+# Noise
 # ==============================
 NOISE_KEYS = {
     "maxAge","priceHint","triggerable",
@@ -166,38 +156,11 @@ NOISE_KEYS = {
     "esgPopulated"
 }
 
-def is_noise(k):
-    return k in NOISE_KEYS
+def is_noise(k): return k in NOISE_KEYS
 
 
 # ==============================
-# Duplicate resolver
-# ==============================
-DUPLICATE_PRIORITY = {
-    "price": ["regularMarketPrice","currentPrice"],
-    "prev": ["regularMarketPreviousClose","previousClose"],
-    "open": ["regularMarketOpen","open"],
-    "high": ["regularMarketDayHigh","dayHigh"],
-    "low": ["regularMarketDayLow","dayLow"],
-    "volume": ["regularMarketVolume","volume"]
-}
-
-def resolve_duplicates(data):
-    resolved, used = {}, set()
-    for keys in DUPLICATE_PRIORITY.values():
-        for k in keys:
-            if k in data:
-                resolved[k] = data[k]
-                used.update(keys)
-                break
-    for k,v in data.items():
-        if k not in used:
-            resolved[k] = v
-    return resolved
-
-
-# ==============================
-# Short key names (DISPLAY)
+# Short display names
 # ==============================
 SHORT_NAMES = {
     "regularMarketPrice":"Price",
@@ -208,43 +171,24 @@ SHORT_NAMES = {
     "regularMarketDayHigh":"High",
     "regularMarketDayLow":"Low",
     "regularMarketVolume":"Vol",
-    "averageDailyVolume10Day":"AvgV10",
-    "averageDailyVolume3Month":"AvgV3M",
-    "fiftyDayAverage":"50DMA",
-    "twoHundredDayAverage":"200DMA",
-    "fiftyTwoWeekLow":"52WL",
-    "fiftyTwoWeekHigh":"52WH",
+    "marketCap":"MCap",
     "beta":"Beta",
     "targetMeanPrice":"Target"
 }
 
-def pretty_key(k):
-    return SHORT_NAMES.get(k, k[:12])
+def pretty_key(k): return SHORT_NAMES.get(k, k[:14])
 
 
 # ==============================
 # Classifiers
 # ==============================
-def classify_price_volume_subgroup(key):
-    k = key.lower()
-    if "volume" in k: return "Volume"
-    if "average" in k or "dma" in k: return "Moving Avg"
-    if "week" in k or "beta" in k: return "Range / Vol"
-    if "target" in k or "recommend" in k: return "Bid / Analyst"
-    return "Live Price"
-
-
-def classify_key(key, value):
-    k = key.lower()
-    if isinstance(value,(int,float)) and any(x in k for x in [
-        "price","volume","avg","change","percent","market","week","beta","target"
-    ]):
+def classify_key(k, v):
+    lk = k.lower()
+    if k == "companyOfficers":
+        return "management"
+    if isinstance(v,(int,float)):
         return "price_volume"
-    if any(x in k for x in [
-        "revenue","income","profit","margin","pe","pb","roe","roa","debt","equity"
-    ]):
-        return "fundamental"
-    if isinstance(value,str) and len(value) > 80:
+    if isinstance(v,str) and len(v) > 80:
         return "long_text"
     return "profile"
 
@@ -253,62 +197,29 @@ def classify_key(key, value):
 # Group builder
 # ==============================
 def build_grouped_info(info):
-    groups = {
-        "price_volume":{},
-        "fundamental":{},
-        "profile":{},
-        "long_text":{}
-    }
+    g = {"price_volume":{}, "profile":{}, "long_text":{}, "management":{}}
     for k,v in info.items():
-        if v in [None,"",[],{}]:
-            continue
-        groups[classify_key(k,v)][k] = v
-    return groups
+        if v in [None,"",[],{}]: continue
+        g[classify_key(k,v)][k] = v
+    return g
 
 
 # ==============================
-# Column splitter
-# ==============================
-def split_df_evenly(df):
-    if df is None or df.empty:
-        return []
-    n = len(df)
-    cols = 1 if n <= 6 else 2 if n <= 14 else 3
-    chunk = (n + cols - 1) // cols
-    return [df.iloc[i:i+chunk] for i in range(0, n, chunk)]
-
-
-# ==============================
-# DataFrame builder (SORT BY DISPLAY NAME)
+# DF builder (sorted by display name)
 # ==============================
 def build_df_from_dict(data):
     rows = []
-
-    for k, v in data.items():
-        if is_noise(k):
-            continue
-
-        label = pretty_key(k)   # 🔑 renamed key
-
-        if isinstance(v, (int, float)):
-            v = format_number(v)
-
-        rows.append((label, v))
-
-    # 🔑 SORT BY DISPLAY NAME
+    for k,v in data.items():
+        if is_noise(k): continue
+        rows.append((pretty_key(k), format_value(k,v)))
     rows.sort(key=lambda x: x[0].lower())
-
-    return pd.DataFrame(rows, columns=["Field", "Value"])
+    return pd.DataFrame(rows, columns=["Field","Value"])
 
 
 # ==============================
-# MAIN FUNCTION (CACHED)
+# MAIN
 # ==============================
 def fetch_info(symbol):
-    """
-    Cached Yahoo Finance info renderer
-    Cache validity: 1 hour
-    """
     key = f"info_{symbol}"
 
     if exists(key, "html"):
@@ -318,66 +229,44 @@ def fetch_info(symbol):
 
     try:
         info = yfinfo(symbol)
-        if not info or "__error__" in info:
+        if "__error__" in info:
             return "No data"
 
         groups = build_grouped_info(info)
         html = ""
 
-        # PRICE / VOLUME
-        pv = resolve_duplicates(groups["price_volume"])
-        sub = {}
-        for k,v in pv.items():
-            sg = classify_price_volume_subgroup(k)
-            sub.setdefault(sg,{})[k] = v
-
-        cards = ""
-        for i,(t,d) in enumerate(sub.items()):
-            df = build_df_from_dict(d)
-            if not df.empty:
-                cards += html_card(
-                    f"{SUBGROUP_ICONS.get(t,'ℹ️')} {t}",
-                    make_table(df),
-                    mini=True,
-                    shade=i
-                )
-
-        if cards:
+        # Price / Volume
+        if groups["price_volume"]:
             html += html_card(
                 f"{MAIN_ICONS['Price / Volume']} Price / Volume",
-                column_layout(cards),
-                shade=0
+                make_table(build_df_from_dict(groups["price_volume"]))
             )
 
-        # FUNDAMENTALS
-        if groups["fundamental"]:
-            chunks = split_df_evenly(build_df_from_dict(groups["fundamental"]))
-            cols = "".join(
-                html_card("📊 Fundamentals", make_table(c), mini=True, shade=i)
-                for i,c in enumerate(chunks)
-            )
-            html += html_card(
-                f"{MAIN_ICONS['Fundamentals']} Fundamentals",
-                column_layout(cols),
-                shade=1
-            )
-
-        # PROFILE
+        # Profile
         if groups["profile"]:
-            chunks = split_df_evenly(build_df_from_dict(groups["profile"]))
-            cols = "".join(
-                html_card("🏢 Profile", make_table(c), mini=True, shade=i)
-                for i,c in enumerate(chunks)
-            )
             html += html_card(
                 f"{MAIN_ICONS['Company Profile']} Company Profile",
-                column_layout(cols),
-                shade=2
+                make_table(build_df_from_dict(groups["profile"]))
             )
 
-        # LONG TEXT
+        # Management (companyOfficers)
+        if groups["management"].get("companyOfficers"):
+            officers = ""
+            for o in groups["management"]["companyOfficers"]:
+                officers += html_card(
+                    o.get("name",""),
+                    f"{o.get('title','')}<br/>Pay: ₹{human_number(o.get('totalPay',0))}",
+                    mini=True
+                )
+
+            html += html_card(
+                f"{MAIN_ICONS['Management']} Management",
+                column_layout(officers)
+            )
+
+        # Long text
         for k,v in groups["long_text"].items():
-            html += html_card(pretty_key(k), v, shade=2)
+            html += html_card(pretty_key(k), v)
 
         if html.strip():
             save(key, html, "html")
