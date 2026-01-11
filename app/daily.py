@@ -6,8 +6,8 @@ import traceback
 from . import persist
 from .common import wrap_html
 import plotly.graph_objects as go
-import plotly.io as pio
 import plotly.express as px
+import plotly.io as pio
 
 # ===========================================================
 # RAW DAILY FETCHER
@@ -24,12 +24,11 @@ def daily(symbol, date_end, date_start):
     return df
 
 # ===========================================================
-# PLOTLY CANDLESTICK + VOLUME
+# CANDLESTICK + VOLUME
 # ===========================================================
 def plot_candlestick(df, symbol):
     fig = go.Figure()
 
-    # Candlestick
     fig.add_trace(go.Candlestick(
         x=df['Date'],
         open=df['Open'],
@@ -41,17 +40,15 @@ def plot_candlestick(df, symbol):
         decreasing_line_color='red'
     ))
 
-    # Volume as bar
     fig.add_trace(go.Bar(
         x=df['Date'],
         y=df['Volume'],
         name='Volume',
-        marker_color='blue',
         yaxis='y2',
+        marker_color='blue',
         opacity=0.3
     ))
 
-    # Layout
     fig.update_layout(
         title=f'{symbol} Daily Candlestick',
         xaxis_rangeslider_visible=False,
@@ -62,33 +59,32 @@ def plot_candlestick(df, symbol):
 
     return pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
 
-
 # ===========================================================
 # ADDITIONAL ANALYSIS CHARTS
 # ===========================================================
 def plot_analysis_charts(df, symbol):
     charts = ""
 
-    # 1️⃣ OHLC line chart
+    # OHLC line chart
     fig_line = px.line(df, x='Date', y=['Open','High','Low','Close'], title=f'{symbol} OHLC Line Chart')
     charts += pio.to_html(fig_line, full_html=False, include_plotlyjs=False)
 
-    # 2️⃣ 20-day and 50-day moving average
+    # 20 & 50-day moving averages
     df['MA20'] = df['Close'].rolling(20).mean()
     df['MA50'] = df['Close'].rolling(50).mean()
     fig_ma = px.line(df, x='Date', y=['Close','MA20','MA50'], title=f'{symbol} 20 & 50 Day Moving Avg')
     charts += pio.to_html(fig_ma, full_html=False, include_plotlyjs=False)
 
-    # 3️⃣ Daily change %
+    # Daily % change
+    df['Change %'] = ((df['Close'] - df['Open']) / df['Open'] * 100).round(2)
     fig_change = px.bar(df, x='Date', y='Change %', color='Change %', title=f'{symbol} Daily % Change',
                         color_continuous_scale=['red','green'])
     charts += pio.to_html(fig_change, full_html=False, include_plotlyjs=False)
 
     return charts
 
-
 # ===========================================================
-# DAILY TABLE + DASHBOARD
+# DAILY DASHBOARD
 # ===========================================================
 def fetch_daily(symbol, date_end, date_start):
     """Return HTML table + candlestick + analysis charts."""
@@ -156,7 +152,7 @@ def fetch_daily(symbol, date_end, date_start):
         # Additional analysis charts
         analysis_html = plot_analysis_charts(df, symbol)
 
-        # Combine all
+        # Combine all in dashboard
         full_html = f'<div id="daily_dashboard">{html_table}{candlestick_html}{analysis_html}</div>'
 
         persist.save(key, full_html, "html")
