@@ -68,6 +68,10 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
         if df.empty:
             return wrap_html(f"<h1>No daily data for {symbol}</h1>")
 
+        # Flatten MultiIndex columns if present
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
         df.reset_index(inplace=True)
         df["Date"] = df["Date"].dt.strftime("%d-%b-%Y")
 
