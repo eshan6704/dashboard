@@ -27,7 +27,6 @@ def yfinfo(symbol):
 MAIN_ICONS = {
     "Price / Volume": "📈",
     "Fundamentals": "📊",
-    "Valuation": "💰",
     "Trend": "📈",
     "Signals": "🧠",
     "Company Profile": "🏢",
@@ -90,7 +89,7 @@ def html_card(title, body, mini=False, shade=0):
 
 
 # ==============================
-# Formatting
+# Formatting helpers
 # ==============================
 def human_number(n):
     try:
@@ -103,8 +102,29 @@ def human_number(n):
         return str(n)
 
 
-def format_date(v):
+# ---------- DATE FIX (ROBUST) ----------
+DATE_KEYWORDS = (
+    "date", "time", "timestamp",
+    "fiscal", "quarter",
+    "earnings", "dividend"
+)
+
+def looks_like_unix_ts(v):
     try:
+        v = int(v)
+        return (
+            946684800 <= v <= 4102444800 or       # seconds
+            946684800000 <= v <= 4102444800000   # milliseconds
+        )
+    except:
+        return False
+
+
+def unix_to_date(v):
+    try:
+        v = int(v)
+        if v > 10**12:
+            v //= 1000
         return datetime.fromtimestamp(v, tz=timezone.utc).strftime("%d %b %Y")
     except:
         return v
@@ -112,17 +132,23 @@ def format_date(v):
 
 def format_value(k, v):
     lk = k.lower()
-    cls = ""
+
+    # --- DATE HANDLING ---
+    if isinstance(v, (int, float)) and looks_like_unix_ts(v):
+        if any(x in lk for x in DATE_KEYWORDS):
+            return unix_to_date(v)
+
+    # --- NUMBERS ---
     if isinstance(v, (int, float)):
         cls = "pos" if v > 0 else "neg" if v < 0 else ""
         if "percent" in lk:
             return f'<span class="{cls}">{v:.2f}%</span>'
-        if any(x in lk for x in ["marketcap","revenue","income","value"]):
+        if any(x in lk for x in [
+            "marketcap","revenue","income",
+            "value","cap","enterprise"
+        ]):
             return f'<span class="{cls}">₹{human_number(v)}</span>'
         return f'<span class="{cls}">{human_number(v)}</span>'
-
-    if "date" in lk or "time" in lk:
-        return format_date(v)
 
     return v
 
@@ -166,14 +192,17 @@ SHORT_NAMES = {
     "returnOnEquity":"ROE",
     "returnOnAssets":"ROA",
     "profitMargins":"Margin",
-    "debtToEquity":"D/E"
+    "debtToEquity":"D/E",
+    "mostRecentQuarter":"Recent Q",
+    "lastFiscalYearEnd":"FY End",
+    "nextFiscalYearEnd":"Next FY"
 }
 
 PIN_PRICE = ["Price","Chg","Chg%","Open","High","Low","Vol"]
 PIN_FUND  = ["MCap","PE","PB","EPS","ROE","ROA","Margin","D/E"]
 
 def pretty_key(k):
-    return SHORT_NAMES.get(k, k[:14])
+    return SHORT_NAMES.get(k, k[:16])
 
 
 # ==============================
@@ -181,8 +210,12 @@ def pretty_key(k):
 # ==============================
 def classify(k, v):
     lk = k.lower()
-    if k == "companyOfficers": return "management"
-    if any(x in lk for x in ["pe","pb","roe","roa","margin","debt","revenue","profit","eps","cap"]):
+    if k == "companyOfficers":
+        return "management"
+    if any(x in lk for x in [
+        "pe","pb","roe","roa","margin",
+        "debt","revenue","profit","eps","cap"
+    ]):
         return "fundamental"
     if isinstance(v, (int, float)):
         return "price_volume"
@@ -192,8 +225,13 @@ def classify(k, v):
 
 
 def group_info(info):
-    g = {"price_volume":{}, "fundamental":{}, "profile":{},
-         "management":{}, "long_text":{}}
+    g = {
+        "price_volume": {},
+        "fundamental": {},
+        "profile": {},
+        "management": {},
+        "long_text": {}
+    }
     for k,v in info.items():
         if k in NOISE_KEYS or v in [None,"",[],{}]:
             continue
@@ -205,12 +243,12 @@ def group_info(info):
 # Builders
 # ==============================
 def build_df(data, pinned=None):
-    rows = []
-    for k,v in data.items():
-        rows.append((pretty_key(k), format_value(k,v)))
+    rows = [(pretty_key(k), format_value(k,v)) for k,v in data.items()]
     pinned = pinned or []
-    rows.sort(key=lambda x: (0 if x[0] in pinned else 1,
-                             pinned.index(x[0]) if x[0] in pinned else x[0]))
+    rows.sort(key=lambda x: (
+        0 if x[0] in pinned else 1,
+        pinned.index(x[0]) if x[0] in pinned else x[0]
+    ))
     return pd.DataFrame(rows, columns=["Field","Value"])
 
 
