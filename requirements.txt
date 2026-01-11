@@ -1,4 +1,4 @@
-
+kaleido
 yfinance
 pandas
 numpy
