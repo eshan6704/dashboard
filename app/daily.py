@@ -17,7 +17,7 @@ def daily(symbol, date_end, date_start):
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
     df.columns.name = None
-    df.index.name = None
+    df.index.name = "Date"  # name the index
     return df
 
 # ===========================================================
@@ -40,14 +40,16 @@ def fetch_daily(symbol, date_end, date_start):
         for col in ["Open","High","Low","Close","Adj Close","Volume"]:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
-        df = df.dropna(subset=["Open","High","Low","Close","Volume"]).reset_index(drop=True)
 
-        # Ensure Date column
-        df["Date"] = pd.to_datetime(df.index if "Date" not in df.columns else df["Date"], errors='coerce')
+        # Drop rows with missing OHLCV
+        df = df.dropna(subset=["Open","High","Low","Close","Volume"]).reset_index()
+
+        # Format date correctly
+        df["Date"] = pd.to_datetime(df["Date"], errors='coerce')
         df = df.dropna(subset=["Date"]).reset_index(drop=True)
         df["Date"] = df["Date"].dt.strftime("%d-%b-%Y")
 
-        # Safe Adj Close
+        # Ensure Adj Close exists
         if "Adj Close" not in df.columns:
             df["Adj Close"] = ""
 
@@ -55,10 +57,11 @@ def fetch_daily(symbol, date_end, date_start):
         df["Change %"] = ((df["Close"] - df["Open"]) / df["Open"] * 100).round(2)
 
         # Build HTML table
-        html_table = f'<div id="daily_dashboard" style="max-height:600px; overflow:auto; font-family:Arial,sans-serif;">'
+        html_table = '<div id="daily_dashboard" style="max-height:600px; overflow:auto; font-family:Arial,sans-serif;">'
         html_table += '<table border="1" style="border-collapse:collapse; width:100%;">'
         html_table += '<thead style="position:sticky; top:0; background:#1a4f8a; color:white;">'
-        html_table += '<tr><th>Date</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Adj Close</th><th>Volume</th><th>Change %</th></tr>'
+        html_table += '<tr><th>Date</th><th>Open</th><th>High</th><th>Low</th>'
+        html_table += '<th>Close</th><th>Adj Close</th><th>Volume</th><th>Change %</th></tr>'
         html_table += '</thead><tbody>'
 
         for idx, r in df.iterrows():
