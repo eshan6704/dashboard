@@ -29,46 +29,6 @@ def daily(symbol, date_end, date_start):
     return df
 
 # ===========================================================
-# PATTERN DETECTION (scalar-safe)
-# ===========================================================
-def detect_patterns(df):
-    patterns = []
-
-    for i in range(1, len(df)):
-        open_today = df.iat[i, df.columns.get_loc("Open")]
-        close_today = df.iat[i, df.columns.get_loc("Close")]
-        open_prev = df.iat[i-1, df.columns.get_loc("Open")]
-        close_prev = df.iat[i-1, df.columns.get_loc("Close")]
-        high = df.iat[i, df.columns.get_loc("High")]
-        low = df.iat[i, df.columns.get_loc("Low")]
-
-        # Bullish Engulfing
-        if close_prev < open_prev and close_today > open_today and close_today > open_prev and open_today < close_prev:
-            patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Bullish Engulfing"})
-        # Bearish Engulfing
-        elif close_prev > open_prev and close_today < open_today and open_today > close_prev and close_today < open_prev:
-            patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Bearish Engulfing"})
-        # Doji
-        elif abs(close_today - open_today) / (high - low + 1e-6) < 0.1:
-            patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Doji"})
-        # Hammer / Hanging Man
-        elif (high - max(open_today, close_today)) > 2*(max(open_today, close_today)-min(open_today, close_today)) and \
-             (min(open_today, close_today) - low) < 0.1*(high-low):
-            if close_today > open_today:
-                patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Hammer"})
-            else:
-                patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Hanging Man"})
-        # Gap Up / Gap Down
-        if open_today > close_prev * 1.01:
-            patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Gap Up"})
-        elif open_today < close_prev * 0.99:
-            patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Gap Down"})
-
-    if patterns:
-        return pd.DataFrame(patterns)
-    return pd.DataFrame(columns=["Date", "Pattern"])
-
-# ===========================================================
 # DASHBOARD BUILDER
 # ===========================================================
 def fetch_daily(symbol, date_end, date_start, b2_save=False):
@@ -82,7 +42,7 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
     try:
         df = daily(symbol, date_end, date_start)
         if df is None or df.empty:
-            return wrap_html('<div id="daily_wrapper"><h1>No daily data for {}</h1></div>'.format(symbol))
+            return wrap_html(f'<div id="daily_wrapper"><h1>No daily data for {symbol}</h1></div>')
 
         # Reset index if not simple RangeIndex
         if not isinstance(df.index, pd.RangeIndex):
@@ -130,15 +90,13 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
             ]
         })
 
-        # Detect patterns
-        patterns_df = detect_patterns(df)
-
         # Plotly dashboard
         fig = make_subplots(rows=4, cols=1, shared_xaxes=True,
                             vertical_spacing=0.05,
                             row_heights=[0.4,0.2,0.2,0.2],
                             specs=[[{}],[{}],[{}],[{}]])
 
+        # Candlestick + moving averages + Bollinger
         fig.add_trace(go.Candlestick(x=df["Date"], open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="OHLC"), row=1, col=1)
         fig.add_trace(go.Scatter(x=df["Date"], y=df["SMA20"], mode="lines", name="SMA20"), row=1, col=1)
         fig.add_trace(go.Scatter(x=df["Date"], y=df["SMA50"], mode="lines", name="SMA50"), row=1, col=1)
@@ -146,22 +104,6 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
         fig.add_trace(go.Scatter(x=df["Date"], y=df["EMA50"], mode="lines", name="EMA50"), row=1, col=1)
         fig.add_trace(go.Scatter(x=df["Date"], y=df["UpperBB"], mode="lines", name="UpperBB", line=dict(dash="dot")), row=1, col=1)
         fig.add_trace(go.Scatter(x=df["Date"], y=df["LowerBB"], mode="lines", name="LowerBB", line=dict(dash="dot")), row=1, col=1)
-
-        # Highlight patterns safely
-        if not patterns_df.empty:
-            for _, row in patterns_df.iterrows():
-                pattern_date = row["Date"]
-                matching = df[df["Date"]==pattern_date]
-                if not matching.empty:
-                    high_value = matching["High"].values[0]
-                    fig.add_trace(go.Scatter(
-                        x=[pattern_date], y=[high_value*1.01],
-                        mode="markers+text",
-                        marker=dict(color="red", size=10, symbol="triangle-up"),
-                        text=[row["Pattern"]],
-                        textposition="top center",
-                        showlegend=False
-                    ), row=1, col=1)
 
         # Volume
         fig.add_trace(go.Bar(x=df["Date"], y=df["Volume"], name="Volume"), row=2, col=1)
@@ -178,14 +120,11 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
         except Exception as e:
             chart_html = f'<div id="chart_dashboard"><h2>Chart generation failed: {e}</h2></div>'
 
-        # Tables wrapped in divs for frontend safety
+        # Tables wrapped in divs
         table_html = f'<div id="summary_stats"><h2>Summary Stats</h2>{summary.to_html(index=False, escape=False)}</div>'
         data_table_html = f'<div id="ohlc_table"><h2>OHLC Table</h2>{df.to_html(index=False, escape=False)}</div>'
-        patterns_html = f'<div id="patterns_table"><h2>Detected Patterns</h2>'
-        patterns_html += patterns_df.to_html(index=False, escape=False) if not patterns_df.empty else "<p>No patterns detected.</p>"
-        patterns_html += "</div>"
 
-        full_html = chart_html + table_html + patterns_html + data_table_html
+        full_html = chart_html + table_html + data_table_html
 
         persist.save(key, full_html, "html")
         return full_html
