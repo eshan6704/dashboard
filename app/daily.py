@@ -1,110 +1,125 @@
 # daily.py
+
 import yfinance as yf
 import pandas as pd
 from datetime import datetime as dt
-import traceback
+import matplotlib.pyplot as plt
 import os
-import plotly.graph_objects as go
+import traceback
 from . import persist
 
-BASE_STATIC = "/app/app/static/charts/daily"
-
 # ============================================================
-def daily(symbol, date_end, date_start):
-    start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
-    end = dt.strptime(date_end, "%d-%m-%Y").strftime("%Y-%m-%d")
-
-    df = yf.download(symbol + ".NS", start=start, end=end)
-
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-
-    df.index.name = "Date"
-    return df
+# Static path (HF serves this automatically)
+# ============================================================
+BASE_STATIC = "/app/app/static/charts/daily"
 
 
 # ============================================================
 def fetch_daily(symbol, date_end, date_start):
-    key = f"daily_{symbol}"
+    """
+    Fetch daily OHLCV data from Yahoo Finance,
+    generate PNG charts using matplotlib,
+    and return FULL HTML to frontend.
+    """
 
-    if persist.exists(key, "html"):
-        cached = persist.load(key, "html")
+    cache_key = f"daily_{symbol}"
+
+    # --------------------------------------------------------
+    # Cache
+    # --------------------------------------------------------
+    if persist.exists(cache_key, "html"):
+        cached = persist.load(cache_key, "html")
         if cached:
             return cached
 
     try:
-        df = daily(symbol, date_end, date_start)
-        if df.empty:
-            return "<h1>No data</h1>"
+        # ----------------------------------------------------
+        # Date handling
+        # ----------------------------------------------------
+        start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
+        end   = dt.strptime(date_end, "%d-%m-%Y").strftime("%Y-%m-%d")
 
+        # ----------------------------------------------------
+        # Fetch data
+        # ----------------------------------------------------
+        df = yf.download(symbol + ".NS", start=start, end=end)
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        if df.empty:
+            return "<h2>No data available</h2>"
+
+        # ----------------------------------------------------
+        # Clean & prepare
+        # ----------------------------------------------------
         df = df.reset_index()
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
 
-        for c in ["Open","High","Low","Close","Volume"]:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
+        for col in ["Open", "High", "Low", "Close", "Volume"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
         df = df.dropna()
         df["DateStr"] = df["Date"].dt.strftime("%d-%b-%Y")
 
+        # ----------------------------------------------------
+        # Indicators
+        # ----------------------------------------------------
         df["MA20"] = df["Close"].rolling(20).mean()
         df["MA50"] = df["Close"].rolling(50).mean()
 
-        # ------------------------------------------------
-        # IMAGE PATHS
-        # ------------------------------------------------
-        sym_dir = f"{BASE_STATIC}/{symbol}"
-        os.makedirs(sym_dir, exist_ok=True)
+        # ----------------------------------------------------
+        # Output paths
+        # ----------------------------------------------------
+        out_dir = f"{BASE_STATIC}/{symbol}"
+        os.makedirs(out_dir, exist_ok=True)
 
-        candle_path = f"{sym_dir}/candle.png"
-        ma_path = f"{sym_dir}/ma.png"
+        price_png = f"{out_dir}/price_volume.png"
+        ma_png    = f"{out_dir}/moving_avg.png"
 
-        candle_url = f"/static/charts/daily/{symbol}/candle.png"
-        ma_url = f"/static/charts/daily/{symbol}/ma.png"
+        price_url = f"/static/charts/daily/{symbol}/price_volume.png"
+        ma_url    = f"/static/charts/daily/{symbol}/moving_avg.png"
 
-        # ------------------------------------------------
-        # CANDLESTICK IMAGE
-        # ------------------------------------------------
-        fig = go.Figure()
+        # ----------------------------------------------------
+        # PRICE + VOLUME CHART
+        # ----------------------------------------------------
+        plt.figure(figsize=(14, 6))
+        plt.plot(df["Date"], df["Close"], label="Close", linewidth=2)
 
-        fig.add_trace(go.Candlestick(
-            x=df["DateStr"],
-            open=df["Open"],
-            high=df["High"],
-            low=df["Low"],
-            close=df["Close"]
-        ))
+        # Scale volume visually
+        vol_scaled = df["Volume"] / df["Volume"].max() * df["Close"].max()
+        plt.bar(df["Date"], vol_scaled, alpha=0.2, label="Volume")
 
-        fig.add_trace(go.Bar(
-            x=df["DateStr"],
-            y=df["Volume"],
-            yaxis="y2",
-            opacity=0.3
-        ))
+        plt.title(f"{symbol} Price & Volume")
+        plt.xlabel("Date")
+        plt.ylabel("Price")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(price_png)
+        plt.close()
 
-        fig.update_layout(
-            height=600,
-            yaxis=dict(title="Price"),
-            yaxis2=dict(overlaying="y", side="right", title="Volume"),
-            xaxis_rangeslider_visible=False
-        )
+        # ----------------------------------------------------
+        # MOVING AVERAGE CHART
+        # ----------------------------------------------------
+        plt.figure(figsize=(14, 6))
+        plt.plot(df["Date"], df["Close"], label="Close", linewidth=2)
+        plt.plot(df["Date"], df["MA20"], label="MA20")
+        plt.plot(df["Date"], df["MA50"], label="MA50")
 
-        fig.write_image(candle_path, scale=2)
+        plt.title(f"{symbol} Moving Averages")
+        plt.xlabel("Date")
+        plt.ylabel("Price")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(ma_png)
+        plt.close()
 
-        # ------------------------------------------------
-        # MA IMAGE
-        # ------------------------------------------------
-        fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=df["DateStr"], y=df["Close"], name="Close"))
-        fig2.add_trace(go.Scatter(x=df["DateStr"], y=df["MA20"], name="MA20"))
-        fig2.add_trace(go.Scatter(x=df["DateStr"], y=df["MA50"], name="MA50"))
-
-        fig2.update_layout(height=500)
-        fig2.write_image(ma_path, scale=2)
-
-        # ------------------------------------------------
-        # TABLE HTML
-        # ------------------------------------------------
+        # ----------------------------------------------------
+        # TABLE (last 100 rows)
+        # ----------------------------------------------------
         rows = ""
         for r in df.tail(100).itertuples():
             rows += f"""
@@ -118,26 +133,33 @@ def fetch_daily(symbol, date_end, date_start):
             </tr>
             """
 
+        # ----------------------------------------------------
+        # FINAL HTML (FULL DOCUMENT FRAGMENT)
+        # ----------------------------------------------------
         html = f"""
-<h2>{symbol} Daily Dashboard</h2>
+<h2>{symbol} – Daily Dashboard</h2>
 
-<h3>Price Table</h3>
-<table border="1" cellpadding="4">
-<tr>
-<th>Date</th><th>Open</th><th>High</th>
-<th>Low</th><th>Close</th><th>Volume</th>
+<h3>Price Table (Last 100 Days)</h3>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">
+<tr style="background:#eee;font-weight:bold;">
+    <th>Date</th>
+    <th>Open</th>
+    <th>High</th>
+    <th>Low</th>
+    <th>Close</th>
+    <th>Volume</th>
 </tr>
 {rows}
 </table>
 
-<h3>Candlestick Chart</h3>
-<img src="{candle_url}" style="width:100%;max-width:1200px;">
+<h3>Price & Volume</h3>
+<img src="{price_url}" style="width:100%;max-width:1200px;">
 
 <h3>Moving Averages</h3>
 <img src="{ma_url}" style="width:100%;max-width:1200px;">
 """
 
-        persist.save(key, html, "html")
+        persist.save(cache_key, html, "html")
         return html
 
     except Exception:
