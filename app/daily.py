@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime as dt
 from plotly import graph_objs as go
 from plotly.subplots import make_subplots
-import traceback, io, base64
+import traceback
 
 from . import persist
 from . import backblaze as b2
@@ -46,10 +46,12 @@ def detect_patterns(df):
         elif open_today < close_prev * 0.99:
             patterns.append({"Date": df.iat[i, df.columns.get_loc("Date")], "Pattern": "Gap Down"})
 
-    return pd.DataFrame(patterns)
+    if patterns:
+        return pd.DataFrame(patterns)
+    return pd.DataFrame(columns=["Date", "Pattern"])
 
 # ===========================================================
-# Ultimate Daily Analysis Dashboard
+# Daily Analysis Dashboard
 # ===========================================================
 def fetch_daily(symbol, date_end, date_start, b2_save=False):
     key = f"daily_{symbol}"
@@ -60,7 +62,6 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
             return cached
 
     try:
-        # Download data
         start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
         end = dt.strptime(date_end, "%d-%m-%Y").strftime("%Y-%m-%d")
         print(f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] Fetching daily for {symbol}")
@@ -122,17 +123,18 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
         fig.add_trace(go.Scatter(x=df["Date"], y=df["LowerBB"], mode="lines", name="LowerBB", line=dict(dash="dot")), row=1, col=1)
 
         # Highlight patterns on chart
-        for _, row in patterns_df.iterrows():
-            pattern_date = row["Date"]
-            high_value = df.loc[df["Date"]==pattern_date, "High"].values[0]
-            fig.add_trace(go.Scatter(
-                x=[pattern_date], y=[high_value*1.01],
-                mode="markers+text",
-                marker=dict(color="red", size=10, symbol="triangle-up"),
-                text=[row["Pattern"]],
-                textposition="top center",
-                showlegend=False
-            ), row=1, col=1)
+        if not patterns_df.empty:
+            for _, row in patterns_df.iterrows():
+                pattern_date = row["Date"]
+                high_value = df.loc[df["Date"]==pattern_date, "High"].values[0]
+                fig.add_trace(go.Scatter(
+                    x=[pattern_date], y=[high_value*1.01],
+                    mode="markers+text",
+                    marker=dict(color="red", size=10, symbol="triangle-up"),
+                    text=[row["Pattern"]],
+                    textposition="top center",
+                    showlegend=False
+                ), row=1, col=1)
 
         # Volume
         fig.add_trace(go.Bar(x=df["Date"], y=df["Volume"], name="Volume"), row=2, col=1)
@@ -142,20 +144,20 @@ def fetch_daily(symbol, date_end, date_start, b2_save=False):
         fig.add_trace(go.Scatter(x=df["Date"], y=df["ATR"], mode="lines", name="ATR"), row=4, col=1)
 
         fig.update_layout(height=1000, width=1200, title=f"{symbol} Daily Analysis Dashboard", xaxis_rangeslider_visible=False)
-        chart_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+        try:
+            chart_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+        except Exception as e:
+            chart_html = f"<h2>Chart generation failed: {e}</h2>"
 
         # Tables
         table_html = wrap_html(f"<h2>Summary Stats</h2>{summary.to_html(index=False, escape=False)}")
         data_table_html = wrap_html(f"<h2>OHLC Table</h2>{df.to_html(index=False, escape=False)}")
-        patterns_html = wrap_html(f"<h2>Detected Patterns</h2>{patterns_df.to_html(index=False, escape=False)}")
+        patterns_html = wrap_html(
+            f"<h2>Detected Patterns</h2>" +
+            (patterns_df.to_html(index=False, escape=False) if not patterns_df.empty else "<p>No patterns detected.</p>")
+        )
 
-        # CSV download
-        csv_buffer = io.StringIO()
-        df.to_csv(csv_buffer, index=False)
-        csv_base64 = base64.b64encode(csv_buffer.getvalue().encode()).decode()
-        download_html = f'<a href="data:text/csv;base64,{csv_base64}" download="{symbol}_daily.csv">Download CSV</a>'
-
-        full_html = chart_html + table_html + patterns_html + data_table_html + download_html
+        full_html = chart_html + table_html + patterns_html + data_table_html
 
         # Cache
         persist.save(key, full_html, "html")
