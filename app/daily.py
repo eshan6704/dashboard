@@ -24,7 +24,7 @@ def daily(symbol, date_end, date_start):
     # Flatten MultiIndex columns if present
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
-    
+    print(df)
     return df
 
 # ===========================================================
