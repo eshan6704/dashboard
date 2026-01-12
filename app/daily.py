@@ -8,7 +8,15 @@ import traceback
 import io
 
 from . import persist
-from . import backblaze as b2   # your existing B2 helper
+from . import backblaze as b2
+
+
+# ============================================================
+# CONFIG
+# ============================================================
+IMAGE_FORMAT = "png"
+IMAGE_EXT = "png"
+DPI = 150
 
 
 # ============================================================
@@ -17,6 +25,9 @@ from . import backblaze as b2   # your existing B2 helper
 def fetch_daily(symbol, date_end, date_start):
     key = f"daily_{symbol}"
 
+    # --------------------------------------------------------
+    # Cache
+    # --------------------------------------------------------
     if persist.exists(key, "html"):
         cached = persist.load(key, "html")
         if cached:
@@ -24,13 +35,13 @@ def fetch_daily(symbol, date_end, date_start):
 
     try:
         # ----------------------------------------------------
-        # Date conversion (YOUR FORMAT)
+        # Date conversion
         # ----------------------------------------------------
         start = dt.strptime(date_start, "%d-%m-%Y").strftime("%Y-%m-%d")
         end   = dt.strptime(date_end, "%d-%m-%Y").strftime("%Y-%m-%d")
 
         # ----------------------------------------------------
-        # Fetch data (EXACT METHOD)
+        # Fetch daily data
         # ----------------------------------------------------
         df = yf.download(symbol + ".NS", start=start, end=end)
 
@@ -60,7 +71,7 @@ def fetch_daily(symbol, date_end, date_start):
         df["MA50"] = df["Close"].rolling(50).mean()
 
         # ====================================================
-        # PRICE + VOLUME CHART → B2
+        # PRICE + VOLUME CHART
         # ====================================================
         buf = io.BytesIO()
 
@@ -74,15 +85,22 @@ def fetch_daily(symbol, date_end, date_start):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(buf, format="png")
+
+        plt.savefig(
+            buf,
+            format=IMAGE_FORMAT,
+            dpi=DPI,
+            bbox_inches="tight"
+        )
         plt.close()
 
         buf.seek(0)
-        price_key = f"daily/{symbol}_price_volume.png"
-        price_url = b2.upload_bytes("eshanhf", price_key, buf.getvalue())
+        price_key = f"daily/{symbol}_price_volume.{IMAGE_EXT}"
+        b2.upload_file("eshanhf", price_key, buf.getvalue())
+        price_url = f"{b2.S3_ENDPOINT}/eshanhf/{price_key}"
 
         # ====================================================
-        # MOVING AVERAGE CHART → B2
+        # MOVING AVERAGE CHART
         # ====================================================
         buf = io.BytesIO()
 
@@ -95,15 +113,22 @@ def fetch_daily(symbol, date_end, date_start):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(buf, format="png")
+
+        plt.savefig(
+            buf,
+            format=IMAGE_FORMAT,
+            dpi=DPI,
+            bbox_inches="tight"
+        )
         plt.close()
 
         buf.seek(0)
-        ma_key = f"daily/{symbol}_ma.png"
-        ma_url = b2.upload_bytes("eshanhf", ma_key, buf.getvalue())
+        ma_key = f"daily/{symbol}_ma.{IMAGE_EXT}"
+        b2.upload_file("eshanhf", ma_key, buf.getvalue())
+        ma_url = f"{b2.S3_ENDPOINT}/eshanhf/{ma_key}"
 
         # ====================================================
-        # TABLE
+        # TABLE (Last 100 days)
         # ====================================================
         rows = ""
         for r in df.tail(100).itertuples():
