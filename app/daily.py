@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime as dt
 import traceback
 import io
+import time
 
 from . import persist
 from . import backblaze as b2
@@ -17,6 +18,11 @@ from . import backblaze as b2
 IMAGE_FORMAT = "png"
 IMAGE_EXT = "png"
 DPI = 150
+IMAGE_QUALITY = 85   # compression quality (PNG is lossless)
+
+# Public download base (DISPLAY ONLY, no change to backblaze.py)
+B2_PUBLIC_BASE = "https://f005.backblazeb2.com/file/eshanhf"
+# ⚠️ replace f005 if your Backblaze console shows different
 
 
 # ============================================================
@@ -41,7 +47,7 @@ def fetch_daily(symbol, date_end, date_start):
         end   = dt.strptime(date_end, "%d-%m-%Y").strftime("%Y-%m-%d")
 
         # ----------------------------------------------------
-        # Fetch daily data
+        # Fetch data
         # ----------------------------------------------------
         df = yf.download(symbol + ".NS", start=start, end=end)
 
@@ -86,18 +92,18 @@ def fetch_daily(symbol, date_end, date_start):
         plt.grid(True)
         plt.tight_layout()
 
-        plt.savefig(
-            buf,
-            format=IMAGE_FORMAT,
-            dpi=DPI,
-            bbox_inches="tight"
-        )
+        plt.savefig(buf, format=IMAGE_FORMAT, dpi=DPI, bbox_inches="tight")
         plt.close()
 
         buf.seek(0)
         price_key = f"daily/{symbol}_price_volume.{IMAGE_EXT}"
-        b2.upload_file("eshanhf", price_key, buf.getvalue())
-        price_url = f"{b2.S3_ENDPOINT}/eshanhf/{price_key}"
+
+        b2.upload_image_compressed(
+            "eshanhf",
+            price_key,
+            buf.getvalue(),
+            quality=IMAGE_QUALITY
+        )
 
         # ====================================================
         # MOVING AVERAGE CHART
@@ -114,18 +120,25 @@ def fetch_daily(symbol, date_end, date_start):
         plt.grid(True)
         plt.tight_layout()
 
-        plt.savefig(
-            buf,
-            format=IMAGE_FORMAT,
-            dpi=DPI,
-            bbox_inches="tight"
-        )
+        plt.savefig(buf, format=IMAGE_FORMAT, dpi=DPI, bbox_inches="tight")
         plt.close()
 
         buf.seek(0)
         ma_key = f"daily/{symbol}_ma.{IMAGE_EXT}"
-        b2.upload_file("eshanhf", ma_key, buf.getvalue())
-        ma_url = f"{b2.S3_ENDPOINT}/eshanhf/{ma_key}"
+
+        b2.upload_image_compressed(
+            "eshanhf",
+            ma_key,
+            buf.getvalue(),
+            quality=IMAGE_QUALITY
+        )
+
+        # ----------------------------------------------------
+        # Cache-busting timestamp
+        # ----------------------------------------------------
+        ts = int(time.time())
+        price_url = f"{B2_PUBLIC_BASE}/{price_key}?v={ts}"
+        ma_url    = f"{B2_PUBLIC_BASE}/{ma_key}?v={ts}"
 
         # ====================================================
         # TABLE (Last 100 days)
@@ -144,7 +157,7 @@ def fetch_daily(symbol, date_end, date_start):
             """
 
         # ====================================================
-        # FINAL HTML
+        # FINAL HTML (IMAGE WAIT + RETRY)
         # ====================================================
         html = f"""
 <div id="daily_dashboard">
@@ -165,10 +178,35 @@ def fetch_daily(symbol, date_end, date_start):
 </table>
 
 <h3>Price & Volume</h3>
-<img src="{price_url}" style="width:100%;max-width:1200px;">
+<img data-src="{price_url}" style="width:100%;max-width:1200px;">
 
 <h3>Moving Averages</h3>
-<img src="{ma_url}" style="width:100%;max-width:1200px;">
+<img data-src="{ma_url}" style="width:100%;max-width:1200px;">
+
+<script>
+function loadWithRetry(img, retries = 6, delay = 800) {{
+    let attempt = 0;
+
+    function tryLoad() {{
+        attempt++;
+        img.src = img.dataset.src + "&retry=" + attempt;
+    }}
+
+    img.onerror = function() {{
+        if (attempt < retries) {{
+            setTimeout(tryLoad, delay);
+        }} else {{
+            img.alt = "Image failed to load";
+        }}
+    }};
+
+    tryLoad();
+}}
+
+document.querySelectorAll("img[data-src]").forEach(img => {{
+    loadWithRetry(img);
+}});
+</script>
 
 </div>
 """
