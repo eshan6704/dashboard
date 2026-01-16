@@ -5,7 +5,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 # -------------------------------------------------------
 # Router
 # -------------------------------------------------------
-from .router import router
+from .router import router   # ← same import style
 
 # -------------------------------------------------------
 # FastAPI app
@@ -22,7 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Enable gzip compression for large HTML responses
+# Enable gzip compression for large HTML files
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # -------------------------------------------------------
