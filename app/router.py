@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
+from pathlib import Path
 from pydantic import BaseModel
+import mimetypes
 
 # -------------------------------------------------------
-# Local modules
+# Local modules (UNCHANGED)
 # -------------------------------------------------------
 from . import common
 from . import stock
@@ -15,61 +17,22 @@ from . import bhavcopy_html as bhav
 from . import build_nse_fno as fno
 from . import nsepythonmodified as ns
 from . import yahooinfo
-from . import screener   # executor only
+from . import screener
 from . import daily
+
 # -------------------------------------------------------
 # Router
 # -------------------------------------------------------
 router = APIRouter()
 
 # -------------------------------------------------------
-# REQ TYPE MAP (stock & index)
+# Persistent storage (HF)
 # -------------------------------------------------------
-REQ_TYPE_MAP = {
-    "stock": [
-        "info", "intraday", "daily", "nse_eq", "qresult",
-        "result", "balance", "cashflow", "dividend",
-        "split", "other", "stock_hist"
-    ],
-    "index": [
-        "indices", "open", "preopen", "fno",
-        "fiidii", "events",
-        "index_highlow", "stock_highlow", "bhav",
-        "largedeals", "bulkdeals", "blockdeals",
-        "most_active", "index_history",
-        "Hlargedeals", "pe_pb",
-        "total_returns"
-    ],
-}
-
-
+FILES_DIR = Path("/data/files")
+FILES_DIR.mkdir(parents=True, exist_ok=True)
 
 # -------------------------------------------------------
-# HTML builder for req_type discovery
-# -------------------------------------------------------
-def build_req_type_list_html():
-    html = ["<div id='req_type_list'>"]
-
-    for mode, items in REQ_TYPE_MAP.items():
-        html.append(f"<h3>{mode.upper()}</h3><ul>")
-        for it in items:
-            html.append(
-                f"<li class='{mode}-req' data-mode='{mode}'>{it}</li>"
-            )
-        html.append("</ul>")
-
-    # SCREENER (from screener.py)
-    html.append("<h3>SCREENER</h3><ul>")
-    for key in screener.SCREENER_MAP.keys():
-        html.append(
-            f"<li class='screener-req' data-mode='screener'>{key}</li>"
-        )
-    html.append("</ul></div>")
-
-    return "".join(html)
-
-# -------------------------------------------------------
-# Request model
+# Request model (kept)
 # -------------------------------------------------------
 class FetchRequest(BaseModel):
     mode: str
@@ -79,7 +42,26 @@ class FetchRequest(BaseModel):
     date_end: str = ""
 
 # -------------------------------------------------------
-# STOCK handler
+# Filename → FetchRequest
+# stock_info_TCS_view.html
+# index_open_NIFTY_live.html
+# screener_topgainers_all_view.html
+# -------------------------------------------------------
+def parse_filename(filename: str) -> FetchRequest:
+    stem = filename.rsplit(".", 1)[0]
+    parts = stem.split("_")
+
+    if len(parts) < 3:
+        raise ValueError("Invalid filename format")
+
+    return FetchRequest(
+        mode=parts[0],
+        req_type=parts[1],
+        name=parts[2]
+    )
+
+# -------------------------------------------------------
+# STOCK handler (UNCHANGED LOGIC)
 # -------------------------------------------------------
 def handle_stock(req: FetchRequest):
     t = req.req_type.lower()
@@ -89,7 +71,7 @@ def handle_stock(req: FetchRequest):
     if t == "intraday":
         return stock.fetch_intraday(req.name)
     if t == "daily":
-        return daily.fetch_daily(req.name, req.date_end,req.date_start)
+        return daily.fetch_daily(req.name, req.date_end, req.date_start)
     if t == "nse_eq":
         return eq.build_eq_html(req.name)
     if t == "qresult":
@@ -114,7 +96,7 @@ def handle_stock(req: FetchRequest):
     return common.wrap(f"<h3>Unhandled stock req_type: {t}</h3>")
 
 # -------------------------------------------------------
-# INDEX handler
+# INDEX handler (UNCHANGED LOGIC)
 # -------------------------------------------------------
 def handle_index(req: FetchRequest):
     t = req.req_type.lower()
@@ -147,18 +129,12 @@ def handle_index(req: FetchRequest):
         return ns.nse_most_active()
     if t == "index_history":
         return ns.index_history("NIFTY", req.date_start, req.date_end)
-    if t == "Hlargedeals":
-        return ns.nse_largedeals_historical(
-            req.date_start, req.date_end
-        )
+    if t == "hlargedeals":
+        return ns.nse_largedeals_historical(req.date_start, req.date_end)
     if t == "pe_pb":
-        return ns.index_pe_pb_div(
-            "NIFTY", req.date_start, req.date_end
-        )
+        return ns.index_pe_pb_div("NIFTY", req.date_start, req.date_end)
     if t == "total_returns":
-        return ns.index_total_returns(
-            "NIFTY", req.date_start, req.date_end
-        )
+        return ns.index_total_returns("NIFTY", req.date_start, req.date_end)
 
     return common.wrap(f"<h3>Unhandled index req_type: {t}</h3>")
 
@@ -168,30 +144,50 @@ def handle_index(req: FetchRequest):
 def handle_screener(req: FetchRequest):
     return screener.fetch_screener(req.req_type.lower())
 
-
 # -------------------------------------------------------
-# Routes
+# Health
 # -------------------------------------------------------
 @router.get("/")
 def health():
     return {"status": "ok", "service": "backend alive"}
 
-@router.post("/api/fetch", response_class=HTMLResponse)
-def fetch_data(req: FetchRequest):
+# -------------------------------------------------------
+# FILE endpoint (CORE)
+# -------------------------------------------------------
+@router.get("/file")
+def get_file(name: str, force: bool = Query(False)):
+    file_path = (FILES_DIR / name).resolve()
 
-    mode = req.mode.lower()
+    # Security
+    if not str(file_path).startswith(str(FILES_DIR)):
+        raise HTTPException(403, "Invalid path")
 
-    # frontend discovery call
-    if mode == "list":
-        return HTMLResponse(content=build_req_type_list_html())
+    # Generate if missing
+    if force or not file_path.exists():
+        try:
+            req = parse_filename(name)
+        except Exception:
+            raise HTTPException(400, "Invalid filename")
 
-    if mode == "stock":
-        html = handle_stock(req)
-    elif mode == "index":
-        html = handle_index(req)
-    elif mode == "screener":
-        html = handle_screener(req)
-    else:
-        raise HTTPException(status_code=400, detail="Invalid mode")
+        if req.mode == "stock":
+            html = handle_stock(req)
+        elif req.mode == "index":
+            html = handle_index(req)
+        elif req.mode == "screener":
+            html = handle_screener(req)
+        else:
+            raise HTTPException(400, "Invalid mode")
 
-    return HTMLResponse(content=str(html))
+        file_path.write_text(str(html), encoding="utf-8")
+
+    if not file_path.exists():
+        raise HTTPException(404, "File not found")
+
+    media_type, _ = mimetypes.guess_type(file_path)
+
+    return FileResponse(
+        file_path,
+        media_type=media_type or "application/octet-stream",
+        filename=file_path.name,
+        headers={"Content-Disposition": f'inline; filename="{file_path.name}"'}
+    )
