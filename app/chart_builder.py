@@ -1,52 +1,58 @@
-# chart_builder.py
 import io
 import matplotlib.pyplot as plt
 
-DPI = 150
 
-
-def price_volume(df, symbol):
+def build_price_volume(df, symbol):
     """
-    Returns:
-      base_name, image_bytes, ext
+    Builds price + volume chart
+    RETURNS: png image bytes (NOT saving here)
     """
-    plt.figure(figsize=(14, 6))
-    plt.plot(df["Date"], df["Close"], label="Close", linewidth=2)
-
-    vol_scaled = df["Volume"] / df["Volume"].max() * df["Close"].max()
-    plt.bar(df["Date"], vol_scaled, alpha=0.25, label="Volume")
-
-    plt.title(f"{symbol} Price & Volume")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
 
     buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=DPI, bbox_inches="tight")
+
+    plt.figure(figsize=(14, 6))
+
+    # Price
+    plt.plot(df["Date"], df["Close"], label="Close", linewidth=2)
+
+    # Volume (scaled)
+    vol_scaled = df["Volume"] / df["Volume"].max() * df["Close"].max()
+    plt.bar(df["Date"], vol_scaled, alpha=0.3, label="Volume")
+
+    plt.title(f"{symbol} Price & Volume")
+    plt.xlabel("Date")
+    plt.ylabel("Price")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+
+    # IMPORTANT: PNG ONLY
+    plt.savefig(buf, format="png", dpi=150)
     plt.close()
 
     buf.seek(0)
-
-    base = f"@stock@daily@{symbol}@price"
-    return base, buf.read(), "png"
+    return buf.getvalue()
 
 
-def moving_avg(df, symbol):
+def build_moving_avg(df, symbol):
+    """
+    Optional: only if daily.py calls this
+    """
+
+    buf = io.BytesIO()
+
     plt.figure(figsize=(14, 6))
     plt.plot(df["Date"], df["Close"], label="Close", linewidth=2)
     plt.plot(df["Date"], df["MA20"], label="MA20")
     plt.plot(df["Date"], df["MA50"], label="MA50")
 
     plt.title(f"{symbol} Moving Averages")
-    plt.legend()
     plt.grid(True)
+    plt.legend()
     plt.tight_layout()
 
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=DPI, bbox_inches="tight")
+    plt.savefig(buf, format="png", dpi=150)
     plt.close()
 
     buf.seek(0)
-
-    base = f"@stock@daily@{symbol}@ma"
-    return base, buf.read(), "png"
+    return buf.getvalue()
