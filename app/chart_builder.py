@@ -1,72 +1,58 @@
 # chart_builder.py
-import matplotlib.pyplot as plt
 import io
-from PIL import Image
-from pathlib import Path
-from datetime import datetime
+import matplotlib.pyplot as plt
+from typing import Tuple
+from . import persist
 
-# Base folder for persistent storage
-FILES_DIR = Path("/data/files")
-FILES_DIR.mkdir(parents=True, exist_ok=True)
+IMAGE_FORMAT = "jpeg"  # save as JPEG for smaller size
+DPI = 150
 
-# =========================================================
-# Helper to save figure as JPEG using Pillow
-# =========================================================
-def _save_fig(buf: io.BytesIO, filename: str, quality=85) -> str:
+def price_volume(df, symbol) -> Tuple[str, bytes]:
     """
-    Save matplotlib figure buffer as JPEG via Pillow.
-    Returns full path of saved file.
-    """
-    buf.seek(0)
-    img = Image.open(buf)
-    img = img.convert("RGB")  # JPEG requires RGB
-    file_path = FILES_DIR / filename
-    img.save(file_path, format="JPEG", quality=quality)
-    return str(file_path)
-
-# =========================================================
-# Price + Volume chart
-# =========================================================
-def price_volume(df, symbol: str) -> str:
-    """
-    Generates Price & Volume chart and saves JPEG.
-    Returns filename.
+    Generates Price & Volume chart for a DataFrame.
+    Returns: (filename, bytes)
     """
     buf = io.BytesIO()
-    plt.figure(figsize=(14,6))
+    plt.figure(figsize=(14, 6))
     plt.plot(df["Date"], df["Close"], label="Close", linewidth=2)
+
+    # Scale volume to match price scale
     vol_scaled = df["Volume"] / df["Volume"].max() * df["Close"].max()
     plt.bar(df["Date"], vol_scaled, alpha=0.25, label="Volume")
+
     plt.title(f"{symbol} Price & Volume")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(buf, format="png", dpi=150)  # save as PNG first
+
+    plt.savefig(buf, format=IMAGE_FORMAT, dpi=DPI, bbox_inches="tight")
     plt.close()
+    buf.seek(0)
 
-    # Generate filename
-    filename = f"@stock@daily@{symbol}@price.jpg"
-    return _save_fig(buf, filename)
+    # Universal filename
+    filename = f"@stock@daily@{symbol}@price.{IMAGE_FORMAT}"
+    return filename, buf.read()
 
-# =========================================================
-# Moving Average chart
-# =========================================================
-def moving_average(df, symbol: str) -> str:
+
+def moving_avg(df, symbol) -> Tuple[str, bytes]:
     """
-    Generates MA20 + MA50 chart and saves JPEG.
-    Returns filename.
+    Generates Moving Average chart for a DataFrame.
+    Returns: (filename, bytes)
     """
     buf = io.BytesIO()
-    plt.figure(figsize=(14,6))
+    plt.figure(figsize=(14, 6))
     plt.plot(df["Date"], df["Close"], label="Close", linewidth=2)
     plt.plot(df["Date"], df["MA20"], label="MA20")
     plt.plot(df["Date"], df["MA50"], label="MA50")
+
     plt.title(f"{symbol} Moving Averages")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(buf, format="png", dpi=150)
-    plt.close()
 
-    filename = f"@stock@daily@{symbol}@ma.jpg"
-    return _save_fig(buf, filename)
+    plt.savefig(buf, format=IMAGE_FORMAT, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    buf.seek(0)
+
+    filename = f"@stock@daily@{symbol}@ma.{IMAGE_FORMAT}"
+    return filename, buf.read()
