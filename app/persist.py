@@ -2,9 +2,8 @@ import os
 import json
 import pickle
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
-import yfinance as yf
 
 # ==============================
 # Configuration
@@ -12,15 +11,7 @@ import yfinance as yf
 BASE_DIR = "./data/store"
 os.makedirs(BASE_DIR, exist_ok=True)
 
-# TTL validity map (per parent type)
-VALIDITY_MAP = {
-    "result": {"days": 7},
-    "qresult": {"days": 7},
-    "bhav": {"days": 1},
-    "intraday": {"minutes": 15},
-    "eq": {"hours": 1},
-    "daily": {"days": 1},
-}
+IMAGE_TYPES = {"png", "jpg", "jpeg"}
 
 # ==============================
 # Helpers
@@ -42,109 +33,117 @@ def _latest(prefix: str, ext: str):
     return max(files) if files else None
 
 # ==============================
-# Save / Load / Exists
+# Save
 # ==============================
-def save(name: str, data: Any, ftype: str) -> bool:
-    ts = _ts()
-    filename = f"{name}_{ts}.{ftype}"
-    path = _path(filename)
+def save(name: str, data: Any, ftype: str, timestamped=True) -> bool:
+    """
+    name: base filename without extension
+    ftype: html, json, csv, pkl, png, jpg, jpeg
+    timestamped: False for stable assets like images
+    """
     try:
+        if ftype in IMAGE_TYPES:
+            filename = f"{name}.{ftype}"
+        else:
+            ts = _ts() if timestamped else ""
+            filename = f"{name}_{ts}.{ftype}" if ts else f"{name}.{ftype}"
+
+        path = _path(filename)
+
         if ftype == "csv":
             if not isinstance(data, pd.DataFrame):
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [SAVE FAILED] CSV requires pandas DataFrame for {filename}")
-                return False
+                raise ValueError("CSV requires pandas DataFrame")
             data.to_csv(path, index=False)
+
         elif ftype == "json":
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
+
         elif ftype == "html":
             with open(path, "w", encoding="utf-8") as f:
                 f.write(str(data))
+
+        elif ftype in IMAGE_TYPES:
+            # data can be bytes or a file path
+            if isinstance(data, (bytes, bytearray)):
+                with open(path, "wb") as f:
+                    f.write(data)
+            elif isinstance(data, str) and os.path.exists(data):
+                with open(data, "rb") as src, open(path, "wb") as dst:
+                    dst.write(src.read())
+            else:
+                raise ValueError("Image data must be bytes or file path")
+
         elif ftype == "pkl":
             with open(path, "wb") as f:
                 pickle.dump(data, f)
+
         else:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [SAVE FAILED] Unsupported file type: {ftype} for {filename}")
-            return False
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [SAVE OK] {filename}")
+            raise ValueError(f"Unsupported file type: {ftype}")
+
+        print(f"[SAVE OK] {filename}")
         return True
+
     except Exception as e:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [SAVE FAILED] {filename} - Exception: {e}")
+        print(f"[SAVE FAILED] {name}.{ftype} → {e}")
         return False
 
+# ==============================
+# Load
+# ==============================
 def load(name: str, ftype: str):
-    filename = _latest(name, ftype) if "." not in name else name
+    filename = name if "." in name else _latest(name, ftype)
+    if not filename:
+        return False
+
     path = _path(filename)
     if not os.path.exists(path):
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOAD FAILED] File does not exist: {filename}")
         return False
+
     try:
         if filename.endswith(".csv"):
-            df = pd.read_csv(path)
-        elif filename.endswith(".json"):
+            return pd.read_csv(path)
+
+        if filename.endswith(".json"):
             with open(path, "r", encoding="utf-8") as f:
-                df = json.load(f)
-        elif filename.endswith(".html"):
+                return json.load(f)
+
+        if filename.endswith(".html"):
             with open(path, "r", encoding="utf-8") as f:
-                df = f.read()
-        elif filename.endswith(".pkl"):
+                return f.read()
+
+        if filename.endswith(tuple(IMAGE_TYPES)):
             with open(path, "rb") as f:
-                df = pickle.load(f)
-        else:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOAD FAILED] Unsupported file type: {filename}")
-            return False
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOAD OK] {filename}")
-        return df
+                return f.read()
+
+        if filename.endswith(".pkl"):
+            with open(path, "rb") as f:
+                return pickle.load(f)
+
     except Exception as e:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOAD FAILED] {filename} - Exception: {e}")
+        print(f"[LOAD FAILED] {filename} → {e}")
         return False
 
+# ==============================
+# Exists (NO TTL)
+# ==============================
 def exists(name: str, ftype: str) -> bool:
-    """
-    Checks if a file exists AND is valid within TTL based on parent type + symbol.
-    Example:
-      name = INTRADAY_RELIANCE
-      matches any file starting with INTRADAY_RELIANCE_YYYY_MM_DD_HH_MM_SS.csv
-      TTL applied according to parent type (INTRADAY -> 15 minutes)
-    """
+    if ftype in IMAGE_TYPES:
+        return os.path.exists(_path(f"{name}.{ftype}"))
+
     filename = _latest(name, ftype)
     if not filename:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] No file found for {name}.{ftype}")
         return False
 
-    path = _path(filename)
-    if not os.path.exists(path):
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] File not present: {filename}")
-        return False
+    return os.path.exists(_path(filename))
 
-    parent_func = name.split("_")[0].lower()  # INTRADAY, RESULT, etc.
-    validity = VALIDITY_MAP.get(parent_func)
-    if not validity:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] File exists with no TTL: {filename}")
-        return True
-
-    mtime = datetime.fromtimestamp(os.path.getmtime(path))
-    now = datetime.now()
-    is_valid = True
-    if "minutes" in validity:
-        is_valid = (now - mtime) <= timedelta(minutes=validity["minutes"])
-    elif "hours" in validity:
-        is_valid = (now - mtime) <= timedelta(hours=validity["hours"])
-    elif "days" in validity:
-        is_valid = (now - mtime) <= timedelta(days=validity["days"])
-
-    if is_valid:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] File exists and valid: {filename}")
-    else:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [EXISTS] File expired: {filename}")
-
-    return is_valid
-
+# ==============================
+# List
+# ==============================
 def list_files(name=None, ftype=None):
     files = sorted(_list_files())
     if name:
-        files = [f for f in files if f.startswith(name + "_")]
+        files = [f for f in files if f.startswith(name)]
     if ftype:
         files = [f for f in files if f.endswith("." + ftype)]
     return files
-
