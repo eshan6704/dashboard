@@ -2,40 +2,36 @@
 
 import yfinance as yf
 import pandas as pd
-import matplotlib.pyplot as plt
 from datetime import datetime as dt
 import traceback
-import io
-import time
 
 from . import persist
-from . import backblaze as b2
-
-
-# ============================================================
-# CONFIG
-# ============================================================
-IMAGE_FORMAT = "png"
-IMAGE_EXT = "png"
-DPI = 150
-IMAGE_QUALITY = 85   # compression quality (PNG is lossless)
-
-# Public download base (DISPLAY ONLY, no change to backblaze.py)
-B2_PUBLIC_BASE = "https://f005.backblazeb2.com/file/eshanhf"
-# ⚠️ replace f005 if your Backblaze console shows different
+from . import chart_builder
 
 
 # ============================================================
 # MAIN
 # ============================================================
-def fetch_daily(symbol, date_end, date_start):
-    key = f"daily_{symbol}"
+def fetch_daily(symbol: str, date_end: str, date_start: str):
+    """
+    Generates:
+      - HTML dashboard
+      - JPEG charts (price+volume, MA)
+    Naming:
+      @daily@html@SYMBOL.html
+      @daily@chart@SYMBOL@price_volume.jpg
+      @daily@chart@SYMBOL@ma.jpg
+    """
+
+    symbol = symbol.upper()
+
+    html_key = f"@daily@html@{symbol}"
 
     # --------------------------------------------------------
-    # Cache
+    # Return cached HTML if exists
     # --------------------------------------------------------
-    if persist.exists(key, "html"):
-        cached = persist.load(key, "html")
+    if persist.exists(html_key, "html"):
+        cached = persist.load(html_key, "html")
         if cached:
             return cached
 
@@ -77,71 +73,16 @@ def fetch_daily(symbol, date_end, date_start):
         df["MA50"] = df["Close"].rolling(50).mean()
 
         # ====================================================
-        # PRICE + VOLUME CHART
+        # CHARTS (JPEG → persist)
         # ====================================================
-        buf = io.BytesIO()
+        price_img = chart_builder.price_volume(df, symbol)
+        ma_img    = chart_builder.moving_average(df, symbol)
 
-        plt.figure(figsize=(14, 6))
-        plt.plot(df["Date"], df["Close"], label="Close", linewidth=2)
-
-        vol_scaled = df["Volume"] / df["Volume"].max() * df["Close"].max()
-        plt.bar(df["Date"], vol_scaled, alpha=0.25, label="Volume")
-
-        plt.title(f"{symbol} Price & Volume")
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-
-        plt.savefig(buf, format=IMAGE_FORMAT, dpi=DPI, bbox_inches="tight")
-        plt.close()
-
-        buf.seek(0)
-        price_key = f"daily/{symbol}_price_volume.{IMAGE_EXT}"
-
-        b2.upload_image_compressed(
-            "eshanhf",
-            price_key,
-            buf.getvalue(),
-            quality=IMAGE_QUALITY
-        )
+        persist.save(f"@daily@chart@{symbol}@price_volume", price_img, "jpg")
+        persist.save(f"@daily@chart@{symbol}@ma", ma_img, "jpg")
 
         # ====================================================
-        # MOVING AVERAGE CHART
-        # ====================================================
-        buf = io.BytesIO()
-
-        plt.figure(figsize=(14, 6))
-        plt.plot(df["Date"], df["Close"], label="Close", linewidth=2)
-        plt.plot(df["Date"], df["MA20"], label="MA20")
-        plt.plot(df["Date"], df["MA50"], label="MA50")
-
-        plt.title(f"{symbol} Moving Averages")
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-
-        plt.savefig(buf, format=IMAGE_FORMAT, dpi=DPI, bbox_inches="tight")
-        plt.close()
-
-        buf.seek(0)
-        ma_key = f"daily/{symbol}_ma.{IMAGE_EXT}"
-
-        b2.upload_image_compressed(
-            "eshanhf",
-            ma_key,
-            buf.getvalue(),
-            quality=IMAGE_QUALITY
-        )
-
-        # ----------------------------------------------------
-        # Cache-busting timestamp
-        # ----------------------------------------------------
-        ts = int(time.time())
-        price_url = f"{B2_PUBLIC_BASE}/{price_key}?v={ts}"
-        ma_url    = f"{B2_PUBLIC_BASE}/{ma_key}?v={ts}"
-
-        # ====================================================
-        # TABLE (Last 100 days)
+        # TABLE (Last 100 rows)
         # ====================================================
         rows = ""
         for r in df.tail(100).itertuples():
@@ -157,7 +98,7 @@ def fetch_daily(symbol, date_end, date_start):
             """
 
         # ====================================================
-        # FINAL HTML (IMAGE WAIT + RETRY)
+        # FINAL HTML (EMBEDDING IMAGES)
         # ====================================================
         html = f"""
 <div id="daily_dashboard">
@@ -178,40 +119,17 @@ def fetch_daily(symbol, date_end, date_start):
 </table>
 
 <h3>Price & Volume</h3>
-<img data-src="{price_url}" style="width:100%;max-width:1200px;">
+<img src="/file?name=@daily@chart@{symbol}@price_volume.jpg"
+     style="width:100%;max-width:1200px;">
 
 <h3>Moving Averages</h3>
-<img data-src="{ma_url}" style="width:100%;max-width:1200px;">
-
-<script>
-function loadWithRetry(img, retries = 6, delay = 800) {{
-    let attempt = 0;
-
-    function tryLoad() {{
-        attempt++;
-        img.src = img.dataset.src + "&retry=" + attempt;
-    }}
-
-    img.onerror = function() {{
-        if (attempt < retries) {{
-            setTimeout(tryLoad, delay);
-        }} else {{
-            img.alt = "Image failed to load";
-        }}
-    }};
-
-    tryLoad();
-}}
-
-document.querySelectorAll("img[data-src]").forEach(img => {{
-    loadWithRetry(img);
-}});
-</script>
+<img src="/file?name=@daily@chart@{symbol}@ma.jpg"
+     style="width:100%;max-width:1200px;">
 
 </div>
 """
 
-        persist.save(key, html, "html")
+        persist.save(html_key, html, "html")
         return html
 
     except Exception:
