@@ -196,9 +196,8 @@ def build_indices_html():
         css,
         "</head>",
         "<body>",
-        "<h1>NSE Indices</h1>",
-        f"<div>Generated: {dt.now().strftime('%Y-%m-%d %H:%M:%S')}</div>",
-        "<h2>Main Indices</h2>",
+        
+        f"<h2>Main Indices</h2>",
         "<div class='scroll'>", main_table_html, "</div>",
         "<h2>Dates</h2>" if dates_table_html else "",
         "<div class='scroll'>" if dates_table_html else "",
