@@ -1,5 +1,5 @@
 ---
-title: hfapp
+title: Langular
 emoji: 📉
 colorFrom: indigo
 colorTo: blue
