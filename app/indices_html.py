@@ -20,10 +20,6 @@ def build_indices_html():
     # ================= CACHE (TTL handled by persist) =================
     cache_name = "DAILY_INDICES_HTML"
 
-    if exists(cache_name, "html"):
-        cached_html = load(cache_name, "html")
-        if isinstance(cached_html, str):
-            return cached_html
 
     # ================= FETCH DATA =================
     p = ns.indices()
@@ -209,6 +205,6 @@ def build_indices_html():
     ])
 
     # ================= SAVE HTML (HF only) =================
-    save(cache_name, html_out, "html")
+
 
     return html_out
