@@ -18,10 +18,7 @@ def build_index_live_html(index_name ="NIFTY 50"):
     # ================= CACHE (TTL via persist) =================
     cache_name = "INTRADAY_INDEX_LIVE_NIFTY50"
 
-    if exists(cache_name, "html"):
-        cached_html = load(cache_name, "html")
-        if isinstance(cached_html, str):
-            return cached_html
+
 
     # ================= LIVE FETCH =================
 
@@ -251,5 +248,5 @@ th, td {{ border: 1px solid #bbb; padding: 5px 8px; }}
 </html>
 """
 
-    save(cache_name, html_out, "html")
+
     return html_out
