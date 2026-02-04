@@ -149,5 +149,5 @@ h2,h3,h4 {{ margin:6px 0; }}
 </body>
 </html>
 """
-    persist.save(html_name, html, "html")
+
     return html
