@@ -45,8 +45,6 @@ def build_eq_html(symbol):
 
     # ---------- CACHE HIT ----------
     cached = cache_load(cache_key)
-    if cached:
-        return cached
 
     # -------------------------------------------------------
     # CALL eq() function
@@ -189,5 +187,5 @@ function toggleSection(id) {{
 """
 
     # ---------- SAVE CACHE ----------
-    cache_save(cache_key, html)
+ 
     return html
