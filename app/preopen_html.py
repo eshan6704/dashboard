@@ -17,10 +17,7 @@ def build_preopen_html(key):
     # ================= CACHE (TTL via persist) =================
     cache_name = f"DAILY_PREOPEN_{key.upper()}"
 
-    if exists(cache_name, "html"):
-        cached_html = load(cache_name, "html")
-        if isinstance(cached_html, str):
-            return cached_html
+
 
     # ================= FETCH DATA =================
     p = ns.nse_preopen(key)
@@ -170,6 +167,6 @@ th {{ background: #333; color: #fff; }}
 """
 
     # ================= SAVE (HTML ONLY) =================
-    save(cache_name, html_out, "html")
+
 
     return html_out
