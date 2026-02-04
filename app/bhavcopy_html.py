@@ -7,17 +7,7 @@ from datetime import datetime as dt
 def build_bhavcopy_html(date_str):
     key = f"bhavcopy_{date_str}"
 
-    # -------------------------------------------------------
-    # 0) Use cached HTML if present
-    # -------------------------------------------------------
-    if persist.exists(key, "html"):
-        cached = persist.load(key, "html")
-        if cached is not False:
-            print(
-                f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] "
-                f"Using cached bhavcopy for {date_str}"
-            )
-            return cached
+
 
     try:
         # -------------------------------------------------------
@@ -38,7 +28,7 @@ def build_bhavcopy_html(date_str):
             df.columns = df.columns.str.strip()
         except Exception:
             html = f"<h3>No Bhavcopy found for {date_str}.</h3>"
-            persist.save(key, html, "html")
+
             return html
 
         # -------------------------------------------------------
@@ -136,7 +126,7 @@ def build_bhavcopy_html(date_str):
             grid_html
         )
 
-        persist.save(key, html, "html")
+
         return html
 
     except Exception as e:
