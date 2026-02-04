@@ -8,9 +8,15 @@ from .svg_charts import price_volume_chart, rsi_chart, macd_chart
 
 def fetch_daily(symbol, date_end, date_start):
     try:
+        # -------------------------
+        # Convert date
+        # -------------------------
         start = dt.strptime(date_start,"%d-%m-%Y").strftime("%Y-%m-%d")
         end   = dt.strptime(date_end,"%d-%m-%Y").strftime("%Y-%m-%d")
 
+        # -------------------------
+        # Fetch data
+        # -------------------------
         df = yf.download(symbol+".NS",start=start,end=end)
 
         if isinstance(df.columns,pd.MultiIndex):
@@ -26,7 +32,7 @@ def fetch_daily(symbol, date_end, date_start):
 
         df["DateStr"] = df["Date"].dt.strftime("%d-%b-%Y")
 
-        # Indicators
+        # ------------------------- Indicators -------------------------
         df["MA20"] = df["Close"].rolling(20).mean()
         df["MA50"] = df["Close"].rolling(50).mean()
 
@@ -41,12 +47,12 @@ def fetch_daily(symbol, date_end, date_start):
         df["MACD"] = ema12-ema26
         df["MACD_SIGNAL"] = df["MACD"].ewm(span=9).mean()
 
-        # ----------------- Views -----------------
+        # ------------------------- Limit view -------------------------
         view = df.tail(120)
         if view.empty:
             return f"<h3>No data to render charts for {symbol}.</h3>"
 
-        # ----------------- Insights -----------------
+        # ------------------------- Insights -------------------------
         lo=view["Low"].min()
         hi=view["High"].max()
         close=view.iloc[-1]["Close"]
@@ -65,12 +71,12 @@ def fetch_daily(symbol, date_end, date_start):
 
         insight_rows = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k,v in insights.items())
 
-        # ----------------- Charts -----------------
-        chart_price = price_volume_chart(view)
-        chart_rsi = rsi_chart(view)
-        chart_macd = macd_chart(view)
+        # ------------------------- Charts -------------------------
+        chart_price = price_volume_chart(view, f"{symbol} – Price & Volume")
+        chart_rsi   = rsi_chart(view)
+        chart_macd  = macd_chart(view)
 
-        # ----------------- Table -----------------
+        # ------------------------- Historical Table -------------------------
         rows=""
         for r in view.tail(100).itertuples():
             rows+=f"""
@@ -79,7 +85,7 @@ def fetch_daily(symbol, date_end, date_start):
 <td>{r.Low:.2f}</td><td>{r.Close:.2f}</td><td>{int(r.Volume)}</td>
 </tr>"""
 
-        # ----------------- HTML -----------------
+        # ------------------------- HTML -------------------------
         html=f"""
 <div style="font-family:Arial;background:white;color:#111;padding:10px">
 
