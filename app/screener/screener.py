@@ -3,7 +3,6 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from typing import List, Tuple
 
-from . import persist
 
 # ===============================
 # SCREENER MAP (OWNER)
@@ -31,9 +30,6 @@ def fetch_screener(screen_name: str) -> str:
 
     cache_name = f"SCREENER_{screen_name.upper()}"
 
-    # 1️⃣ Cache hit
-    if persist.exists(cache_name, "html"):
-        return persist.load(cache_name, "html")
 
     # 2️⃣ Fetch live
     headers, rows = _fetch_table(url)
@@ -45,9 +41,6 @@ def fetch_screener(screen_name: str) -> str:
     html = _build_html(headers, rows)
     csv_df = pd.DataFrame(rows, columns=headers)
 
-    # 4️⃣ Persist
-    persist.save(cache_name, html, "html")
-    persist.save(cache_name, csv_df, "csv")
 
     return html
 
