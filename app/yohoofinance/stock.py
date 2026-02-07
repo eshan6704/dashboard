@@ -5,12 +5,9 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime as dt
 
-# persist helpers
-from . import persist
-from .common import *
-from . import backblaze as b2
-#from . import ta_indi_pat
 
+from app.common import *   # or from app.common import *
+from app import backblaze as b2
 
 
 # ================================================================
