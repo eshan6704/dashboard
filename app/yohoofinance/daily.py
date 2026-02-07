@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime as dt
 import traceback
 
-from .svg_charts import candlestick_chart, line_chart, rsi_chart, macd_chart
+from app.svg_charts import candlestick_chart, line_chart, rsi_chart, macd_chart
 
 def fetch_daily(symbol,date_end,date_start):
     try:
