@@ -4,6 +4,9 @@ from pathlib import Path
 from pydantic import BaseModel
 import mimetypes
 
+from app.nse import indices, live, pre, eq, bhav, fno, ns
+from app.yahoo import yahooinfo, screener, daily
+
 router = APIRouter()
 
 # Persistent storage
