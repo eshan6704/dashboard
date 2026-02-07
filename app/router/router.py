@@ -17,9 +17,9 @@ from app.nse import bhavcopy_html as bhav
 from app.nse import build_nse_fno as fno
 from app.nse import nsepythonmodified as ns
 
-from app.yahoofinance import stock
-from app.yahoofinance import yahooinfo
-from app.yahoofinance import daily
+from app.yohoofinance import stock
+from app.yohoofinance import yahooinfo
+from app.yohoofinance import daily
 
 from app.screener import screener
 
