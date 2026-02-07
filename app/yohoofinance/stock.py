@@ -5,14 +5,7 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime as dt
 
-
 from app.common import *   # or from app.common import *
-from app import backblaze as b2
-
-
-# ================================================================
-#                    BASIC YFINANCE FETCHERS
-# ================================================================
 
 def yfinfo(symbol):
     return yf.Ticker(symbol + ".NS").info
