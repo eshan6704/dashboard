@@ -3,7 +3,8 @@ import io
 import pandas as pd
 import requests
 from datetime import datetime as dt
-from . import persist  # your persist.py
+
+from app.persist import persist
 
 NSE_FO_BASE = "https://archives.nseindia.com/content/fo"
 
