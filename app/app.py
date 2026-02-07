@@ -5,7 +5,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 # -------------------------------------------------------
 # Router
 # -------------------------------------------------------
-from .router import router   # ← same import style
+from router import router   # ← same import style
 
 # -------------------------------------------------------
 # FastAPI app
