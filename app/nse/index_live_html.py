@@ -5,9 +5,6 @@ import pandas as pd
 from datetime import datetime as dt
 import re
 
-# persist helpers (HF only)
-from .persist import exists, load, save
-
 
 def build_index_live_html(index_name ="NIFTY 50"):
     """
