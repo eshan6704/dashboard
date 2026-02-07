@@ -4,20 +4,6 @@ from pathlib import Path
 from pydantic import BaseModel
 import mimetypes
 
-# Local modules
-from . import common
-from . import stock
-from . import indices_html as indices
-from . import index_live_html as live
-from . import preopen_html as pre
-from . import eq_html as eq
-from . import bhavcopy_html as bhav
-from . import build_nse_fno as fno
-from . import nsepythonmodified as ns
-from . import yahooinfo
-from . import screener
-from . import daily
-
 router = APIRouter()
 
 # Persistent storage
