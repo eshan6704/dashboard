@@ -6,9 +6,6 @@ import html
 from datetime import datetime as dt
 from collections import defaultdict
 
-# persist helpers (HF only)
-from .persist import exists, load, save
-
 
 def build_indices_html():
     """
