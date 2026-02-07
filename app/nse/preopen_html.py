@@ -1,4 +1,6 @@
-from . import nsepythonmodified as ns
+
+from app.nse import nsepythonmodified as ns
+
 import pandas as pd
 import re
 from datetime import datetime as dt
