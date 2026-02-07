@@ -7,7 +7,7 @@ import mimetypes
 import mimetypes
 
 # Absolute imports
-from app.common import common
+from app.common as common
 from app.nse import stock
 from app.nse import indices_html as indices
 from app.nse import index_live_html as live
