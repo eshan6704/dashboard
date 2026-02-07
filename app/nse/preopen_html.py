@@ -5,8 +5,6 @@ import pandas as pd
 import re
 from datetime import datetime as dt
 
-# persist helpers (HF only)
-from .persist import exists, load, save
 
 
 def build_preopen_html(key):
