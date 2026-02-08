@@ -327,7 +327,8 @@ def yfinfo(symbol):
         for c in ["Open","High","Low","Close","Volume"]:
             df[c]=pd.to_numeric(df[c],errors="coerce")
         df=df.dropna(subset=["Date","Open","High","Low","Close","Volume"])
-        
+
+        print(df)
         hist=df.copy()
         
         if not isinstance(hist, pd.DataFrame):
