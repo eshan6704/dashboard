@@ -317,7 +317,19 @@ def yfinfo(symbol):
         info = t.info
         
         # Fetch historical data for calculations
-        hist = t.history(period="3mo", interval="1d")
+        
+        df=t.download(symbol+".NS",period="1y", interval="1d")
+
+        if isinstance(df.columns,pd.MultiIndex):
+            df.columns=df.columns.get_level_values(0)
+
+        df=df.reset_index()
+        for c in ["Open","High","Low","Close","Volume"]:
+            df[c]=pd.to_numeric(df[c],errors="coerce")
+        df=df.dropna(subset=["Date","Open","High","Low","Close","Volume"])
+        
+        hist=df.copy()
+        
         if not isinstance(hist, pd.DataFrame):
             hist = pd.DataFrame()
         
