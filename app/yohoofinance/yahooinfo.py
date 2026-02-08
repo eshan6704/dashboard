@@ -321,22 +321,30 @@ def yfinfo(symbol):
         
         # Fetch historical data for calculations
         hist = t.history(period="3mo", interval="1d")
+        if not isinstance(hist, pd.DataFrame):
+            hist = pd.DataFrame()
         
         # Fetch corporate actions (dividends, splits)
         try:
             actions = t.actions if hasattr(t, 'actions') else pd.DataFrame()
+            if not isinstance(actions, pd.DataFrame):
+                actions = pd.DataFrame()
         except:
             actions = pd.DataFrame()
         
         # Fetch upcoming events/earnings
         try:
             calendar = t.calendar if hasattr(t, 'calendar') else pd.DataFrame()
+            if not isinstance(calendar, pd.DataFrame):
+                calendar = pd.DataFrame()
         except:
             calendar = pd.DataFrame()
         
         # Fetch recommendations
         try:
             recommendations = t.recommendations if hasattr(t, 'recommendations') else pd.DataFrame()
+            if not isinstance(recommendations, pd.DataFrame):
+                recommendations = pd.DataFrame()
         except:
             recommendations = pd.DataFrame()
         
@@ -344,7 +352,7 @@ def yfinfo(symbol):
         
     except Exception as e:
         return {"__error__": str(e)}, pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-
+        
 # ==============================
 # Formatting
 # ==============================
@@ -783,6 +791,18 @@ def process_events(info, actions, calendar):
     """Process dividends, splits, earnings, and other events"""
     events = []
     
+    # Ensure calendar is a DataFrame
+    if isinstance(calendar, dict):
+        calendar = pd.DataFrame(calendar)
+    if not isinstance(calendar, pd.DataFrame):
+        calendar = pd.DataFrame()
+    
+    # Ensure actions is a DataFrame
+    if isinstance(actions, dict):
+        actions = pd.DataFrame(actions)
+    if not isinstance(actions, pd.DataFrame):
+        actions = pd.DataFrame()
+    
     # Upcoming earnings from calendar
     if not calendar.empty and 'Earnings Date' in calendar.columns:
         try:
@@ -876,6 +896,7 @@ def process_events(info, actions, calendar):
         pass
     
     return events
+    
 
 def build_events_section(events):
     """Build HTML for events timeline"""
