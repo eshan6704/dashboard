@@ -427,6 +427,9 @@ def generate_comparison_chart(stock_df, index_df, symbol, width=800, height=300)
 # ================================================================
 #                        QUARTERLY
 # ================================================================
+# ================================================================
+#                        QUARTERLY
+# ================================================================
 
 def fetch_qresult(symbol):
     key = f"qresult_{symbol}"
@@ -437,27 +440,45 @@ def fetch_qresult(symbol):
             return wrap_html(f"<h1>No quarterly results for {symbol}</h1>")
 
         df_display = df.copy()
+        
+        # Convert to numeric first, then format
         for col in df_display.columns:
+            df_display[col] = pd.to_numeric(df_display[col], errors='coerce')
             df_display[col] = df_display[col].apply(
-                lambda x: format_large_number(x) if isinstance(x, (int, float)) else x
+                lambda x: format_large_number(x) if pd.notna(x) and isinstance(x, (int, float)) else x
             )
 
         df_display.reset_index(inplace=True)
         
-        # Add growth calculations
-        if len(df_display.columns) > 2:
-            latest_col = df_display.columns[1]
-            prev_col = df_display.columns[2]
-            df_display['QoQ Growth%'] = ((df_display[latest_col] - df_display[prev_col]) / df_display[prev_col].abs() * 100).round(2)
+        # Add growth calculations - only if we have numeric columns
+        numeric_cols = [c for c in df_display.columns if c != 'index' and pd.api.types.is_numeric_dtype(df_display[c])]
+        
+        if len(numeric_cols) >= 2:
+            latest_col = numeric_cols[0]
+            prev_col = numeric_cols[1]
+            
+            # Calculate growth only on numeric values
+            def calc_growth(row):
+                try:
+                    latest = pd.to_numeric(row[latest_col], errors='coerce')
+                    prev = pd.to_numeric(row[prev_col], errors='coerce')
+                    if pd.notna(latest) and pd.notna(prev) and prev != 0:
+                        growth = ((latest - prev) / abs(prev)) * 100
+                        return round(growth, 2)
+                    return None
+                except:
+                    return None
+            
+            growth_values = df_display.apply(calc_growth, axis=1)
             
             # Style growth column
             def style_growth(val):
-                if pd.isna(val):
-                    return val
+                if pd.isna(val) or val is None:
+                    return '-'
                 color = '#16a34a' if val > 0 else '#dc2626'
                 return f'<span style="color:{color};font-weight:600;">{val:+.2f}%</span>'
             
-            df_display['QoQ Growth%'] = df_display['QoQ Growth%'].apply(style_growth)
+            df_display['QoQ Growth%'] = growth_values.apply(style_growth)
 
         html = wrap_html(
             f"<div style='background:#f0f9ff;border:1px solid #0ea5e9;border-radius:10px;padding:15px;margin-bottom:20px;'>"
@@ -471,6 +492,8 @@ def fetch_qresult(symbol):
 
     except Exception as e:
         print(f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_qresult: {e}")
+        import traceback
+        print(traceback.format_exc())
         return wrap_html(html_error(f"Quarterly Error: {e}"))
 
 
@@ -487,26 +510,43 @@ def fetch_result(symbol):
             return wrap_html(f"<h1>No annual results for {symbol}</h1>")
 
         df_display = df.copy()
+        
+        # Convert to numeric first, then format
         for col in df_display.columns:
+            df_display[col] = pd.to_numeric(df_display[col], errors='coerce')
             df_display[col] = df_display[col].apply(
-                lambda x: format_large_number(x) if isinstance(x, (int, float)) else x
+                lambda x: format_large_number(x) if pd.notna(x) and isinstance(x, (int, float)) else x
             )
 
         df_display.reset_index(inplace=True)
         
-        # Add YoY growth
-        if len(df_display.columns) > 2:
-            latest_col = df_display.columns[1]
-            prev_col = df_display.columns[2]
-            df_display['YoY Growth%'] = ((df_display[latest_col] - df_display[prev_col]) / df_display[prev_col].abs() * 100).round(2)
+        # Add YoY growth - only if we have numeric columns
+        numeric_cols = [c for c in df_display.columns if c != 'index' and pd.api.types.is_numeric_dtype(df_display[c])]
+        
+        if len(numeric_cols) >= 2:
+            latest_col = numeric_cols[0]
+            prev_col = numeric_cols[1]
+            
+            def calc_growth(row):
+                try:
+                    latest = pd.to_numeric(row[latest_col], errors='coerce')
+                    prev = pd.to_numeric(row[prev_col], errors='coerce')
+                    if pd.notna(latest) and pd.notna(prev) and prev != 0:
+                        growth = ((latest - prev) / abs(prev)) * 100
+                        return round(growth, 2)
+                    return None
+                except:
+                    return None
+            
+            growth_values = df_display.apply(calc_growth, axis=1)
             
             def style_growth(val):
-                if pd.isna(val):
-                    return val
+                if pd.isna(val) or val is None:
+                    return '-'
                 color = '#16a34a' if val > 0 else '#dc2626'
                 return f'<span style="color:{color};font-weight:600;">{val:+.2f}%</span>'
             
-            df_display['YoY Growth%'] = df_display['YoY Growth%'].apply(style_growth)
+            df_display['YoY Growth%'] = growth_values.apply(style_growth)
 
         html = wrap_html(
             f"<div style='background:#f0fdf4;border:1px solid #16a34a;border-radius:10px;padding:15px;margin-bottom:20px;'>"
@@ -520,9 +560,9 @@ def fetch_result(symbol):
 
     except Exception as e:
         print(f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] Error fetch_result: {e}")
+        import traceback
+        print(traceback.format_exc())
         return wrap_html(html_error(f"Annual Error: {e}"))
-
-
 # ================================================================
 #                        BALANCE SHEET
 # ================================================================
