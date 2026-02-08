@@ -6,8 +6,6 @@ import pandas as pd
 import numpy as np
 import traceback
 from datetime import datetime, timezone, timedelta
-
-
 # ==============================
 # Icons & Styling
 # ==============================
@@ -1311,15 +1309,21 @@ def fetch_info(symbol):
         # Get market time from Yahoo Finance
         market_time = info.get("regularMarketTime")
         time_str = ""
+
         if market_time:
             try:
                 if isinstance(market_time, (int, float)):
                     if market_time > 1e12:
                         market_time = market_time / 1000
-                    dt = datetime.fromtimestamp(market_time, tz=timezone.utc)
-                    time_str = dt.strftime("%d %b %Y, %H:%M IST")
+                    # Convert UTC to IST (UTC+5:30)
+                    dt_utc = datetime.fromtimestamp(market_time, tz=timezone.utc)
+                    dt_ist = dt_utc + timedelta(hours=5, minutes=30)
+                    time_str = dt_ist.strftime("%d %b %Y, %I:%M %p")
                 elif isinstance(market_time, datetime):
-                    time_str = market_time.strftime("%d %b %Y, %H:%M IST")
+                    if market_time.tzinfo is None:
+                        market_time = market_time.replace(tzinfo=timezone.utc)
+                    dt_ist = market_time + timedelta(hours=5, minutes=30)
+                    time_str = dt_ist.strftime("%d %b %Y, %I:%M %p")
             except:
                 pass
         
