@@ -1450,6 +1450,12 @@ def fetch_info2(symbol):
         # Price/Volume with all metrics
         parts.append(build_price_volume_section(info, hist))
         
+        # Daily Trend Overview (NEW)
+        parts.append(build_daily_trend_section(info, hist))
+        
+        # Events (dividends, splits, earnings)
+        events = process_events(info, actions, calendar)
+        
         # Events (dividends, splits, earnings)
         events = process_events(info, actions, calendar)
         if events:
@@ -1492,3 +1498,218 @@ def fetch_info2(symbol):
         
     except Exception as e:
         return f'<div style="color:#dc2626;padding:20px;background:#fef2f2;border-radius:8px;"><strong>Error:</strong><br><pre>{traceback.format_exc()}</pre></div>'
+def build_daily_trend_section(info, hist_df):
+    """Build daily trend overview with mini candlestick chart and insights"""
+    if hist_df.empty or len(hist_df) < 20:
+        return ""
+    
+    try:
+        # Use last 90 days for overview
+        df = hist_df.tail(90).copy()
+        if len(df) < 20:
+            return ""
+        
+        # Ensure numeric
+        for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        df = df.dropna()
+        if len(df) < 20:
+            return ""
+        
+        # Calculate basic indicators
+        df['MA20'] = df['Close'].rolling(20).mean()
+        df['MA50'] = df['Close'].rolling(50).mean() if len(df) >= 50 else df['MA20']
+        
+        # Get last 30 days for mini chart
+        view = df.tail(30)
+        if view.empty:
+            return ""
+        
+        # Generate mini SVG candlestick chart
+        chart_svg = generate_mini_candlestick(view)
+        
+        # Calculate insights
+        latest = view.iloc[-1]
+        prev = view.iloc[-2] if len(view) > 1 else latest
+        week_ago = view.iloc[-6] if len(view) >= 6 else view.iloc[0]
+        month_ago = view.iloc[0]
+        
+        close = float(latest['Close'])
+        open_price = float(latest['Open'])
+        high = float(view['High'].max())
+        low = float(view['Low'].min())
+        volume = int(latest['Volume']) if 'Volume' in latest else 0
+        
+        # Price changes
+        day_change = (close - float(prev['Close'])) / float(prev['Close']) * 100 if len(view) > 1 else 0
+        week_change = (close - float(week_ago['Close'])) / float(week_ago['Close']) * 100 if len(view) >= 6 else 0
+        month_change = (close - float(month_ago['Close'])) / float(month_ago['Close']) * 100
+        
+        # Moving average signals
+        ma20 = float(latest['MA20']) if not pd.isna(latest['MA20']) else close
+        ma50 = float(latest['MA50']) if not pd.isna(latest['MA50']) else close
+        
+        trend = "Bullish" if close > ma20 > ma50 else "Bearish" if close < ma20 < ma50 else "Neutral"
+        trend_color = "#16a34a" if trend == "Bullish" else "#dc2626" if trend == "Bearish" else "#6b7280"
+        
+        # 52-week from available data
+        high_52w = float(df['High'].max())
+        low_52w = float(df['Low'].min())
+        pos_52w = (close - low_52w) / (high_52w - low_52w) * 100 if high_52w != low_52w else 50
+        
+        # Volume analysis
+        avg_vol_20 = int(df['Volume'].tail(20).mean()) if 'Volume' in df.columns else 0
+        vol_spike = (volume / avg_vol_20 - 1) * 100 if avg_vol_20 > 0 else 0
+        
+        # Build insights HTML
+        insights_html = f"""
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;">
+            <div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:6px;padding:8px;">
+                <div style="font-size:11px;color:#64748b;">Day Change</div>
+                <div style="font-size:14px;font-weight:700;color:{'#16a34a' if day_change >= 0 else '#dc2626'};">{day_change:+.2f}%</div>
+            </div>
+            <div style="background:#eff6ff;border:1px solid #3b82f6;border-radius:6px;padding:8px;">
+                <div style="font-size:11px;color:#64748b;">Week Change</div>
+                <div style="font-size:14px;font-weight:700;color:{'#16a34a' if week_change >= 0 else '#dc2626'};">{week_change:+.2f}%</div>
+            </div>
+            <div style="background:#faf5ff;border:1px solid #9333ea;border-radius:6px;padding:8px;">
+                <div style="font-size:11px;color:#64748b;">Month Change</div>
+                <div style="font-size:14px;font-weight:700;color:{'#16a34a' if month_change >= 0 else '#dc2626'};">{month_change:+.2f}%</div>
+            </div>
+            <div style="background:#fefce8;border:1px solid #eab308;border-radius:6px;padding:8px;">
+                <div style="font-size:11px;color:#64748b;">Trend Signal</div>
+                <div style="font-size:14px;font-weight:700;color:{trend_color};">{trend}</div>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px;">
+                <div style="font-size:11px;color:#64748b;">52W Position</div>
+                <div style="font-size:14px;font-weight:700;">{pos_52w:.1f}%</div>
+                <div style="background:#e2e8f0;height:4px;border-radius:2px;margin-top:4px;">
+                    <div style="background:#0ea5e9;width:{min(pos_52w,100)}%;height:100%;border-radius:2px;"></div>
+                </div>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px;">
+                <div style="font-size:11px;color:#64748b;">Volume Spike</div>
+                <div style="font-size:14px;font-weight:700;color:{'#16a34a' if vol_spike > 50 else '#64748b'};">{vol_spike:+.0f}%</div>
+            </div>
+        </div>
+        """
+        
+        # Combine chart and insights
+        html = f"""
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;align-items:start;">
+            <div>
+                {chart_svg}
+                <div style="text-align:center;font-size:11px;color:#64748b;margin-top:5px;">Last 30 Trading Days</div>
+            </div>
+            <div>
+                {insights_html}
+            </div>
+        </div>
+        """
+        
+        return html_card(f"{MAIN_ICONS['Trend']} Daily Trend Overview", html, color="blue")
+        
+    except Exception as e:
+        return ""
+
+def generate_mini_candlestick(df, width=400, height=200):
+    """Generate compact SVG candlestick chart"""
+    try:
+        if len(df) < 5:
+            return ""
+        
+        # Prepare data
+        df = df.copy()
+        df['Date'] = pd.to_datetime(df.index) if not isinstance(df.index, pd.DatetimeIndex) else df.index
+        
+        n = len(df)
+        margin = 20
+        chart_w = width - 2 * margin
+        chart_h = height - 2 * margin
+        
+        # Price scale
+        min_price = float(df['Low'].min())
+        max_price = float(df['High'].max())
+        price_range = max_price - min_price if max_price != min_price else 1
+        
+        # Volume scale
+        max_vol = float(df['Volume'].max()) if 'Volume' in df.columns else 1
+        
+        # Candle dimensions
+        candle_w = chart_w / n * 0.7
+        spacing = chart_w / n
+        
+        svg_elements = []
+        
+        # Background grid
+        for i in range(5):
+            y = margin + (chart_h * i / 4)
+            svg_elements.append(f'<line x1="{margin}" y1="{y}" x2="{width-margin}" y2="{y}" stroke="#e2e8f0" stroke-width="1"/>')
+        
+        # Draw candles
+        for i, (idx, row) in enumerate(df.iterrows()):
+            x = margin + i * spacing + spacing * 0.15
+            
+            open_p = float(row['Open'])
+            high_p = float(row['High'])
+            low_p = float(row['Low'])
+            close_p = float(row['Close'])
+            
+            # Y coordinates (inverted)
+            y_open = margin + chart_h - ((open_p - min_price) / price_range * chart_h)
+            y_close = margin + chart_h - ((close_p - min_price) / price_range * chart_h)
+            y_high = margin + chart_h - ((high_p - min_price) / price_range * chart_h)
+            y_low = margin + chart_h - ((low_p - min_price) / price_range * chart_h)
+            
+            # Color
+            color = "#16a34a" if close_p >= open_p else "#dc2626"
+            
+            # Wick
+            svg_elements.append(f'<line x1="{x + candle_w/2}" y1="{y_high}" x2="{x + candle_w/2}" y2="{y_low}" stroke="{color}" stroke-width="1"/>')
+            
+            # Body
+            body_top = min(y_open, y_close)
+            body_height = abs(y_close - y_open)
+            if body_height < 1:
+                body_height = 1
+            
+            svg_elements.append(f'<rect x="{x}" y="{body_top}" width="{candle_w}" height="{body_height}" fill="{color}" stroke="{color}" stroke-width="1"/>')
+            
+            # Volume bars at bottom (small)
+            if 'Volume' in row:
+                vol = float(row['Volume'])
+                vol_height = (vol / max_vol) * (chart_h * 0.15)
+                vol_y = height - margin - vol_height
+                svg_elements.append(f'<rect x="{x}" y="{vol_y}" width="{candle_w}" height="{vol_height}" fill="#94a3b8" opacity="0.5"/>')
+        
+        # MA lines if available
+        if 'MA20' in df.columns:
+            ma_points = []
+            for i, (idx, row) in enumerate(df.iterrows()):
+                if not pd.isna(row['MA20']):
+                    x = margin + i * spacing + spacing * 0.15 + candle_w/2
+                    y = margin + chart_h - ((float(row['MA20']) - min_price) / price_range * chart_h)
+                    ma_points.append(f"{x},{y}")
+            if len(ma_points) > 1:
+                svg_elements.append(f'<polyline points="{" ".join(ma_points)}" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>')
+        
+        # Current price line
+        last_close = float(df.iloc[-1]['Close'])
+        y_last = margin + chart_h - ((last_close - min_price) / price_range * chart_h)
+        svg_elements.append(f'<line x1="{margin}" y1="{y_last}" x2="{width-margin}" y2="{y_last}" stroke="#0ea5e9" stroke-width="1" stroke-dasharray="3,3" opacity="0.7"/>')
+        
+        svg = f"""
+        <svg width="{width}" height="{height}" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:6px;">
+            <rect width="100%" height="100%" fill="#fafafa"/>
+            {''.join(svg_elements)}
+            <text x="{width-margin}" y="{y_last-3}" font-size="10" fill="#0ea5e9" text-anchor="end">{last_close:.2f}</text>
+        </svg>
+        """
+        
+        return svg
+        
+    except Exception:
+        return ""
+        
