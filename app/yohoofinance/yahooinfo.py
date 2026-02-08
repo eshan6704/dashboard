@@ -1216,8 +1216,13 @@ def build_ownership_section(own_data):
         return ""
     
     df = build_df_from_dict(simple_data)
-    return html_card(f"{MAIN_ICONS['Ownership']} Ownership Structure", column_layout(make_table(df)), cols=2)
-
+    if df.empty:
+        return ""
+    
+    # Fix: cols goes to column_layout, not html_card
+    return html_card(f"{MAIN_ICONS['Ownership']} Ownership Structure", 
+                     column_layout(make_table(df), cols=2))
+    
 def build_analyst_section(analyst_data, recommendations):
     """Build analyst coverage"""
     if not analyst_data:
