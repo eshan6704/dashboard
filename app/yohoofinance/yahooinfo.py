@@ -452,4 +452,407 @@ def classify(k, v):
         return "fundamental"
     if any(x in lk for x in ["price", "volume", "change", "high", "low", "open", "close", "average", "dma", "52week", "vwap", "gap", "range", "spike", "adr", "volatility", "rsi"]):
         return "price_volume"
-    if any(x in lk for x in ["sector", "industry", "country", "employees", "webs
+    if any(x in lk for x in ["sector", "industry", "country", "employees", "website", "phone", "address", "city", "state", "about", "summary", "description", "business", "fulltime", "officer", "name", "title"]):
+        return "profile"
+    if isinstance(v, str) and len(v) > 100: 
+        return "long_text"
+    return "profile"
+
+def group_info(info):
+    g = {"price_volume": {}, "fundamental": {}, "profile": {}, "management": {}, "long_text": {}, "technicals": {}}
+    for k, v in info.items():
+        if k in NOISE_KEYS or v in [None, "", [], {}]: 
+            continue
+        category = classify(k, v)
+        g[category][k] = v
+    return g
+
+def split_df(df, max_rows=8):
+    if df.empty:
+        return [df]
+    n = len(df)
+    cols = 1 if n <= 6 else 2 if n <= 14 else 3
+    size = max((n + cols - 1) // cols, max_rows)
+    return [df.iloc[i:i+size] for i in range(0, n, size)]
+
+# ==============================
+# Derived Metrics & Signals
+# ==============================
+def build_price_volume_derived(info, hist_df):
+    out = {}
+    price = info.get("regularMarketPrice")
+    dma50 = info.get("fiftyDayAverage")
+    dma200 = info.get("twoHundredDayAverage")
+    low52 = info.get("fiftyTwoWeekLow")
+    high52 = info.get("fiftyTwoWeekHigh")
+    
+    # Moving average signals
+    if price and dma50: 
+        out["vs 50DMA"] = "Above ↑" if price > dma50 else "Below ↓"
+        out["50DMA Chg%"] = (price / dma50 - 1) * 100
+    if price and dma200: 
+        out["vs 200DMA"] = "Above ↑" if price > dma200 else "Below ↓"
+        out["200DMA Chg%"] = (price / dma200 - 1) * 100
+    
+    # 52-week position
+    if price and low52 and high52 and high52 != low52: 
+        pos = (price - low52) / (high52 - low52) * 100
+        out["52W Pos"] = f"{pos:.1f}%"
+        out["52W Pos Raw"] = pos  # For progress bar
+    
+    # Intraday metrics
+    prev = info.get("regularMarketPreviousClose")
+    high = info.get("regularMarketDayHigh")
+    low = info.get("regularMarketDayLow")
+    
+    if price and prev: 
+        out["Gap%"] = (price - prev) / prev * 100
+    if high and low and price: 
+        out["Range%"] = (high - low) / price * 100
+    
+    # VWAP placeholder (would need intraday data for real VWAP)
+    if price: 
+        out["VWAP"] = price
+    
+    # Historical volatility
+    if not hist_df.empty and len(hist_df) >= 20:
+        returns = hist_df['Close'].pct_change().dropna()
+        if len(returns) >= 20:
+            out["Volatility"] = returns.std() * (252 ** 0.5) * 100  # Annualized volatility
+            out["ADR%"] = (hist_df['High'] - hist_df['Low']).mean() / hist_df['Close'].mean() * 100  # Average Daily Range
+    
+    # IPO date
+    if info.get("firstTradeDate"): 
+        out["firstTradeDate"] = info.get("firstTradeDate")
+    
+    return out
+
+def build_volume_spikes(info, hist_df):
+    out = {}
+    today_vol = info.get("regularMarketVolume") or info.get("volume")
+    
+    if today_vol and not hist_df.empty and len(hist_df) >= 10:
+        # Spike = today / 10-day avg
+        avg_10d = hist_df['Volume'].tail(10).mean()
+        if avg_10d > 0:
+            spike = (today_vol / avg_10d - 1) * 100
+            out["volumeSpike"] = spike
+        
+        # Spike trend = avg(today + last 10 days) / 30-day avg
+        if len(hist_df) >= 30:
+            recent_11d = hist_df['Volume'].tail(11)
+            avg_11d = recent_11d.mean()
+            avg_30d = hist_df['Volume'].tail(30).mean()
+            if avg_30d > 0:
+                out["volumeSpikeTrend"] = (avg_11d / avg_30d - 1) * 100
+    
+    return out
+
+def calculate_rsi(prices, period=14):
+    if len(prices) < period + 1:
+        return None
+    deltas = prices.diff().dropna()
+    gains = deltas.where(deltas > 0, 0)
+    losses = -deltas.where(deltas < 0, 0)
+    
+    avg_gain = gains.rolling(window=period).mean().iloc[-1]
+    avg_loss = losses.rolling(window=period).mean().iloc[-1]
+    
+    if avg_loss == 0:
+        return 100
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+def build_technicals(hist_df):
+    out = {}
+    if hist_df.empty or len(hist_df) < 20:
+        return out
+    
+    closes = hist_df['Close']
+    
+    # RSI
+    rsi = calculate_rsi(closes, 14)
+    if rsi is not None:
+        out["rsi"] = rsi
+    
+    # Simple moving averages for trend
+    sma20 = closes.tail(20).mean()
+    sma50 = closes.tail(50).mean() if len(closes) >= 50 else None
+    
+    if sma50:
+        out["sma20_vs_sma50"] = (sma20 / sma50 - 1) * 100
+    
+    # Price momentum (10-day)
+    if len(closes) >= 10:
+        out["momentum_10d"] = (closes.iloc[-1] / closes.iloc[-10] - 1) * 100
+    
+    return out
+
+def build_smart_signals(info, technicals):
+    rows = []
+    pe = info.get("trailingPE")
+    forward_pe = info.get("forwardPE")
+    roe = info.get("returnOnEquity")
+    roa = info.get("returnOnAssets")
+    debt = info.get("debtToEquity")
+    current = info.get("currentRatio")
+    price = info.get("regularMarketPrice")
+    dma50 = info.get("fiftyDayAverage")
+    dma200 = info.get("twoHundredDayAverage")
+    rsi = technicals.get("rsi")
+    revenue_growth = info.get("revenueGrowth")
+    profit_margin = info.get("profitMargins")
+    
+    # Valuation Signal
+    if pe:
+        if pe < 15:
+            rows.append(("Valuation", '<span class="strong">Undervalued</span>', "P/E below 15"))
+        elif pe > 35:
+            rows.append(("Valuation", '<span class="weak">Overvalued</span>', f"P/E at {pe:.1f}x"))
+        else:
+            rows.append(("Valuation", '<span class="neutral">Fair Value</span>', f"P/E at {pe:.1f}x"))
+    
+    # Quality Signal
+    quality_score = 0
+    if roe and roe > 0.15: quality_score += 1
+    if roa and roa > 0.05: quality_score += 1
+    if profit_margin and profit_margin > 0.15: quality_score += 1
+    
+    if quality_score >= 2:
+        rows.append(("Quality", '<span class="strong">High Quality</span>', "Strong ROE/ROA/Margins"))
+    elif quality_score == 1:
+        rows.append(("Quality", '<span class="neutral">Average</span>', "Mixed metrics"))
+    else:
+        rows.append(("Quality", '<span class="weak">Low Quality</span>', "Weak profitability"))
+    
+    # Financial Health
+    health_issues = 0
+    if debt and debt > 1: health_issues += 1
+    if current and current < 1: health_issues += 1
+    
+    if health_issues == 0:
+        rows.append(("Balance Sheet", '<span class="strong">Healthy</span>', "Low debt, good liquidity"))
+    elif health_issues == 1:
+        rows.append(("Balance Sheet", '<span class="neutral">Moderate</span>', "Some concerns"))
+    else:
+        rows.append(("Balance Sheet", '<span class="weak">Weak</span>', "High debt or low liquidity"))
+    
+    # Trend/Momentum
+    if price and dma50 and dma200:
+        if price > dma50 > dma200:
+            trend = "Bullish"
+            trend_class = "strong"
+            note = "Price > 50DMA > 200DMA"
+        elif price < dma50 < dma200:
+            trend = "Bearish"
+            trend_class = "weak"
+            note = "Price < 50DMA < 200DMA"
+        elif price > dma50:
+            trend = "Short-term Bull"
+            trend_class = "neutral"
+            note = "Above 50DMA but below 200DMA"
+        else:
+            trend = "Short-term Bear"
+            trend_class = "neutral"
+            note = "Below 50DMA but above 200DMA"
+        rows.append(("Trend", f'<span class="{trend_class}">{trend}</span>', note))
+    
+    # RSI Signal
+    if rsi:
+        if rsi > 70:
+            rows.append(("Momentum", '<span class="weak">Overbought</span>', f"RSI at {rsi:.1f}"))
+        elif rsi < 30:
+            rows.append(("Momentum", '<span class="strong">Oversold</span>', f"RSI at {rsi:.1f}"))
+        else:
+            rows.append(("Momentum", '<span class="neutral">Neutral</span>', f"RSI at {rsi:.1f}"))
+    
+    # Growth Signal
+    if revenue_growth:
+        if revenue_growth > 0.20:
+            rows.append(("Growth", '<span class="strong">High Growth</span>', f"{revenue_growth*100:.1f}% revenue growth"))
+        elif revenue_growth > 0.05:
+            rows.append(("Growth", '<span class="neutral">Moderate Growth</span>', f"{revenue_growth*100:.1f}% revenue growth"))
+        else:
+            rows.append(("Growth", '<span class="weak">Slow Growth</span>', f"{revenue_growth*100:.1f}% revenue growth"))
+    
+    return pd.DataFrame(rows, columns=["Field", "Value", "Note"])
+
+# ==============================
+# Build Price/Volume Section
+# ==============================
+def build_price_volume_section(info, pv_data, hist_df):
+    df = build_df_from_dict(pv_data)
+    derived = build_price_volume_derived(info, hist_df)
+    
+    # Add volume spikes
+    spikes = build_volume_spikes(info, hist_df)
+    if spikes:
+        spike_df = pd.DataFrame(spikes.items(), columns=["Field", "Value"])
+        df = pd.concat([df, spike_df], ignore_index=True)
+    
+    # Add technicals
+    technicals = build_technicals(hist_df)
+    if technicals:
+        tech_df = pd.DataFrame(technicals.items(), columns=["Field", "Value"])
+        df = pd.concat([df, tech_df], ignore_index=True)
+    
+    cards = ""
+    for title, fields in PRICE_VOLUME_GROUPS.items():
+        sub = df[df["Field"].isin(fields)]
+        if not sub.empty:
+            # Add progress bar for 52W position if present
+            if title == "52-Week Range" and "52W Pos Raw" in derived:
+                pos = derived["52W Pos Raw"]
+                bar = make_progress_bar(pos, 100, "#0ea5e9" if pos > 50 else "#f59e0b")
+                sub_html = make_table(sub) + bar
+            else:
+                sub_html = make_table(sub)
+            cards += html_card(title, sub_html, mini=True)
+    
+    # Smart signals card
+    signals_df = build_smart_signals(info, technicals)
+    if not signals_df.empty:
+        signal_html = "".join([
+            f'<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;padding:8px 0;">'
+            f'<div><div style="font-weight:600;color:#0f172a;">{r.Field}</div>'
+            f'<div style="font-size:11px;color:#64748b;">{r.Note}</div></div>'
+            f'<div>{r.Value}</div></div>'
+            for r in signals_df.itertuples()
+        ])
+        cards += html_card(f"{MAIN_ICONS['Signals']} Smart Signals", signal_html, mini=True, accent=True)
+    
+    return column_layout(cards, cols=3)
+
+# ==============================
+# Build Fundamentals Section
+# ==============================
+def build_fundamentals_section(fund_data):
+    if not fund_data:
+        return ""
+    
+    # Group fundamentals by category
+    valuation_keys = ["trailingPE", "forwardPE", "priceToBook", "priceToSalesTrailing12Months", "trailingPegRatio", "enterpriseValue", "marketCap"]
+    profitability_keys = ["returnOnEquity", "returnOnAssets", "profitMargins", "operatingMargins", "ebitdaMargins", "grossMargins", "ebitda"]
+    growth_keys = ["revenueGrowth", "earningsGrowth", "sustainableGrowthRate"]
+    financial_health_keys = ["debtToEquity", "currentRatio", "quickRatio", "totalCash", "totalDebt"]
+    income_keys = ["totalRevenue", "revenuePerShare", "earningsPerShare", "forwardEps", "trailingEps"]
+    dividend_keys = ["dividendYield", "payoutRatio", "dividendRate", "exDividendDate", "lastDividendDate"]
+    analyst_keys = ["recommendationKey", "numberOfAnalystOpinions", "targetHighPrice", "targetLowPrice", "targetMeanPrice", "targetMedianPrice"]
+    ownership_keys = ["heldPercentInsiders", "heldPercentInstitutions", "shortRatio", "shortPercentOfFloat"]
+    
+    groups = {
+        "Valuation": {k: v for k, v in fund_data.items() if k in valuation_keys},
+        "Profitability": {k: v for k, v in fund_data.items() if k in profitability_keys},
+        "Growth": {k: v for k, v in fund_data.items() if k in growth_keys},
+        "Financial Health": {k: v for k, v in fund_data.items() if k in financial_health_keys},
+        "Income": {k: v for k, v in fund_data.items() if k in income_keys},
+        "Dividends": {k: v for k, v in fund_data.items() if k in dividend_keys},
+        "Analyst Coverage": {k: v for k, v in fund_data.items() if k in analyst_keys},
+        "Ownership": {k: v for k, v in fund_data.items() if k in ownership_keys}
+    }
+    
+    cards = ""
+    for title, data in groups.items():
+        if data:
+            df = build_df_from_dict(data)
+            if not df.empty:
+                cards += html_card(title, make_table(df), mini=True)
+    
+    return html_card(f"{MAIN_ICONS['Fundamentals']} Fundamentals", column_layout(cards, cols=3)) if cards else ""
+
+# ==============================
+# Build Profile Section
+# ==============================
+def build_profile_section(profile_data, officers_data):
+    if not profile_data and not officers_data:
+        return ""
+    
+    html = ""
+    
+    # Company info
+    if profile_data:
+        # Separate short and long text
+        short_fields = {k: v for k, v in profile_data.items() if isinstance(v, str) and len(v) <= 100}
+        long_fields = {k: v for k, v in profile_data.items() if isinstance(v, str) and len(v) > 100}
+        
+        if short_fields:
+            df = build_df_from_dict(short_fields)
+            html += html_card(f"{MAIN_ICONS['Company Profile']} Company Profile", 
+                            column_layout("".join(html_card("Details", make_table(c), mini=True) for c in split_df(df)), cols=2))
+        
+        # Long description in full width
+        for k, v in long_fields.items():
+            name = SHORT_NAMES.get(k, k[:20])
+            html += html_card(name, format_value(k, v))
+    
+    # Management
+    if officers_data:
+        cards = ""
+        for o in officers_data[:6]:  # Limit to top 6 officers
+            name = o.get("name", "Unknown")
+            title = o.get("title", "")
+            age = o.get("age", "")
+            age_str = f" ({age})" if age else ""
+            cards += html_card(f"{name}{age_str}", f'<div style="color:#64748b;font-size:12px;">{title}</div>', mini=True)
+        html += html_card(f"{MAIN_ICONS['Management']} Management Team", column_layout(cards, cols=3))
+    
+    return html
+
+# ==============================
+# Main Function
+# ==============================
+def fetch_info(symbol):
+    try:
+        info, hist = yfinfo(symbol)
+        if "__error__" in info: 
+            return f'<div style="color:#dc2626;padding:20px;">Error: {info["__error__"]}</div>'
+        
+        groups = group_info(info)
+        html_parts = []
+        
+        # Header with stock name and price
+        name = info.get("longName") or info.get("shortName") or symbol
+        price = info.get("regularMarketPrice")
+        change = info.get("regularMarketChange")
+        change_pct = info.get("regularMarketChangePercent")
+        
+        header_html = f"""
+        <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);color:white;padding:20px;border-radius:12px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;">
+                <div>
+                    <div style="font-size:24px;font-weight:700;">{name}</div>
+                    <div style="font-size:14px;color:#94a3b8;">{symbol} • {info.get('exchange','')} • {info.get('currency','')}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:32px;font-weight:700;">₹{price:,.2f}</div>
+                    <div style="font-size:16px;color:{'#16a34a' if change and change > 0 else '#dc2626' if change and change < 0 else '#94a3b8'};">
+                        {'+' if change and change > 0 else ''}{change:,.2f} ({'+' if change_pct and change_pct > 0 else ''}{change_pct:.2f}%)
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+        html_parts.append(header_html)
+        
+        # Price / Volume Section
+        pv = resolve_duplicates(groups["price_volume"])
+        if pv: 
+            html_parts.append(build_price_volume_section(info, pv, hist))
+        
+        # Fundamentals Section
+        if groups["fundamental"]:
+            html_parts.append(build_fundamentals_section(groups["fundamental"]))
+        
+        # Profile & Management
+        if groups["profile"] or groups["management"].get("companyOfficers"):
+            html_parts.append(build_profile_section(groups["profile"], groups["management"].get("companyOfficers")))
+        
+        # Any remaining long text
+        for k, v in groups["long_text"].items():
+            if k not in groups["profile"]:  # Avoid duplicates
+                html_parts.append(html_card(SHORT_NAMES.get(k, k[:20]), format_value(k, v)))
+        
+        return "".join(html_parts)
+        
+    except Exception as e:
+        return f'<div style="color:#dc2626;padding:20px;background:#fef2f2;border-radius:8px;"><strong>Error:</strong><br><pre>{traceback.format_exc()}</pre></div>'
