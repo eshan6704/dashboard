@@ -24,11 +24,11 @@ def yfinfo(symbol):
 
 
 def qresult(symbol):
-    return get_ticker(symbol).quarterly_financials
+    return yf.Ticker(symbol + ".NS").quarterly_financials
 
 
 def result(symbol):
-    return get_ticker(symbol).financials
+    return yf.Ticker(symbol + ".NS").financials
 
 
 def balance(symbol):
