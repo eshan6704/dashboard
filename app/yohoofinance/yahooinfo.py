@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 # ==============================
 # Icons & Styling
 # ==============================
-MAIN_ICONS = {
+MAIN_ICONS2 = {
     "Price / Volume": "📊",
     "Fundamentals": "📈",
     "Technicals": "⚡",
@@ -24,7 +24,22 @@ MAIN_ICONS = {
     "Dividends": "💰",
     "Earnings": "📢"
 }
-
+MAIN_ICONS = {
+    "Price / Volume": "📊",
+    "Fundamentals": "📈",
+    "Technicals": "⚡",
+    "Signals": "🎯",
+    "Company Profile": "🏢",
+    "Management": "👔",
+    "Events": "📅",
+    "Ownership": "🤝",
+    "Analyst": "📉",
+    "Risk": "🛡️",
+    "Splits": "✂️",
+    "Dividends": "💰",
+    "Earnings": "📢",
+    "Trend": "📉"  # ADD THIS LINE
+}
 # ==============================
 # Short names (Extended)
 # ==============================
