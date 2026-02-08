@@ -237,28 +237,69 @@ NOISE_KEYS = {
 # ==============================
 def is_empty_value(v):
     """Safely check if a value is empty/None without triggering array comparisons"""
+    # Handle None
     if v is None:
         return True
-    if isinstance(v, str) and v == "":
-        return True
+    
+    # Handle strings
+    if isinstance(v, str):
+        return v == ""
+    
+    # Handle empty collections
     if isinstance(v, (list, tuple)) and len(v) == 0:
         return True
     if isinstance(v, dict) and len(v) == 0:
         return True
-    # Handle numpy arrays
+    
+    # Handle numpy arrays - check size, don't use pd.isna
     if isinstance(v, np.ndarray):
         return v.size == 0
-    # Handle pandas objects
+    
+    # Handle pandas Series/DataFrame
     if isinstance(v, pd.Series):
         return v.empty
     if isinstance(v, pd.DataFrame):
         return v.empty
-    # Handle numpy scalar types
-    if isinstance(v, (np.integer, np.floating)):
-        return False  # Numbers are not empty
-    if pd.isna(v):
-        return True
+    
+    # Handle numpy scalars - never empty
+    if isinstance(v, (np.integer, np.floating, np.bool_)):
+        return False
+    
+    # Handle any object with size attribute (arrays, etc)
+    if hasattr(v, 'size') and callable(getattr(v, 'size', None)):
+        try:
+            return v.size == 0
+        except:
+            pass
+    
+    # Handle any object with empty attribute
+    if hasattr(v, 'empty'):
+        try:
+            return bool(v.empty)
+        except:
+            pass
+    
+    # Handle any object with __len__ but not strings/bytes
+    if hasattr(v, '__len__') and not isinstance(v, (str, bytes)):
+        try:
+            if len(v) == 0:
+                return True
+            # If it has length > 0, it's not empty (don't check contents)
+            return False
+        except:
+            pass
+    
+    # Only use pd.isna on scalar values
+    # Check if it's a scalar type first
+    if isinstance(v, (int, float, bool, str)):
+        try:
+            return bool(pd.isna(v))
+        except:
+            return False
+    
+    # For anything else, assume not empty to be safe
     return False
+
 
 def is_simple_value(v):
     """Check if value is a simple scalar we can process"""
