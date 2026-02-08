@@ -354,7 +354,6 @@ def build_metrics_cards(metrics):
     </div>
     """
 
-
 def generate_comparison_chart(stock_df, index_df, symbol, width=800, height=300):
     """Generate normalized comparison chart between stock and Nifty 50"""
     try:
@@ -368,7 +367,7 @@ def generate_comparison_chart(stock_df, index_df, symbol, width=800, height=300)
         # Align dates
         common_dates = stock_norm.index.intersection(index_norm.index)
         stock_norm = stock_norm.loc[common_dates]
-        index_norm = index_norm.loc[common_dates)
+        index_norm = index_norm.loc[common_dates]  # FIXED: was using [ instead of (
         
         if len(stock_norm) < 2:
             return ""
@@ -425,8 +424,6 @@ def generate_comparison_chart(stock_df, index_df, symbol, width=800, height=300)
     except Exception as e:
         print(f"Error generating comparison chart: {e}")
         return ""
-
-
 # ================================================================
 #                        QUARTERLY
 # ================================================================
