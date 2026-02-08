@@ -1304,39 +1304,46 @@ def build_profile_section(profile_data, officers):
     
     return html
 
-
 def build_daily_trend_section(info, hist_df):
     """Build daily trend overview with mini candlestick chart and insights"""
     # Check if hist_df is valid
     if hist_df is None or (isinstance(hist_df, pd.DataFrame) and hist_df.empty):
+        print("DEBUG: hist_df is None or empty")
         return ""
     
-    if len(hist_df) < 20:
+    # Handle both index and column date formats
+    df = hist_df.copy()
+    
+    # If Date is a column, set it as index
+    if 'Date' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'])
+        df = df.set_index('Date')
+    
+    if len(df) < 5:  # Need at least 5 days for chart
+        print(f"DEBUG: Only {len(df)} rows, need at least 5")
         return ""
     
     try:
-        # Use last 90 days for overview
-        df = hist_df.tail(90).copy()
-        if len(df) < 20:
+        # Ensure numeric columns exist
+        required_cols = ['Open', 'High', 'Low', 'Close']
+        for col in required_cols:
+            if col not in df.columns:
+                print(f"DEBUG: Missing column {col}")
+                return ""
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        if 'Volume' in df.columns:
+            df['Volume'] = pd.to_numeric(df['Volume'], errors='coerce')
+        
+        # Drop rows with NaN in required columns
+        df = df.dropna(subset=required_cols)
+        
+        if len(df) < 5:
+            print(f"DEBUG: After dropna, only {len(df)} rows")
             return ""
         
-        # Ensure numeric
-        for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-        df = df.dropna()
-        if len(df) < 20:
-            return ""
-        
-        # Calculate basic indicators
-        df['MA20'] = df['Close'].rolling(20).mean()
-        df['MA50'] = df['Close'].rolling(50).mean() if len(df) >= 50 else df['MA20']
-        
-        # Get last 30 days for mini chart
+        # Get last 30 days for mini chart (or all if less)
         view = df.tail(30)
-        if view.empty or len(view) < 5:
-            return ""
         
         # Generate mini SVG candlestick chart
         chart_svg = generate_mini_candlestick(view)
@@ -1344,49 +1351,47 @@ def build_daily_trend_section(info, hist_df):
         # Calculate insights
         latest = view.iloc[-1]
         prev = view.iloc[-2] if len(view) > 1 else latest
-        week_ago = view.iloc[-6] if len(view) >= 6 else view.iloc[0]
-        month_ago = view.iloc[0]
         
         close = float(latest['Close'])
-        open_price = float(latest['Open'])
-        high = float(view['High'].max())
-        low = float(view['Low'].min())
-        volume = int(latest['Volume']) if 'Volume' in latest else 0
-        
-        # Price changes
         day_change = (close - float(prev['Close'])) / float(prev['Close']) * 100 if len(view) > 1 else 0
-        week_change = (close - float(week_ago['Close'])) / float(week_ago['Close']) * 100 if len(view) >= 6 else 0
+        
+        # Week change (approx 5-6 trading days)
+        week_ago_idx = max(0, len(view) - 6)
+        week_ago = view.iloc[week_ago_idx]
+        week_change = (close - float(week_ago['Close'])) / float(week_ago['Close']) * 100
+        
+        # Month change (first available)
+        month_ago = view.iloc[0]
         month_change = (close - float(month_ago['Close'])) / float(month_ago['Close']) * 100
         
-        # Moving average signals
-        ma20 = float(latest['MA20']) if not pd.isna(latest['MA20']) else close
-        ma50 = float(latest['MA50']) if not pd.isna(latest['MA50']) else close
+        # Moving averages
+        df['MA20'] = df['Close'].rolling(min(20, len(df))).mean()
+        latest_ma = df['MA20'].iloc[-1]
+        ma20 = float(latest_ma) if not pd.isna(latest_ma) else close
         
-        trend = "Bullish" if close > ma20 > ma50 else "Bearish" if close < ma20 < ma50 else "Neutral"
+        # Simple trend
+        trend = "Bullish" if close > ma20 else "Bearish" if close < ma20 else "Neutral"
         trend_color = "#16a34a" if trend == "Bullish" else "#dc2626" if trend == "Bearish" else "#6b7280"
         
-        # 52-week from available data
+        # 52-week position from available data
         high_52w = float(df['High'].max())
         low_52w = float(df['Low'].min())
         pos_52w = (close - low_52w) / (high_52w - low_52w) * 100 if high_52w != low_52w else 50
         
-        # Volume analysis
-        avg_vol_20 = int(df['Volume'].tail(20).mean()) if 'Volume' in df.columns else 0
-        vol_spike = (volume / avg_vol_20 - 1) * 100 if avg_vol_20 > 0 else 0
+        # Volume
+        volume = int(latest['Volume']) if 'Volume' in latest and not pd.isna(latest['Volume']) else 0
+        avg_vol = int(df['Volume'].mean()) if 'Volume' in df.columns and len(df) > 0 else 1
+        vol_spike = (volume / avg_vol - 1) * 100 if avg_vol > 0 else 0
         
         # Build insights HTML
         insights_html = f"""
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
             <div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:6px;padding:8px;">
                 <div style="font-size:11px;color:#64748b;">Day Change</div>
                 <div style="font-size:14px;font-weight:700;color:{'#16a34a' if day_change >= 0 else '#dc2626'};">{day_change:+.2f}%</div>
             </div>
             <div style="background:#eff6ff;border:1px solid #3b82f6;border-radius:6px;padding:8px;">
-                <div style="font-size:11px;color:#64748b;">Week Change</div>
-                <div style="font-size:14px;font-weight:700;color:{'#16a34a' if week_change >= 0 else '#dc2626'};">{week_change:+.2f}%</div>
-            </div>
-            <div style="background:#faf5ff;border:1px solid #9333ea;border-radius:6px;padding:8px;">
-                <div style="font-size:11px;color:#64748b;">Month Change</div>
+                <div style="font-size:11px;color:#64748b;">Period Change</div>
                 <div style="font-size:14px;font-weight:700;color:{'#16a34a' if month_change >= 0 else '#dc2626'};">{month_change:+.2f}%</div>
             </div>
             <div style="background:#fefce8;border:1px solid #eab308;border-radius:6px;padding:8px;">
@@ -1394,14 +1399,14 @@ def build_daily_trend_section(info, hist_df):
                 <div style="font-size:14px;font-weight:700;color:{trend_color};">{trend}</div>
             </div>
             <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px;">
-                <div style="font-size:11px;color:#64748b;">52W Position</div>
+                <div style="font-size:11px;color:#64748b;">Range Position</div>
                 <div style="font-size:14px;font-weight:700;">{pos_52w:.1f}%</div>
                 <div style="background:#e2e8f0;height:4px;border-radius:2px;margin-top:4px;">
                     <div style="background:#0ea5e9;width:{min(pos_52w,100)}%;height:100%;border-radius:2px;"></div>
                 </div>
             </div>
-            <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px;">
-                <div style="font-size:11px;color:#64748b;">Volume Spike</div>
+            <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px;grid-column:span 2;">
+                <div style="font-size:11px;color:#64748b;">Volume vs Avg</div>
                 <div style="font-size:14px;font-weight:700;color:{'#16a34a' if vol_spike > 50 else '#64748b'};">{vol_spike:+.0f}%</div>
             </div>
         </div>
@@ -1412,7 +1417,7 @@ def build_daily_trend_section(info, hist_df):
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;align-items:start;">
             <div>
                 {chart_svg}
-                <div style="text-align:center;font-size:11px;color:#64748b;margin-top:5px;">Last 30 Trading Days</div>
+                <div style="text-align:center;font-size:11px;color:#64748b;margin-top:5px;">Last {len(view)} Trading Days</div>
             </div>
             <div>
                 {insights_html}
@@ -1423,137 +1428,21 @@ def build_daily_trend_section(info, hist_df):
         return html_card(f"{MAIN_ICONS['Trend']} Daily Trend Overview", html, color="blue")
         
     except Exception as e:
-        # Log error for debugging
-        print(f"Error in build_daily_trend_section: {str(e)}")
+        print(f"ERROR in build_daily_trend_section: {str(e)}")
         import traceback
         print(traceback.format_exc())
         return ""
-        
-def build_daily_trend_section2(info, hist_df):
-    """Build daily trend overview with mini candlestick chart and insights"""
-    if hist_df.empty or len(hist_df) < 20:
-        return ""
-    
-    try:
-        # Use last 90 days for overview
-        df = hist_df.tail(90).copy()
-        if len(df) < 20:
-            return ""
-        
-        # Ensure numeric
-        for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-        df = df.dropna()
-        if len(df) < 20:
-            return ""
-        
-        # Calculate basic indicators
-        df['MA20'] = df['Close'].rolling(20).mean()
-        df['MA50'] = df['Close'].rolling(50).mean() if len(df) >= 50 else df['MA20']
-        
-        # Get last 30 days for mini chart
-        view = df.tail(30)
-        if view.empty:
-            return ""
-        
-        # Generate mini SVG candlestick chart
-        chart_svg = generate_mini_candlestick(view)
-        
-        # Calculate insights
-        latest = view.iloc[-1]
-        prev = view.iloc[-2] if len(view) > 1 else latest
-        week_ago = view.iloc[-6] if len(view) >= 6 else view.iloc[0]
-        month_ago = view.iloc[0]
-        
-        close = float(latest['Close'])
-        open_price = float(latest['Open'])
-        high = float(view['High'].max())
-        low = float(view['Low'].min())
-        volume = int(latest['Volume']) if 'Volume' in latest else 0
-        
-        # Price changes
-        day_change = (close - float(prev['Close'])) / float(prev['Close']) * 100 if len(view) > 1 else 0
-        week_change = (close - float(week_ago['Close'])) / float(week_ago['Close']) * 100 if len(view) >= 6 else 0
-        month_change = (close - float(month_ago['Close'])) / float(month_ago['Close']) * 100
-        
-        # Moving average signals
-        ma20 = float(latest['MA20']) if not pd.isna(latest['MA20']) else close
-        ma50 = float(latest['MA50']) if not pd.isna(latest['MA50']) else close
-        
-        trend = "Bullish" if close > ma20 > ma50 else "Bearish" if close < ma20 < ma50 else "Neutral"
-        trend_color = "#16a34a" if trend == "Bullish" else "#dc2626" if trend == "Bearish" else "#6b7280"
-        
-        # 52-week from available data
-        high_52w = float(df['High'].max())
-        low_52w = float(df['Low'].min())
-        pos_52w = (close - low_52w) / (high_52w - low_52w) * 100 if high_52w != low_52w else 50
-        
-        # Volume analysis
-        avg_vol_20 = int(df['Volume'].tail(20).mean()) if 'Volume' in df.columns else 0
-        vol_spike = (volume / avg_vol_20 - 1) * 100 if avg_vol_20 > 0 else 0
-        
-        # Build insights HTML
-        insights_html = f"""
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;">
-            <div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:6px;padding:8px;">
-                <div style="font-size:11px;color:#64748b;">Day Change</div>
-                <div style="font-size:14px;font-weight:700;color:{'#16a34a' if day_change >= 0 else '#dc2626'};">{day_change:+.2f}%</div>
-            </div>
-            <div style="background:#eff6ff;border:1px solid #3b82f6;border-radius:6px;padding:8px;">
-                <div style="font-size:11px;color:#64748b;">Week Change</div>
-                <div style="font-size:14px;font-weight:700;color:{'#16a34a' if week_change >= 0 else '#dc2626'};">{week_change:+.2f}%</div>
-            </div>
-            <div style="background:#faf5ff;border:1px solid #9333ea;border-radius:6px;padding:8px;">
-                <div style="font-size:11px;color:#64748b;">Month Change</div>
-                <div style="font-size:14px;font-weight:700;color:{'#16a34a' if month_change >= 0 else '#dc2626'};">{month_change:+.2f}%</div>
-            </div>
-            <div style="background:#fefce8;border:1px solid #eab308;border-radius:6px;padding:8px;">
-                <div style="font-size:11px;color:#64748b;">Trend Signal</div>
-                <div style="font-size:14px;font-weight:700;color:{trend_color};">{trend}</div>
-            </div>
-            <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px;">
-                <div style="font-size:11px;color:#64748b;">52W Position</div>
-                <div style="font-size:14px;font-weight:700;">{pos_52w:.1f}%</div>
-                <div style="background:#e2e8f0;height:4px;border-radius:2px;margin-top:4px;">
-                    <div style="background:#0ea5e9;width:{min(pos_52w,100)}%;height:100%;border-radius:2px;"></div>
-                </div>
-            </div>
-            <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px;">
-                <div style="font-size:11px;color:#64748b;">Volume Spike</div>
-                <div style="font-size:14px;font-weight:700;color:{'#16a34a' if vol_spike > 50 else '#64748b'};">{vol_spike:+.0f}%</div>
-            </div>
-        </div>
-        """
-        
-        # Combine chart and insights
-        html = f"""
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;align-items:start;">
-            <div>
-                {chart_svg}
-                <div style="text-align:center;font-size:11px;color:#64748b;margin-top:5px;">Last 30 Trading Days</div>
-            </div>
-            <div>
-                {insights_html}
-            </div>
-        </div>
-        """
-        
-        return html_card(f"{MAIN_ICONS['Trend']} Daily Trend Overview", html, color="blue")
-        
-    except Exception as e:
-        return ""
-
 def generate_mini_candlestick(df, width=400, height=200):
     """Generate compact SVG candlestick chart"""
     try:
-        if len(df) < 5:
+        if len(df) < 2:
             return ""
         
-        # Prepare data
-        df = df.copy()
-        df['Date'] = pd.to_datetime(df.index) if not isinstance(df.index, pd.DatetimeIndex) else df.index
+        # Ensure we have required columns
+        required = ['Open', 'High', 'Low', 'Close']
+        if not all(c in df.columns for c in required):
+            print(f"DEBUG generate_mini_candlestick: missing columns, have {df.columns.tolist()}")
+            return ""
         
         n = len(df)
         margin = 20
@@ -1569,8 +1458,8 @@ def generate_mini_candlestick(df, width=400, height=200):
         max_vol = float(df['Volume'].max()) if 'Volume' in df.columns else 1
         
         # Candle dimensions
-        candle_w = chart_w / n * 0.7
-        spacing = chart_w / n
+        candle_w = chart_w / n * 0.7 if n > 0 else 10
+        spacing = chart_w / n if n > 0 else 10
         
         svg_elements = []
         
@@ -1602,29 +1491,16 @@ def generate_mini_candlestick(df, width=400, height=200):
             
             # Body
             body_top = min(y_open, y_close)
-            body_height = abs(y_close - y_open)
-            if body_height < 1:
-                body_height = 1
+            body_height = max(abs(y_close - y_open), 1)
             
             svg_elements.append(f'<rect x="{x}" y="{body_top}" width="{candle_w}" height="{body_height}" fill="{color}" stroke="{color}" stroke-width="1"/>')
             
-            # Volume bars at bottom (small)
-            if 'Volume' in row:
+            # Volume bars at bottom
+            if 'Volume' in row and max_vol > 0:
                 vol = float(row['Volume'])
                 vol_height = (vol / max_vol) * (chart_h * 0.15)
                 vol_y = height - margin - vol_height
                 svg_elements.append(f'<rect x="{x}" y="{vol_y}" width="{candle_w}" height="{vol_height}" fill="#94a3b8" opacity="0.5"/>')
-        
-        # MA lines if available
-        if 'MA20' in df.columns:
-            ma_points = []
-            for i, (idx, row) in enumerate(df.iterrows()):
-                if not pd.isna(row['MA20']):
-                    x = margin + i * spacing + spacing * 0.15 + candle_w/2
-                    y = margin + chart_h - ((float(row['MA20']) - min_price) / price_range * chart_h)
-                    ma_points.append(f"{x},{y}")
-            if len(ma_points) > 1:
-                svg_elements.append(f'<polyline points="{" ".join(ma_points)}" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>')
         
         # Current price line
         last_close = float(df.iloc[-1]['Close'])
@@ -1641,7 +1517,8 @@ def generate_mini_candlestick(df, width=400, height=200):
         
         return svg
         
-    except Exception:
+    except Exception as e:
+        print(f"ERROR in generate_mini_candlestick: {str(e)}")
         return ""
 # ==============================
 # Main Function
