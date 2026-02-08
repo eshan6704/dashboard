@@ -1607,12 +1607,12 @@ def build_combined_trend_section(info, stock_hist, index_hist):
             index_df['Date'] = pd.to_datetime(index_df['Date'])
             index_df = index_df.set_index('Date')
         
-        stock_view = stock_df.tail(50)
-        index_view = index_df.tail(50) if not index_df.empty else pd.DataFrame()
+        stock_view = stock_df.tail(90)
+        index_view = index_df.tail(90) if not index_df.empty else pd.DataFrame()
         
         # Charts
-        stock_chart = generate_mini_candlestick(stock_view, width=480, height=180)
-        index_chart = generate_mini_candlestick(index_view, width=480, height=180) if not index_view.empty else ""
+        stock_chart = generate_mini_candlestick(stock_view, width=580, height=180)
+        index_chart = generate_mini_candlestick(index_view, width=580, height=180) if not index_view.empty else ""
         
         # Insights
         stock_insights = calculate_insights(stock_view, "stock")
