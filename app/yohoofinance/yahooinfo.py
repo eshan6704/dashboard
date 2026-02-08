@@ -1292,212 +1292,7 @@ def build_profile_section(profile_data, officers):
     return html
 
 
-# ==============================
-# Main Function
-# ==============================
-def fetch_info(symbol):
-    try:
-        # Fetch all data
-        info, hist, actions, calendar, recommendations = yfinfo(symbol)
-        
-        if "__error__" in info:
-            return f'<div style="color:#dc2626;padding:20px;">Error: {info["__error__"]}</div>'
-        
-        # Group data
-        groups = group_info(info)
-        
-        # Get market time from Yahoo Finance
-        market_time = info.get("regularMarketTime")
-        time_str = ""
 
-        if market_time:
-            try:
-                if isinstance(market_time, (int, float)):
-                    if market_time > 1e12:
-                        market_time = market_time / 1000
-                    # Convert UTC to IST (UTC+5:30)
-                    dt_utc = datetime.fromtimestamp(market_time, tz=timezone.utc)
-                    dt_ist = dt_utc + timedelta(hours=5, minutes=30)
-                    time_str = dt_ist.strftime("%d %b %Y, %I:%M %p")
-                elif isinstance(market_time, datetime):
-                    if market_time.tzinfo is None:
-                        market_time = market_time.replace(tzinfo=timezone.utc)
-                    dt_ist = market_time + timedelta(hours=5, minutes=30)
-                    time_str = dt_ist.strftime("%d %b %Y, %I:%M %p")
-            except:
-                pass
-        
-        # Header
-        name = info.get("longName") or info.get("shortName") or symbol
-        price = info.get("regularMarketPrice", 0)
-        change = info.get("regularMarketChange", 0)
-        change_pct = info.get("regularMarketChangePercent", 0)
-        currency = info.get("currency", "₹")
-        
-        # Ensure simple values for header
-        price = float(price) if isinstance(price, (int, float, np.integer, np.floating)) else 0
-        change = float(change) if isinstance(change, (int, float, np.integer, np.floating)) else 0
-        change_pct = float(change_pct) if isinstance(change_pct, (int, float, np.integer, np.floating)) else 0
-        
-        header = f"""
-        <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);color:white;padding:24px;border-radius:12px;margin-bottom:24px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;">
-                <div>
-                    <div style="font-size:28px;font-weight:800;margin-bottom:4px;">{name}</div>
-                    <div style="font-size:14px;color:#94a3b8;">{symbol} • {info.get('exchange','')} • {info.get('sector','')} • {info.get('industry','')}</div>
-                    <div style="font-size:12px;color:#64748b;margin-top:4px;">🕐 {time_str or 'Market Closed'}</div>
-                </div>
-                <div style="text-align:right;">
-                    <div style="font-size:36px;font-weight:800;">{currency}{price:,.2f}</div>
-                    <div style="font-size:18px;color:{'#4ade80' if change >= 0 else '#f87171'};font-weight:600;">
-                        {'+' if change > 0 else ''}{change:,.2f} ({'+' if change_pct > 0 else ''}{change_pct:.2f}%)
-                    </div>
-                </div>
-            </div>
-        </div>
-        """
-        
-        parts = [header]
-        
-        # Price/Volume with all metrics
-        parts.append(build_price_volume_section(info, hist))
-        
-        # Events (dividends, splits, earnings)
-        events = process_events(info, actions, calendar)
-        if events:
-            parts.append(build_events_section(events))
-        
-        # Fundamentals
-        if groups["fundamental"]:
-            parts.append(build_fundamentals_section(groups["fundamental"]))
-        
-        # Dividends specific
-        if groups["dividends"] or info.get("dividendYield"):
-            parts.append(build_dividend_section(groups["dividends"], info))
-        
-        # Splits specific
-        if groups["splits"] or info.get("lastSplitFactor"):
-            parts.append(build_split_section(groups["splits"], info))
-        
-        # Ownership
-        if groups["ownership"]:
-            parts.append(build_ownership_section(groups["ownership"]))
-        
-        # Analyst
-        if groups["analyst"]:
-            parts.append(build_analyst_section(groups["analyst"], recommendations))
-        
-        # Risk
-        if groups["risk"]:
-            parts.append(build_risk_section(groups["risk"]))
-        
-        # Profile & Management
-        if groups["profile"] or groups["management"]:
-            parts.append(build_profile_section(groups["profile"], groups["management"].get("companyOfficers")))
-        
-        # Any remaining long text
-        for k, v in groups.get("long_text", {}).items():
-            if k not in groups["profile"]:
-                parts.append(html_card(SHORT_NAMES.get(k, k[:20]), format_value(k, v)))
-        
-        return "".join(parts)
-        
-    except Exception as e:
-        return f'<div style="color:#dc2626;padding:20px;background:#fef2f2;border-radius:8px;"><strong>Error:</strong><br><pre>{traceback.format_exc()}</pre></div>'
-        
-def fetch_info2(symbol):
-    try:
-        # Fetch all data
-        info, hist, actions, calendar, recommendations = yfinfo(symbol)
-        
-        if "__error__" in info:
-            return f'<div style="color:#dc2626;padding:20px;">Error: {info["__error__"]}</div>'
-        
-        # Group data
-        groups = group_info(info)
-        
-        # Header
-        name = info.get("longName") or info.get("shortName") or symbol
-        price = info.get("regularMarketPrice", 0)
-        change = info.get("regularMarketChange", 0)
-        change_pct = info.get("regularMarketChangePercent", 0)
-        currency = info.get("currency", "₹")
-        
-        # Ensure simple values for header
-        price = float(price) if isinstance(price, (int, float, np.integer, np.floating)) else 0
-        change = float(change) if isinstance(change, (int, float, np.integer, np.floating)) else 0
-        change_pct = float(change_pct) if isinstance(change_pct, (int, float, np.integer, np.floating)) else 0
-        
-        header = f"""
-        <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);color:white;padding:24px;border-radius:12px;margin-bottom:24px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;">
-                <div>
-                    <div style="font-size:28px;font-weight:800;margin-bottom:4px;">{name}</div>
-                    <div style="font-size:14px;color:#94a3b8;">{symbol} • {info.get('exchange','')} • {info.get('sector','')} • {info.get('industry','')}</div>
-                </div>
-                <div style="text-align:right;">
-                    <div style="font-size:36px;font-weight:800;">{currency}{price:,.2f}</div>
-                    <div style="font-size:18px;color:{'#4ade80' if change >= 0 else '#f87171'};font-weight:600;">
-                        {'+' if change > 0 else ''}{change:,.2f} ({'+' if change_pct > 0 else ''}{change_pct:.2f}%)
-                    </div>
-                </div>
-            </div>
-        </div>
-        """
-        
-        parts = [header]
-        
-        # Price/Volume with all metrics
-        parts.append(build_price_volume_section(info, hist))
-        
-        # Daily Trend Overview (NEW)
-        parts.append(build_daily_trend_section(info, hist))
-        
-        # Events (dividends, splits, earnings)
-        events = process_events(info, actions, calendar)
-        
-        # Events (dividends, splits, earnings)
-        events = process_events(info, actions, calendar)
-        if events:
-            parts.append(build_events_section(events))
-        
-        # Fundamentals
-        if groups["fundamental"]:
-            parts.append(build_fundamentals_section(groups["fundamental"]))
-        
-        # Dividends specific
-        if groups["dividends"] or info.get("dividendYield"):
-            parts.append(build_dividend_section(groups["dividends"], info))
-        
-        # Splits specific
-        if groups["splits"] or info.get("lastSplitFactor"):
-            parts.append(build_split_section(groups["splits"], info))
-        
-        # Ownership
-        if groups["ownership"]:
-            parts.append(build_ownership_section(groups["ownership"]))
-        
-        # Analyst
-        if groups["analyst"]:
-            parts.append(build_analyst_section(groups["analyst"], recommendations))
-        
-        # Risk
-        if groups["risk"]:
-            parts.append(build_risk_section(groups["risk"]))
-        
-        # Profile & Management
-        if groups["profile"] or groups["management"]:
-            parts.append(build_profile_section(groups["profile"], groups["management"].get("companyOfficers")))
-        
-        # Any remaining long text
-        for k, v in groups.get("long_text", {}).items():
-            if k not in groups["profile"]:
-                parts.append(html_card(SHORT_NAMES.get(k, k[:20]), format_value(k, v)))
-        
-        return "".join(parts)
-        
-    except Exception as e:
-        return f'<div style="color:#dc2626;padding:20px;background:#fef2f2;border-radius:8px;"><strong>Error:</strong><br><pre>{traceback.format_exc()}</pre></div>'
 def build_daily_trend_section(info, hist_df):
     """Build daily trend overview with mini candlestick chart and insights"""
     if hist_df.empty or len(hist_df) < 20:
@@ -1712,4 +1507,116 @@ def generate_mini_candlestick(df, width=400, height=200):
         
     except Exception:
         return ""
+# ==============================
+# Main Function
+# ==============================
+def fetch_info(symbol):
+    try:
+        # Fetch all data
+        info, hist, actions, calendar, recommendations = yfinfo(symbol)
+        
+        if "__error__" in info:
+            return f'<div style="color:#dc2626;padding:20px;">Error: {info["__error__"]}</div>'
+        
+        # Group data
+        groups = group_info(info)
+        
+        # Get market time from Yahoo Finance
+        market_time = info.get("regularMarketTime")
+        time_str = ""
+
+        if market_time:
+            try:
+                if isinstance(market_time, (int, float)):
+                    if market_time > 1e12:
+                        market_time = market_time / 1000
+                    # Convert UTC to IST (UTC+5:30)
+                    dt_utc = datetime.fromtimestamp(market_time, tz=timezone.utc)
+                    dt_ist = dt_utc + timedelta(hours=5, minutes=30)
+                    time_str = dt_ist.strftime("%d %b %Y, %I:%M %p")
+                elif isinstance(market_time, datetime):
+                    if market_time.tzinfo is None:
+                        market_time = market_time.replace(tzinfo=timezone.utc)
+                    dt_ist = market_time + timedelta(hours=5, minutes=30)
+                    time_str = dt_ist.strftime("%d %b %Y, %I:%M %p")
+            except:
+                pass
+        
+        # Header
+        name = info.get("longName") or info.get("shortName") or symbol
+        price = info.get("regularMarketPrice", 0)
+        change = info.get("regularMarketChange", 0)
+        change_pct = info.get("regularMarketChangePercent", 0)
+        currency = info.get("currency", "₹")
+        
+        # Ensure simple values for header
+        price = float(price) if isinstance(price, (int, float, np.integer, np.floating)) else 0
+        change = float(change) if isinstance(change, (int, float, np.integer, np.floating)) else 0
+        change_pct = float(change_pct) if isinstance(change_pct, (int, float, np.integer, np.floating)) else 0
+        
+        header = f"""
+        <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);color:white;padding:24px;border-radius:12px;margin-bottom:24px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;">
+                <div>
+                    <div style="font-size:28px;font-weight:800;margin-bottom:4px;">{name}</div>
+                    <div style="font-size:14px;color:#94a3b8;">{symbol} • {info.get('exchange','')} • {info.get('sector','')} • {info.get('industry','')}</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:4px;">🕐 {time_str or 'Market Closed'}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:36px;font-weight:800;">{currency}{price:,.2f}</div>
+                    <div style="font-size:18px;color:{'#4ade80' if change >= 0 else '#f87171'};font-weight:600;">
+                        {'+' if change > 0 else ''}{change:,.2f} ({'+' if change_pct > 0 else ''}{change_pct:.2f}%)
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+        
+        parts = [header]
+        
+        # Price/Volume with all metrics
+        parts.append(build_price_volume_section(info, hist))
+        
+        # Events (dividends, splits, earnings)
+        events = process_events(info, actions, calendar)
+        if events:
+            parts.append(build_events_section(events))
+        
+        # Fundamentals
+        if groups["fundamental"]:
+            parts.append(build_fundamentals_section(groups["fundamental"]))
+        
+        # Dividends specific
+        if groups["dividends"] or info.get("dividendYield"):
+            parts.append(build_dividend_section(groups["dividends"], info))
+        
+        # Splits specific
+        if groups["splits"] or info.get("lastSplitFactor"):
+            parts.append(build_split_section(groups["splits"], info))
+        
+        # Ownership
+        if groups["ownership"]:
+            parts.append(build_ownership_section(groups["ownership"]))
+        
+        # Analyst
+        if groups["analyst"]:
+            parts.append(build_analyst_section(groups["analyst"], recommendations))
+        
+        # Risk
+        if groups["risk"]:
+            parts.append(build_risk_section(groups["risk"]))
+        
+        # Profile & Management
+        if groups["profile"] or groups["management"]:
+            parts.append(build_profile_section(groups["profile"], groups["management"].get("companyOfficers")))
+        
+        # Any remaining long text
+        for k, v in groups.get("long_text", {}).items():
+            if k not in groups["profile"]:
+                parts.append(html_card(SHORT_NAMES.get(k, k[:20]), format_value(k, v)))
+        
+        return "".join(parts)
+        
+    except Exception as e:
+        return f'<div style="color:#dc2626;padding:20px;background:#fef2f2;border-radius:8px;"><strong>Error:</strong><br><pre>{traceback.format_exc()}</pre></div>'
         
