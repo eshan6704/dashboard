@@ -319,7 +319,7 @@ def yfinfo(symbol):
         # Fetch historical data for calculations
         
         df=t.history(period="1y", interval="1d")
-
+        print(df)
         if isinstance(df.columns,pd.MultiIndex):
             df.columns=df.columns.get_level_values(0)
 
