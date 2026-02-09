@@ -1,4 +1,4 @@
-
+#eq_html.py
 from app.nse import nsepythonmodified as ns
 
 import pandas as pd
