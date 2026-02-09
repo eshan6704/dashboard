@@ -672,4 +672,82 @@ class EquityReportBuilder:
             return f'<span class="badge {status}">{text}</span>'
         
         if isinstance(value, (int, float)):
+            # Format numbers nicely
+            if isinstance(value, float):
+                return f"{value:,.2f}"
+            return f"{value:,}"
+        
+        if isinstance(value, str):
+            # Check for status strings
+            lower = value.lower()
+            if lower in ["active", "open", "yes", "true", "up"]:
+                return f'<span class="badge success">{value}</span>'
+            elif lower in ["inactive", "closed", "no", "false", "down", "suspended"]:
+                return f'<span class="badge danger">{value}</span>'
+            elif lower in ["pending", "hold", "partial"]:
+                return f'<span class="badge warning">{value}</span>'
+            return value
+        
+        if isinstance(value, (list, dict)):
+            return f'<span class="badge info">{len(value)} items</span>'
+        
+        return str(value)
     
+    @classmethod
+    def _format_key(cls, key: str) -> str:
+        """Format key name for display."""
+        # Handle camelCase
+        formatted = re.sub(r'(?<!^)(?=[A-Z])', ' ', key)
+        # Handle snake_case
+        formatted = formatted.replace('_', ' ')
+        return formatted.title()
+    
+    @classmethod
+    def _empty_state(cls) -> str:
+        """Return empty state HTML."""
+        return """
+        <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div>No data available for this section</div>
+        </div>
+        """
+    
+    @classmethod
+    def _build_error_html(cls, symbol: str, message: str) -> str:
+        """Build error page."""
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Error - {symbol}</title>
+    <style>
+        body {{ font-family: system-ui; background: #f5f5f5; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }}
+        .error-container {{ text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
+        .error-icon {{ font-size: 48px; margin-bottom: 16px; }}
+        h1 {{ color: #e74c3c; margin-bottom: 8px; }}
+        .error-message {{ color: #666; margin-top: 16px; padding: 12px; background: #fee; border-radius: 6px; }}
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <h1>Unable to Load Report</h1>
+        <p>Symbol: <strong>{symbol.upper()}</strong></p>
+        <div class="error-message">{message}</div>
+    </div>
+</body>
+</html>"""
+
+
+# Maintain original interface
+def build_eq_html(symbol: str) -> str:
+    """
+    Build professional HTML equity report.
+    
+    Args:
+        symbol: NSE stock symbol
+        
+    Returns:
+        Complete HTML document as string
+    """
+    return EquityReportBuilder.build(symbol)
