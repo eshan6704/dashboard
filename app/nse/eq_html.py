@@ -15,6 +15,7 @@ def build_eq_html(symbol):
     # -------------------------------------------------------
     try:
         out = ns.eq(symbol)
+        print(out)
     except Exception as e:
         return f"<h3>Error: Failed to fetch data for {symbol}</h3>"
 
