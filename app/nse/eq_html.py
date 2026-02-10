@@ -15,7 +15,7 @@ def build_eq_html(symbol):
     # -------------------------------------------------------
     try:
         out = ns.eq(symbol)
-        print(f"DEBUG - API Response for {symbol}:", out)
+        print(f"DEBUG - API Response type for {symbol}: {type(out)}")
     except Exception as e:
         print(f"DEBUG - Error calling ns.eq({symbol}):", str(e))
         return f"<h3>Error: Failed to fetch data for {symbol}</h3>"
@@ -30,30 +30,47 @@ def build_eq_html(symbol):
     def format_key(key):
         """Convert camelCase/snake_case to readable title"""
         try:
-            # Insert space before capital letters
             formatted = re.sub(r'(?<!^)(?=[A-Z])', ' ', str(key))
             return formatted.replace('_', ' ').title()
         except:
             return str(key)
 
     # -------------------------------------------------------
-    # Helper: Format values with badges
+    # Helper: Format values (handles DataFrames, Series, etc.)
     # -------------------------------------------------------
     def format_value(value):
         """Format value with appropriate styling"""
-        if value is None or value == "":
+        # Handle pandas objects first
+        if isinstance(value, pd.DataFrame):
+            if value.empty:
+                return '<span class="badge">Empty DataFrame</span>'
+            return f'<span class="badge info">{len(value)} rows × {len(value.columns)} cols</span>'
+        
+        if isinstance(value, pd.Series):
+            if len(value) == 1:
+                return format_value(value.iloc[0])
+            return f'<span class="badge info">Series ({len(value)} items)</span>'
+        
+        # Handle None/empty
+        if value is None:
             return '<span class="badge">N/A</span>'
         
+        if isinstance(value, str) and value == "":
+            return '<span class="badge">N/A</span>'
+        
+        # Handle booleans
         if isinstance(value, bool):
             status = "success" if value else "danger"
             text = "Yes" if value else "No"
             return f'<span class="badge {status}">{text}</span>'
         
+        # Handle numbers
         if isinstance(value, (int, float)):
             if isinstance(value, float):
                 return f"{value:,.2f}"
             return f"{value:,}"
         
+        # Handle strings
         if isinstance(value, str):
             lower = value.lower()
             if lower in ["active", "open", "yes", "true", "up"]:
@@ -64,77 +81,104 @@ def build_eq_html(symbol):
                 return f'<span class="badge warning">{value}</span>'
             return value
         
+        # Handle lists/dicts
         if isinstance(value, (list, dict)):
             return f'<span class="badge info">{len(value)} items</span>'
         
         return str(value)
 
     # -------------------------------------------------------
-    # Helper: Build cards from dict
+    # Helper: Convert DataFrame to cards
     # -------------------------------------------------------
-    def dict_to_cards(data, priority_keys=None):
-        """Convert dictionary to card grid HTML"""
-        if not data or not isinstance(data, dict):
+    def df_to_cards(df, priority_cols=None):
+        """Convert DataFrame to card grid - one card per column"""
+        if df is None or df.empty:
             return '<div class="empty">No data available</div>'
         
-        priority_keys = priority_keys or []
+        if not isinstance(df, pd.DataFrame):
+            return f'<div class="card"><div class="card-value">{format_value(df)}</div></div>'
+        
+        priority_cols = priority_cols or []
         cards_html = '<div class="cards-grid">'
         
-        # Priority items first
-        processed = set()
-        for key in priority_keys:
-            if key in data:
-                val = data[key]
-                cards_html += f'''
-                <div class="card highlight">
-                    <div class="card-label">{format_key(key)}</div>
-                    <div class="card-value">{format_value(val)}</div>
-                </div>'''
-                processed.add(key)
-        
-        # Remaining items
-        for key, val in data.items():
-            if key not in processed:
-                cards_html += f'''
-                <div class="card">
-                    <div class="card-label">{format_key(key)}</div>
-                    <div class="card-value">{format_value(val)}</div>
-                </div>'''
+        # Get first row for single-row DataFrames (most common case)
+        if len(df) == 1:
+            row = df.iloc[0]
+            processed = set()
+            
+            # Priority columns first
+            for col in priority_cols:
+                if col in df.columns:
+                    val = row[col]
+                    cards_html += f'''
+                    <div class="card highlight">
+                        <div class="card-label">{format_key(col)}</div>
+                        <div class="card-value">{format_value(val)}</div>
+                    </div>'''
+                    processed.add(col)
+            
+            # Remaining columns
+            for col in df.columns:
+                if col not in processed:
+                    val = row[col]
+                    cards_html += f'''
+                    <div class="card">
+                        <div class="card-label">{format_key(col)}</div>
+                        <div class="card-value">{format_value(val)}</div>
+                    </div>'''
+        else:
+            # Multi-row DataFrame - show as list
+            return df_to_list_table(df)
         
         cards_html += '</div>'
         return cards_html
 
     # -------------------------------------------------------
-    # Helper: Build list table
+    # Helper: Convert DataFrame to list table (for multi-row)
     # -------------------------------------------------------
-    def list_to_cards(data):
-        """Convert list of dicts to responsive list view"""
-        if not data or not isinstance(data, list) or len(data) == 0:
+    def df_to_list_table(df):
+        """Convert DataFrame to responsive list view"""
+        if df is None or df.empty:
             return '<div class="empty">No data available</div>'
         
-        # If simple list
-        if not isinstance(data[0], dict):
-            items = ", ".join(str(x) for x in data)
-            return f'<div class="card"><div class="card-value">{items}</div></div>'
-        
-        # List of dicts - create header row
-        keys = list(data[0].keys())
+        cols = df.columns.tolist()
         
         html = '<div class="list-container">'
         html += '<div class="list-header">'
-        for key in keys:
-            html += f'<div>{format_key(key)}</div>'
+        for col in cols:
+            html += f'<div>{format_key(col)}</div>'
         html += '</div>'
         
-        for item in data:
+        for idx, row in df.iterrows():
             html += '<div class="list-row">'
-            for key in keys:
-                val = item.get(key, "")
+            for col in cols:
+                val = row[col]
                 html += f'<div class="list-cell">{format_value(val)}</div>'
             html += '</div>'
         
         html += '</div>'
         return html
+
+    # -------------------------------------------------------
+    # Helper: Handle any data type
+    # -------------------------------------------------------
+    def data_to_cards(data, priority=None):
+        """Route data to appropriate converter based on type"""
+        if isinstance(data, pd.DataFrame):
+            return df_to_cards(data, priority)
+        elif isinstance(data, pd.Series):
+            return df_to_cards(data.to_frame().T, priority)
+        elif isinstance(data, list):
+            if len(data) == 0:
+                return '<div class="empty">No data available</div>'
+            if isinstance(data[0], dict):
+                return df_to_list_table(pd.DataFrame(data))
+            return f'<div class="card"><div class="card-value">{", ".join(str(x) for x in data)}</div></div>'
+        elif isinstance(data, dict):
+            # Convert dict to DataFrame
+            return df_to_cards(pd.DataFrame([data]), priority)
+        else:
+            return f'<div class="card"><div class="card-value">{format_value(data)}</div></div>'
 
     # -------------------------------------------------------
     # SECTION CONFIGURATION
@@ -144,10 +188,10 @@ def build_eq_html(symbol):
         "securityInfo": {"title": "Security Information", "icon": "🔒", "priority": ["boardStatus", "tradingStatus", "classOfShare", "faceValue"]},
         "priceInfo": {"title": "Price Information", "icon": "💰", "priority": ["lastPrice", "change", "pChange", "open", "high", "low", "previousClose"]},
         "industryInfo": {"title": "Industry Classification", "icon": "🏭", "priority": ["macro", "sector", "industry", "basicIndustry"]},
-        "pdSectorIndAll": {"title": "Index Participation", "icon": "📊", "type": "list"},
+        "pdSectorIndAll": {"title": "Index Participation", "icon": "📊"},
         "info": {"title": "Trading Details", "icon": "ℹ️", "priority": ["symbol", "isFNOSec", "isSLBSec", "isETFSec"]},
-        "preOpen": {"title": "Pre-Open Market", "icon": "🌅", "type": "list"},
-        "preOpenMarket": {"title": "Pre-Open Summary", "icon": "📈", "type": "dict"}
+        "preOpen": {"title": "Pre-Open Market", "icon": "🌅"},
+        "preOpenMarket": {"title": "Pre-Open Summary", "icon": "📈", "priority": ["IEP", "totalTradedVolume"]}
     }
 
     section_order = list(sections_config.keys())
@@ -160,24 +204,24 @@ def build_eq_html(symbol):
         config = sections_config.get(sec, {})
         title = config.get("title", format_key(sec))
         icon = config.get("icon", "📋")
-        sec_type = config.get("type", "dict")
         priority = config.get("priority", [])
         
         val = out.get(sec)
         
         # Skip if no data
-        if val is None or (isinstance(val, (dict, list)) and len(val) == 0):
+        if val is None:
             continue
         
-        # Build content based on type
-        if sec_type == "list" and isinstance(val, list):
-            content = list_to_cards(val)
-        elif isinstance(val, dict):
-            content = dict_to_cards(val, priority)
-        elif isinstance(val, list):
-            content = list_to_cards(val)
-        else:
-            content = f'<div class="card"><div class="card-value">{format_value(val)}</div></div>'
+        # Skip empty DataFrames/lists
+        if isinstance(val, pd.DataFrame) and val.empty:
+            continue
+        if isinstance(val, list) and len(val) == 0:
+            continue
+        if isinstance(val, dict) and len(val) == 0:
+            continue
+        
+        # Build content
+        content = data_to_cards(val, priority)
         
         sections_html += f'''
         <div class="section">
@@ -185,7 +229,7 @@ def build_eq_html(symbol):
                 <div class="section-title"><span class="icon">{icon}</span> {title}</div>
                 <button class="toggle-btn">View / Hide</button>
             </div>
-            <div id="{sec}" class="section-body">
+            <div id="{sec}" class="section-body" style="display:none;">
                 {content}
             </div>
         </div>'''
@@ -309,11 +353,6 @@ body {{
 
 .section-body {{
     padding: 20px;
-    display: none;
-}}
-
-.section-body.active {{
-    display: block;
 }}
 
 /* Cards Grid */
@@ -499,4 +538,3 @@ document.addEventListener('DOMContentLoaded', function() {{
 </html>'''
 
     return html
-    
