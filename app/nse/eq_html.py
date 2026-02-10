@@ -15,13 +15,10 @@ def build_eq_html(symbol):
     # -------------------------------------------------------
     try:
         out = ns.eq(symbol)
-        print(f"DEBUG - API Response type for {symbol}: {type(out)}")
     except Exception as e:
-        print(f"DEBUG - Error calling ns.eq({symbol}):", str(e))
         return f"<h3>Error: Failed to fetch data for {symbol}</h3>"
 
     if not isinstance(out, dict):
-        print(f"DEBUG - Invalid response type:", type(out))
         return "<h3>Error: EQ data not available</h3>"
 
     # -------------------------------------------------------
@@ -36,41 +33,33 @@ def build_eq_html(symbol):
             return str(key)
 
     # -------------------------------------------------------
-    # Helper: Format values (handles DataFrames, Series, etc.)
+    # Helper: Format values
     # -------------------------------------------------------
     def format_value(value):
         """Format value with appropriate styling"""
-        # Handle pandas objects first
         if isinstance(value, pd.DataFrame):
             if value.empty:
-                return '<span class="badge">Empty DataFrame</span>'
-            return f'<span class="badge info">{len(value)} rows × {len(value.columns)} cols</span>'
+                return '<span class="badge">Empty</span>'
+            return f'<span class="badge info">{len(value)} rows</span>'
         
         if isinstance(value, pd.Series):
             if len(value) == 1:
                 return format_value(value.iloc[0])
-            return f'<span class="badge info">Series ({len(value)} items)</span>'
+            return f'<span class="badge info">{len(value)} items</span>'
         
-        # Handle None/empty
-        if value is None:
+        if value is None or (isinstance(value, str) and value == ""):
             return '<span class="badge">N/A</span>'
         
-        if isinstance(value, str) and value == "":
-            return '<span class="badge">N/A</span>'
-        
-        # Handle booleans
         if isinstance(value, bool):
             status = "success" if value else "danger"
             text = "Yes" if value else "No"
             return f'<span class="badge {status}">{text}</span>'
         
-        # Handle numbers
         if isinstance(value, (int, float)):
             if isinstance(value, float):
                 return f"{value:,.2f}"
             return f"{value:,}"
         
-        # Handle strings
         if isinstance(value, str):
             lower = value.lower()
             if lower in ["active", "open", "yes", "true", "up"]:
@@ -81,7 +70,6 @@ def build_eq_html(symbol):
                 return f'<span class="badge warning">{value}</span>'
             return value
         
-        # Handle lists/dicts
         if isinstance(value, (list, dict)):
             return f'<span class="badge info">{len(value)} items</span>'
         
@@ -91,7 +79,7 @@ def build_eq_html(symbol):
     # Helper: Convert DataFrame to cards
     # -------------------------------------------------------
     def df_to_cards(df, priority_cols=None):
-        """Convert DataFrame to card grid - one card per column"""
+        """Convert DataFrame to card grid"""
         if df is None or df.empty:
             return '<div class="empty">No data available</div>'
         
@@ -101,7 +89,7 @@ def build_eq_html(symbol):
         priority_cols = priority_cols or []
         cards_html = '<div class="cards-grid">'
         
-        # Get first row for single-row DataFrames (most common case)
+        # Single row DataFrame - cards for each column
         if len(df) == 1:
             row = df.iloc[0]
             processed = set()
@@ -127,14 +115,14 @@ def build_eq_html(symbol):
                         <div class="card-value">{format_value(val)}</div>
                     </div>'''
         else:
-            # Multi-row DataFrame - show as list
+            # Multi-row - show as table
             return df_to_list_table(df)
         
         cards_html += '</div>'
         return cards_html
 
     # -------------------------------------------------------
-    # Helper: Convert DataFrame to list table (for multi-row)
+    # Helper: Multi-row DataFrame to list table
     # -------------------------------------------------------
     def df_to_list_table(df):
         """Convert DataFrame to responsive list view"""
@@ -160,7 +148,7 @@ def build_eq_html(symbol):
         return html
 
     # -------------------------------------------------------
-    # Helper: Handle any data type
+    # Helper: Route data to appropriate converter
     # -------------------------------------------------------
     def data_to_cards(data, priority=None):
         """Route data to appropriate converter based on type"""
@@ -175,7 +163,6 @@ def build_eq_html(symbol):
                 return df_to_list_table(pd.DataFrame(data))
             return f'<div class="card"><div class="card-value">{", ".join(str(x) for x in data)}</div></div>'
         elif isinstance(data, dict):
-            # Convert dict to DataFrame
             return df_to_cards(pd.DataFrame([data]), priority)
         else:
             return f'<div class="card"><div class="card-value">{format_value(data)}</div></div>'
@@ -211,8 +198,6 @@ def build_eq_html(symbol):
         # Skip if no data
         if val is None:
             continue
-        
-        # Skip empty DataFrames/lists
         if isinstance(val, pd.DataFrame) and val.empty:
             continue
         if isinstance(val, list) and len(val) == 0:
@@ -225,11 +210,10 @@ def build_eq_html(symbol):
         
         sections_html += f'''
         <div class="section">
-            <div class="section-header" onclick="toggleSection('{sec}')">
+            <div class="section-header">
                 <div class="section-title"><span class="icon">{icon}</span> {title}</div>
-                <button class="toggle-btn">View / Hide</button>
             </div>
-            <div id="{sec}" class="section-body" style="display:none;">
+            <div class="section-body">
                 {content}
             </div>
         </div>'''
@@ -312,19 +296,9 @@ body {{
 }}
 
 .section-header {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     padding: 16px 20px;
     background: linear-gradient(to right, #f8f9fa, #ffffff);
     border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.2s;
-}}
-
-.section-header:hover {{
-    background: #f0f3f6;
 }}
 
 .section-title {{
@@ -338,17 +312,6 @@ body {{
 
 .section-title .icon {{
     font-size: 22px;
-}}
-
-.toggle-btn {{
-    background: var(--primary);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    font-size: 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: 600;
 }}
 
 .section-body {{
@@ -518,22 +481,6 @@ body {{
 <div class="container">
     {sections_html}
 </div>
-
-<script>
-function toggleSection(id) {{
-    let body = document.getElementById(id);
-    if (body.style.display === "none" || body.style.display === "") {{
-        body.style.display = "block";
-    }} else {{
-        body.style.display = "none";
-    }}
-}}
-// Open first section by default
-document.addEventListener('DOMContentLoaded', function() {{
-    let firstSection = document.querySelector('.section-body');
-    if (firstSection) firstSection.style.display = 'block';
-}});
-</script>
 </body>
 </html>'''
 
