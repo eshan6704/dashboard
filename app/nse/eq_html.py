@@ -484,6 +484,7 @@ class EquityReportBuilder:
         """Generate professional HTML equity report."""
         try:
             data = ns.eq(symbol)
+            print(data)
         except Exception as e:
             return cls._build_error_html(symbol, str(e))
         
