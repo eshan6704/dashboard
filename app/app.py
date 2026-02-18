@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 
 # -------------------------------------------------------
-# Router (Your existing router.py)
+# Router
 # -------------------------------------------------------
 from app.router.router import router
 
@@ -34,7 +34,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.include_router(router)
 
 # -------------------------------------------------------
-# Gradio UI (Uses only your existing packages)
+# Gradio UI
 # -------------------------------------------------------
 
 REQ_TYPES = {
@@ -69,7 +69,6 @@ def build_filename(mode, req_type, name, end_date, start_date, suffix=""):
 def fetch_data_internal(filename, force=False):
     """Call own API internally"""
     try:
-        # HF Space runs on port 7860
         base_url = "http://localhost:7860"
         url = f"{base_url}/file"
         params = {"name": filename}
@@ -84,7 +83,7 @@ def fetch_data_internal(filename, force=False):
         return {"success": False, "error": str(e)}
 
 def extract_tables(html_content):
-    """Extract tables using pandas (you already have this)"""
+    """Extract tables using pandas"""
     try:
         tables = pd.read_html(html_content)
         if tables:
@@ -97,14 +96,10 @@ def extract_tables(html_content):
     return pd.DataFrame({"Info": ["No tables found"]})
 
 # -------------------------------------------------------
-# Gradio Interface
+# Gradio Interface (Gradio 6.0+ compatible)
 # -------------------------------------------------------
 
-with gr.Blocks(
-    title="NSE Stock Dashboard",
-    theme=gr.themes.Soft(primary_hue="indigo"),
-    css=".gradio-container { max-width: 95% !important; }"
-) as demo:
+with gr.Blocks(title="NSE Stock Dashboard") as demo:
     
     gr.Markdown("# 📈 NSE Stock Dashboard")
     
@@ -153,11 +148,12 @@ with gr.Blocks(
             
             with gr.Tabs():
                 with gr.TabItem("📊 Rendered"):
-                    html_out = gr.HTML(min_height=600)
+                    html_out = gr.HTML()
                 with gr.TabItem("📋 Table"):
-                    table_out = gr.DataFrame(height=600)
+                    # No height parameter in Gradio 6.0+
+                    table_out = gr.DataFrame()
                 with gr.TabItem("📝 Raw"):
-                    raw_out = gr.Code(language="html", min_height=600)
+                    raw_out = gr.Code(language="html")
     
     # Events
     mode.change(
@@ -202,20 +198,20 @@ with gr.Blocks(
         outputs=[status, html_out, raw_out, table_out]
     )
     
-    btn_clear.click(
-        lambda: {
+    def clear_all():
+        return {
             status: "Ready",
             html_out: "<div style='text-align:center;padding:40px;color:#9ca3af;'><div style='font-size:48px;'>📈</div><p>Ready</p></div>",
             raw_out: "",
             table_out: pd.DataFrame()
-        },
-        outputs=[status, html_out, raw_out, table_out]
-    )
+        }
+    
+    btn_clear.click(clear_all, outputs=[status, html_out, raw_out, table_out])
     
     # Presets
     p1.click(lambda: ("stock", "info", "ITC", "", ""), outputs=[mode, req_type, name, date_end, date_start])
     p2.click(lambda: ("stock", "info", "RELIANCE", "", ""), outputs=[mode, req_type, name, date_end, date_start])
     p3.click(lambda: ("index", "indices", "NIFTY 50", "", ""), outputs=[mode, req_type, name, date_end, date_start])
 
-# Mount at root - HF Space shows this UI
+# Mount at root
 app = gr.mount_gradio_app(app, demo, path="/")
