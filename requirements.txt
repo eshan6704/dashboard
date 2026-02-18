@@ -12,3 +12,7 @@ fastapi
 uvicorn
 beautifulsoup4
 gradio
+lxml
+html5lib
+python-multipart
+pydantic
