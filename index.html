@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financial Data API Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', sans-serif;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+}
+
+/* Smart Toolbar - Auto shows on interaction */
+.toolbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 8px 12px;
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  z-index: 100;
+  transition: transform 0.3s ease;
+  transform: translateY(0);
+}
+
+.toolbar.hidden {
+  transform: translateY(-100%);
+}
+
+/* Desktop: Top 25px trigger zone */
+.desktop-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 25px;
+  z-index: 99;
+  cursor: pointer;
+}
+
+.desktop-trigger:hover + .toolbar,
+.desktop-trigger:active + .toolbar {
+  transform: translateY(0) !important;
+}
+
+/* Mobile: Swipe detection area */
+.swipe-area {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  touch-action: pan-y;
+}
+
+.toolbar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toolbar-section-title {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.toolbar select, .toolbar input {
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 12px;
+  height: 32px;
+  background: #fff;
+  outline: none;
+}
+
+.toolbar select { min-width: 140px; }
+.toolbar input { width: 100px; }
+.toolbar input.wide { width: 120px; }
+
+.source-select {
+  border-color: #2563eb !important;
+  background: #eff6ff !important;
+}
+
+.btn {
+  padding: 6px 14px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn:hover:not(:disabled) { background: #1d4ed8; }
+.btn:disabled { opacity: 0.5; }
+
+.btn-secondary {
+  background: #fff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-icon {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+.status-bar {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.idle { background: #f1f5f9; color: #64748b; }
+.fetching { background: #dbeafe; color: #2563eb; }
+.success { background: #d1fae5; color: #059669; }
+.error { background: #fee2e2; color: #dc2626; }
+
+.pulse {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+  display: inline-block;
+  margin-right: 4px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Hint bar */
+.hint-bar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 0 0 12px 12px;
+  font-size: 11px;
+  z-index: 98;
+  transition: transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar.hidden ~ .hint-bar {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Response */
+.response-wrapper {
+  flex: 1;
+  padding: 8px;
+  padding-top: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
+}
+
+.response-box {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.response-header {
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.response-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.view-toggle {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.view-btn {
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.view-btn.active {
+  background: #fff;
+  color: #1e293b;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.response-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.icon-btn:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.response-content {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.response-content pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'SF Mono', Consolas, monospace;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  margin: 0;
+  font-size: 12px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.empty i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.error-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 16px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  height: 100%;
+}
+
+.compare-panel {
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+}
+
+.compare-panel h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* History Panel */
+.history-panel {
+  position: absolute;
+  top: 100%;
+  left: 12px;
+  right: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+  padding: 12px;
+  z-index: 101;
+  display: none;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.history-panel.show { display: block; }
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.history-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.history-clear {
+  font-size: 11px;
+  color: #ef4444;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.history-item:hover { background: #eff6ff; }
+.history-item.active {
+  border: 1px solid #2563eb;
+  background: #eff6ff;
+}
+
+.history-filename { font-weight: 500; }
+.history-meta { font-size: 10px; color: #64748b; }
+.history-size { font-size: 11px; color: #059669; font-weight: 600; }
+
+/* Floating buttons */
+.floating-tools {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 200;
+}
+
+.fab {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  color: #334155;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab:hover {
+  transform: scale(1.1);
+  background: #2563eb;
+  color: #fff;
+}
+
+.fab.primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.keyboard-help {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  padding: 20px;
+  border-radius: 12px;
+  font-size: 12px;
+  z-index: 201;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+  max-width: 320px;
+  display: none;
+}
+
+.keyboard-help.show { display: block; }
+.keyboard-help h4 { margin-bottom: 16px; font-size: 14px; color: #2563eb; }
+.keyboard-help kbd {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.key-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.key-row:last-child { border-bottom: none; margin-bottom: 0; }
+.hidden { display: none !important; }
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .toolbar { padding: 6px; gap: 4px; }
+  .toolbar select, .toolbar input { font-size: 11px; height: 28px; }
+  .desktop-trigger { height: 50px; } /* Larger trigger for mobile */
+  .compare-grid { grid-template-columns: 1fr; }
+  .history-panel { left: 4px; right: 4px; }
+  .floating-tools { bottom: 10px; right: 10px; }
+  .fab { width: 40px; height: 40px; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+</style>
+</head>
+
+<body>
+
+<div class="app">
+  <!-- Desktop: Top 25px click trigger -->
+  <div class="desktop-trigger" onclick="showToolbar()" title="Click to show toolbar"></div>
+  
+  <!-- Mobile: Swipe detection -->
+  <div class="swipe-area" id="swipeArea"></div>
+  
+  <div class="toolbar" id="toolbar">
+    <div class="toolbar-section">
+      <div class="toolbar-section-title">Source</div>
+      <select id="source" style="min-width:160px">
+        <option value="https://NseStockDashboard--eshanpatel8.replit.app">🚀 Replit</option>
+        <option value="https://NseStockDashboard-jva5.onrender.com">⏳ Render</option>
+        <option value="https://eshan6704-NseStockDashboard.hf.space">🤗 HF Space</option>
+      </select>
+    </div>
+
+    <div class="toolbar-section">
+      <div class="toolbar-section-title">Mode</div>
+      <select id="mode">
+        <option value="stock">Stock</option>
+        <option value="index">Index</option>
+        <option value="screener">Screener</option>
+      </select>
+    </div>
+
+    <div class="toolbar-section">
+      <div class="toolbar-section-title">Type</div>
+      <select id="req_type" style="min-width:140px"></select>
+    </div>
+
+    <div class="toolbar-section">
+      <div class="toolbar-section-title">Symbol</div>
+      <input type="text" id="name" class="wide" placeholder="e.g. ITC">
+    </div>
+
+    <div class="toolbar-section">
+      <div class="toolbar-section-title">Date</div>
+      <input type="text" id="date_end" placeholder="DD-MM-YYYY">
+    </div>
+
+    <div class="toolbar-section">
+      <div class="toolbar-section-title">Action</div>
+      <div style="display:flex;gap:6px">
+        <button id="fetchBtn" class="btn" onclick="fetchData()">
+          <i class="fas fa-download"></i> Fetch
+        </button>
+        <button class="btn btn-secondary btn-icon" onclick="toggleHistory()" title="History (H)">
+          <i class="fas fa-history"></i>
+        </button>
+        <button class="btn btn-secondary btn-icon" onclick="toggleCompare()" title="Compare (C)">
+          <i class="fas fa-columns"></i>
+        </button>
+        <button class="btn btn-secondary btn-icon" onclick="toggleTheme()" title="Theme (L)">
+          <i class="fas fa-moon" id="themeIcon"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span id="statusBadge" class="status-badge idle">Ready</span>
+      <span id="statusInfo" style="font-size:11px;color:#64748b"></span>
+    </div>
+
+    <input type="text" id="date_start" class="hidden">
+    <input type="text" id="suffix" class="hidden">
+
+    <div class="history-panel" id="historyPanel">
+      <div class="history-header">
+        <span class="history-title"><i class="fas fa-clock" style="margin-right:6px"></i>Recent Fetches</span>
+        <button class="history-clear" onclick="clearHistory()">Clear All</button>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+  </div>
+
+  <div class="hint-bar">
+    <i class="fas fa-chevron-down"></i>
+    <span id="hintText">Click top or swipe down for toolbar • H for history</span>
+  </div>
+
+  <div class="response-wrapper" id="responseWrapper">
+    <div class="response-box">
+      <div class="response-header">
+        <span><i class="fas fa-terminal" style="margin-right:6px"></i>Response</span>
+        <div class="response-toolbar">
+          <div class="view-toggle">
+            <button class="view-btn active" onclick="setView('html')" id="btnHtml">HTML</button>
+            <button class="view-btn" onclick="setView('text')" id="btnText">Text</button>
+            <button class="view-btn" onclick="setView('raw')" id="btnRaw">Raw</button>
+          </div>
+          <div class="response-actions">
+            <button class="icon-btn" onclick="refreshData()" title="Refresh (R)"><i class="fas fa-sync-alt"></i></button>
+            <button class="icon-btn" onclick="downloadData()" title="Download"><i class="fas fa-download"></i></button>
+            <button class="icon-btn" onclick="copyResponse()" title="Copy"><i class="fas fa-copy"></i></button>
+            <button class="icon-btn" onclick="clearResponse()" title="Clear (Esc)"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="response-content" id="response">
+        <div class="empty">
+          <i class="fas fa-chart-line"></i>
+          <p><strong>Financial Data API Pro</strong><br>
+          Fetch data or press H for history<br>
+          <small>? for keyboard shortcuts</small></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="floating-tools">
+  <button class="fab primary" onclick="fetchData()" title="Fetch (Enter)"><i class="fas fa-play"></i></button>
+  <button class="fab" onclick="toggleHistory()" title="History (H)"><i class="fas fa-history"></i></button>
+  <button class="fab" onclick="toggleHelp()" title="Help (?)"><i class="fas fa-question"></i></button>
+</div>
+
+<div class="keyboard-help" id="keyboardHelp">
+  <h4><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h4>
+  <div class="key-row"><span>Fetch Data</span> <kbd>Enter</kbd></div>
+  <div class="key-row"><span>Toggle History</span> <kbd>H</kbd></div>
+  <div class="key-row"><span>Refresh Last</span> <kbd>R</kbd></div>
+  <div class="key-row"><span>Compare Mode</span> <kbd>C</kbd></div>
+  <div class="key-row"><span>Toggle Theme</span> <kbd>L</kbd></div>
+  <div class="key-row"><span>Clear/Show Toolbar</span> <kbd>Esc</kbd></div>
+  <div class="key-row"><span>Toggle Help</span> <kbd>?</kbd></div>
+</div>
+
+<script>
+// Data
+const REQ_TYPES = {
+  stock: ['info','intraday','daily','nse_eq','qresult','result','balance','cashflow','dividend','split','other','stock_hist'],
+  index: ['indices','open','preopen','fno','fiidii','events','index_highlow','stock_highlow','bhav','largedeals','bulkdeals','blockdeals','most_active','index_history','hlargedeals','pe_pb','total_returns'],
+  screener: ['from_low','from_high','volume','delivery']
+};
+
+const DEFAULT_TYPES = { stock: 'info', index: 'indices', screener: 'from_low' };
+
+// State
+const state = {
+  history: [],
+  currentData: null,
+  currentIndex: -1,
+  lastFetch: null,
+  view: 'html',
+  compare: false,
+  isMobile: window.innerWidth <= 768
+};
+
+// DOM
+const dom = {};
+
+// Date utils
+const fyStart = () => {
+  const d = new Date();
+  const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+  return `01-04-${y}`;
+};
+
+const today = () => {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+};
+
+// Init
+function init() {
+  dom.source = document.getElementById('source');
+  dom.mode = document.getElementById('mode');
+  dom.req_type = document.getElementById('req_type');
+  dom.name = document.getElementById('name');
+  dom.date_end = document.getElementById('date_end');
+  dom.date_start = document.getElementById('date_start');
+  dom.suffix = document.getElementById('suffix');
+  dom.fetchBtn = document.getElementById('fetchBtn');
+  dom.statusBadge = document.getElementById('statusBadge');
+  dom.statusInfo = document.getElementById('statusInfo');
+  dom.response = document.getElementById('response');
+  dom.toolbar = document.getElementById('toolbar');
+  dom.themeIcon = document.getElementById('themeIcon');
+  dom.historyPanel = document.getElementById('historyPanel');
+  dom.historyList = document.getElementById('historyList');
+  dom.keyboardHelp = document.getElementById('keyboardHelp');
+  dom.hintText = document.getElementById('hintText');
+  dom.swipeArea = document.getElementById('swipeArea');
+  dom.responseWrapper = document.getElementById('responseWrapper');
+
+  // Detect mobile
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+
+  // Theme
+  if (localStorage.getItem('theme') === 'dark') toggleTheme();
+
+  // Events
+  dom.mode.addEventListener('change', updateTypes);
+  
+  // Swipe detection for mobile
+  initSwipeDetection();
+  
+  // Scroll detection for mobile
+  dom.responseWrapper.addEventListener('scroll', handleScroll);
+
+  updateTypes();
+  dom.source.focus();
+}
+
+function checkMobile() {
+  state.isMobile = window.innerWidth <= 768;
+  dom.hintText.textContent = state.isMobile 
+    ? 'Swipe down for toolbar • H for history' 
+    : 'Click top 25px for toolbar • H for history';
+}
+
+function initSwipeDetection() {
+  let touchStartY = 0;
+  let touchEndY = 0;
+  
+  dom.swipeArea.addEventListener('touchstart', (e) => {
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  
+  dom.swipeArea.addEventListener('touchend', (e) => {
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe(touchStartY, touchEndY);
+  }, { passive: true });
+
+  // Also detect on response area for when content is short
+  dom.responseWrapper.addEventListener('touchstart', (e) => {
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  
+  dom.responseWrapper.addEventListener('touchend', (e) => {
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe(touchStartY, touchEndY);
+  }, { passive: true });
+}
+
+function handleSwipe(startY, endY) {
+  const diff = endY - startY;
+  // Swipe down more than 50px shows toolbar
+  if (diff > 50) {
+    showToolbar();
+  }
+  // Swipe up hides toolbar
+  if (diff < -50 && !dom.historyPanel.classList.contains('show')) {
+    hideToolbar();
+  }
+}
+
+function handleScroll() {
+  // On mobile, scrolling up (scrollTop decreasing) shows toolbar
+  if (state.isMobile) {
+    const scrollTop = dom.responseWrapper.scrollTop;
+    if (scrollTop < 10) { // Near top
+      showToolbar();
+    }
+  }
+}
+
+function showToolbar() {
+  dom.toolbar.classList.remove('hidden');
+}
+
+function hideToolbar() {
+  if (!dom.historyPanel.classList.contains('show')) {
+    dom.toolbar.classList.add('hidden');
+  }
+}
+
+// Theme
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  dom.themeIcon.className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+
+// Update types
+function updateTypes() {
+  const mode = dom.mode.value;
+  const types = REQ_TYPES[mode];
+  const defaultType = DEFAULT_TYPES[mode];
+  
+  dom.req_type.innerHTML = '';
+  types.forEach(type => {
+    const opt = document.createElement('option');
+    opt.value = type;
+    opt.textContent = type.replace(/_/g, ' ');
+    if (type === defaultType) opt.selected = true;
+    dom.req_type.appendChild(opt);
+  });
+
+  if (mode === 'stock') {
+    dom.name.value = 'ITC';
+    dom.date_start.value = fyStart();
+    dom.date_end.value = today();
+  } else if (mode === 'index') {
+    dom.name.value = 'NIFTY 50';
+    dom.date_start.value = fyStart();
+    dom.date_end.value = today();
+  } else {
+    dom.name.value = '';
+    dom.date_start.value = '';
+    dom.date_end.value = '';
+  }
+}
+
+// Status
+function setStatus(status, text, info) {
+  dom.statusBadge.className = `status-badge ${status}`;
+  dom.statusBadge.innerHTML = status === 'fetching' ? '<span class="pulse"></span>Loading' : text;
+  dom.statusInfo.textContent = info || '';
+}
+
+// Build filename
+function buildFilename() {
+  const mode = dom.mode.value;
+  const reqType = dom.req_type.value;
+  const name = dom.name.value.trim();
+  const dateStart = dom.date_start.value;
+  const dateEnd = dom.date_end.value;
+  const suffix = dom.suffix.value.trim();
+
+  let filename = `@${mode}@${reqType}`;
+  if (name) filename += `@${name}`;
+  if (dateEnd) filename += `@${dateEnd}`;
+  if (dateStart) filename += `@${dateStart}`;
+  if (suffix) filename += `@${suffix}`;
+  return filename + '.html';
+}
+
+// Fetch
+async function fetchData() {
+  const baseUrl = dom.source.value;
+  const filename = buildFilename();
+  const sourceName = dom.source.options[dom.source.selectedIndex].text.split(' ')[0];
+
+  state.lastFetch = { baseUrl, filename, sourceName };
+  
+  setStatus('fetching', '', filename);
+  dom.fetchBtn.disabled = true;
+  dom.historyPanel.classList.remove('show');
+  setTimeout(hideToolbar, 1000);
+  
+  dom.response.innerHTML = '<div class="empty"><div class="pulse" style="width:48px;height:48px;margin-bottom:16px"></div><p>Fetching...</p></div>';
+
+  const t0 = performance.now();
+
+  try {
+    const res = await fetch(`${baseUrl}/file?name=${encodeURIComponent(filename)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    
+    const blob = await res.blob();
+    const text = await blob.text();
+    const dt = Math.round(performance.now() - t0);
+    const size = (blob.size / 1024).toFixed(1);
+
+    addToHistory({
+      filename,
+      source: sourceName,
+      data: text,
+      size: `${size}KB`,
+      time: `${dt}ms`,
+      timestamp: new Date().toLocaleTimeString()
+    });
+
+    state.currentData = text;
+    state.currentIndex = 0;
+    render(text);
+    setStatus('success', 'Done', `${sourceName} • ${size}KB • ${dt}ms`);
+
+  } catch (err) {
+    setStatus('error', 'Error', err.message);
+    dom.response.innerHTML = `<div class="error-box"><strong>Failed</strong><br>${err.message}</div>`;
+    showToolbar();
+  } finally {
+    dom.fetchBtn.disabled = false;
+  }
+}
+
+// History
+function addToHistory(item) {
+  state.history = state.history.filter(h => h.filename !== item.filename);
+  state.history.unshift(item);
+  if (state.history.length > 10) state.history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  dom.historyList.innerHTML = state.history.map((item, idx) => `
+    <div class="history-item ${idx === state.currentIndex ? 'active' : ''}" onclick="loadHistory(${idx})">
+      <div class="history-info">
+        <div class="history-filename">${item.filename}</div>
+        <div class="history-meta">${item.source} • ${item.timestamp}</div>
+      </div>
+      <div class="history-size">${item.size}</div>
+    </div>
+  `).join('');
+}
+
+function loadHistory(index) {
+  const item = state.history[index];
+  if (!item) return;
+  
+  state.currentData = item.data;
+  state.currentIndex = index;
+  render(item.data);
+  setStatus('success', 'Cached', `${item.source} • ${item.size} • ${item.time}`);
+  dom.historyPanel.classList.remove('show');
+  hideToolbar();
+  renderHistory();
+}
+
+function toggleHistory() {
+  dom.historyPanel.classList.toggle('show');
+  if (dom.historyPanel.classList.contains('show')) {
+    renderHistory();
+    showToolbar();
+  }
+}
+
+function clearHistory() {
+  state.history = [];
+  state.currentData = null;
+  state.currentIndex = -1;
+  renderHistory();
+  dom.response.innerHTML = `<div class="empty"><i class="fas fa-chart-line"></i><p>History cleared</p></div>`;
+  setStatus('idle', 'Ready', '');
+}
+
+// Render
+function render(text) {
+  const isHtml = text.includes('<') && text.includes('>');
+  
+  if (state.compare) {
+    dom.response.innerHTML = `
+      <div class="compare-grid">
+        <div class="compare-panel"><h4>Rendered</h4>${isHtml ? text : `<pre>${esc(text)}</pre>`}</div>
+        <div class="compare-panel"><h4>Source</h4><pre style="font-size:11px">${esc(text)}</pre></div>
+      </div>
+    `;
+    return;
+  }
+
+  if (state.view === 'raw') {
+    dom.response.innerHTML = `<pre>${esc(text)}</pre>`;
+  } else if (state.view === 'text') {
+    dom.response.innerHTML = `<pre>${esc(text.replace(/<[^>]*>/g, ''))}</pre>`;
+  } else {
+    dom.response.innerHTML = isHtml ? text : `<pre>${esc(text)}</pre>`;
+  }
+}
+
+function esc(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function setView(mode) {
+  state.view = mode;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`btn${mode.charAt(0).toUpperCase() + mode.slice(1)}`).classList.add('active');
+  if (state.currentData) render(state.currentData);
+}
+
+function toggleCompare() {
+  state.compare = !state.compare;
+  if (state.currentData) render(state.currentData);
+}
+
+function refreshData() {
+  if (state.lastFetch) fetchData();
+}
+
+function copyResponse() {
+  navigator.clipboard.writeText(state.currentData || dom.response.innerText);
+  const btn = document.querySelector('.fa-copy');
+  btn.className = 'fas fa-check';
+  setTimeout(() => btn.className = 'fas fa-copy', 1500);
+}
+
+function downloadData() {
+  if (!state.currentData) return;
+  const blob = new Blob([state.currentData], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `data_${new Date().getTime()}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function clearResponse() {
+  state.currentData = null;
+  state.currentIndex = -1;
+  dom.response.innerHTML = `<div class="empty"><i class="fas fa-chart-line"></i><p><strong>Ready</strong><br>Fetch data or press H for history<br><small>? for help</small></p></div>`;
+  setStatus('idle', 'Ready', '');
+  dom.historyPanel.classList.remove('show');
+  showToolbar();
+  dom.source.focus();
+}
+
+function toggleHelp() {
+  dom.keyboardHelp.classList.toggle('show');
+}
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  const key = e.key.toLowerCase();
+  
+  if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
+    e.preventDefault();
+    fetchData();
+  }
+  
+  if (key === 'h') {
+    e.preventDefault();
+    toggleHistory();
+  }
+  
+  if (key === 'r' && state.lastFetch) {
+    e.preventDefault();
+    refreshData();
+  }
+  
+  if (key === 'c') {
+    e.preventDefault();
+    toggleCompare();
+  }
+  
+  if (key === 'l') {
+    e.preventDefault();
+    toggleTheme();
+  }
+  
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (dom.historyPanel.classList.contains('show')) {
+      dom.historyPanel.classList.remove('show');
+    } else {
+      clearResponse();
+    }
+  }
+  
+  if (key === '?') {
+    e.preventDefault();
+    toggleHelp();
+  }
+});
+
+// Click outside to close history
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.toolbar') && !e.target.closest('.fab')) {
+    dom.historyPanel.classList.remove('show');
+  }
+});
+
+// Init
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+
+</body>
+</html>
