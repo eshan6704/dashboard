@@ -1446,7 +1446,7 @@ def build_daily_trend_section(info, hist_df):
         import traceback
         print(traceback.format_exc())
         return ""
-def generate_mini_candlestick(df, width=400, height=200):
+def generate_mini_candlestick(df, width=300, height=150):
     """Generate compact SVG candlestick chart"""
     try:
         if len(df) < 2:
