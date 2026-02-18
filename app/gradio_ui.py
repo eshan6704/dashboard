@@ -146,13 +146,14 @@ def create_interface():
                     
                     # End Date (visible, prefilled today, user can change)
                     date_end = gr.Textbox(
-                        label=None,
-                        value=get_today(),
-                        placeholder="End Date",
-                        show_label=False,
-                        container=False,
-                        min_width=100
-                    )
+                                label=None,
+                                value=get_today(),
+                                placeholder="End Date",
+                                show_label=False,
+                                container=False,
+                                min_width=100,
+                                scale=1  # This affects height in some Gradio versions
+                                )
                     
                     # Start Date (HIDDEN - fixed to FY start)
                     date_start = gr.Textbox(
