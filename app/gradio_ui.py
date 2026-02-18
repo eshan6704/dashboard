@@ -99,6 +99,10 @@ def create_interface():
             font-weight: 500;
             margin-left: auto;
         }
+        .tall-btn { 
+            min-height: 42px !important; 
+            height: 42px !important;
+        }
         .status-fetching { background: #dbeafe; color: #1e40af; }
         .status-success { background: #d1fae5; color: #065f46; }
         .status-error { background: #fee2e2; color: #991b1b; }
@@ -171,10 +175,10 @@ def create_interface():
                     )
                     
                     # Fetch button
-                    btn_fetch = gr.Button("🚀 Fetch", variant="primary", size="sm", min_width=80)
+                    btn_fetch = gr.Button("🚀 Fetch", variant="primary", min_width=80)
                     
                     # Clear button
-                    btn_clear = gr.Button("🗑️", size="sm", min_width=40)
+                    btn_clear = gr.Button("🗑️", min_width=40)
                     
                     # Status (right side)
                     status = gr.Textbox(
