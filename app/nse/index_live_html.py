@@ -261,47 +261,11 @@ body, .nse-root {
   font-weight: 500;
 }
 
-/* ── CELL COLORING ── */
-.numeric-positive {
-  color: var(--up) !important;
-  background: var(--up-bg);
-  border-radius: 2px;
-  padding: 1px 4px;
-}
-.numeric-negative {
-  color: var(--down) !important;
-  background: var(--down-bg);
-  border-radius: 2px;
-  padding: 1px 4px;
-}
-.top-up {
-  background: var(--up-bg-strong) !important;
-  font-weight: 600;
-}
-.top-down {
-  background: var(--down-bg-strong) !important;
-  font-weight: 600;
-}
-.badge-up {
-  display: inline-block;
-  background: var(--up-bg-strong);
-  color: var(--up);
-  border: 1px solid rgba(0,214,143,0.25);
-  border-radius: 3px;
-  padding: 1px 6px;
-  font-size: 11px;
-  font-weight: 600;
-}
-.badge-down {
-  display: inline-block;
-  background: var(--down-bg-strong);
-  color: var(--down);
-  border: 1px solid rgba(255,77,109,0.25);
-  border-radius: 3px;
-  padding: 1px 6px;
-  font-size: 11px;
-  font-weight: 600;
-}
+/* ── CELL COLORING — plain text only, no rectangles ── */
+.numeric-positive { color: var(--up)   !important; }
+.numeric-negative { color: var(--down) !important; }
+.top-up           { color: var(--up)   !important; font-weight: 700; }
+.top-down         { color: var(--down) !important; font-weight: 700; }
 
 /* ── SCROLLABLE TABLE WRAPPER ── */
 .table-scroll {
@@ -358,40 +322,52 @@ def _fmt(val_str: str) -> str:
     return f"{val:.4f}"
 
 
-def _classify(num_val: float, col: str | None, idx, top_up: list, top_down: list) -> str:
-    cls_parts = []
-    if num_val > 0:
-        cls_parts.append("numeric-positive")
-    elif num_val < 0:
-        cls_parts.append("numeric-negative")
-    if col and idx in top_up:
-        cls_parts.append("top-up")
-    elif col and idx in top_down:
-        cls_parts.append("top-down")
-    return " ".join(cls_parts)
+
+# Columns that get colored text (green/red) — all others render as plain numbers
+_COLOR_COLS = {"pChange", "perChange365d", "perChange30d", "nearWKH", "nearWKL"}
 
 
 def _df_to_html_color(df: pd.DataFrame, metric_col: str | None = None) -> str:
-    """Convert DataFrame to a styled HTML table."""
+    """
+    Convert DataFrame to a styled HTML table.
+    - pChange-family columns: colored plain text (no background rectangle).
+    - All other numeric columns: plain formatted text, no color.
+    - Top-3 rows in metric_col get bold text only.
+    """
     df_html = df.copy().astype(str)
     top_up, top_down = [], []
 
     if metric_col and metric_col in df.columns:
-        col_num = pd.to_numeric(df[metric_col], errors="coerce").dropna()
+        col_num  = pd.to_numeric(df[metric_col], errors="coerce").dropna()
         top_up   = col_num.nlargest(3).index.tolist()
         top_down = col_num.nsmallest(3).index.tolist()
 
     for idx, row in df_html.iterrows():
         for col in df_html.columns:
             val = row[col]
-            if _is_pure_number(val):
-                num_val  = float(val)
-                fmt_str  = _fmt(val)
-                cls      = _classify(num_val, metric_col, idx, top_up, top_down)
-                cell_cls = f' class="{cls}"' if cls else ""
-                df_html.at[idx, col] = f"<span{cell_cls}>{fmt_str}</span>"
-            else:
+            if not _is_pure_number(val):
                 df_html.at[idx, col] = val
+                continue
+
+            num_val = float(val)
+            fmt_str = _fmt(val)
+            is_color_col = col in _COLOR_COLS or col == metric_col
+
+            if is_color_col:
+                if idx in top_up:
+                    cls = "top-up"
+                elif idx in top_down:
+                    cls = "top-down"
+                elif num_val > 0:
+                    cls = "numeric-positive"
+                elif num_val < 0:
+                    cls = "numeric-negative"
+                else:
+                    cls = ""
+                df_html.at[idx, col] = f'<span class="{cls}">{fmt_str}</span>' if cls else fmt_str
+            else:
+                # plain — no color, no span wrapper
+                df_html.at[idx, col] = fmt_str
 
     return df_html.to_html(index=False, escape=False, classes="compact-table")
 
@@ -529,7 +505,7 @@ def build_index_live_html(index_name: str = "NIFTY 50") -> str:
             continue
         df_m = const_df[["symbol", col]].copy()
         df_m[col] = pd.to_numeric(df_m[col], errors="coerce")
-        df_m = df_m.sort_values(col, ascending=False).head(10)
+        df_m = df_m.sort_values(col, ascending=False).head(25)
         metric_cards_html += f"""
 <div class="nse-metric-card">
   <div class="nse-metric-title">{label}</div>
