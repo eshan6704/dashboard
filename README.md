@@ -1,5 +1,5 @@
 ---
-title: hfapp
+title: NseStockDashboard
 emoji: 📉
 colorFrom: indigo
 colorTo: blue
