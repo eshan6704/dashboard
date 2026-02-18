@@ -12,30 +12,30 @@ _CSS = """
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
 :root {
-  --bg-base:       #0a0d12;
-  --bg-panel:      #0f1318;
-  --bg-card:       #141920;
-  --bg-card-hover: #1a2230;
-  --bg-row-alt:    #0d1017;
-  --border:        #1e2a38;
-  --border-bright: #263548;
+  --bg-base:       #f0f4f9;
+  --bg-panel:      #e6ecf5;
+  --bg-card:       #ffffff;
+  --bg-card-hover: #eaf0fa;
+  --bg-row-alt:    #f5f8fd;
+  --border:        #c8d6e8;
+  --border-bright: #a0b8d8;
 
-  --text-primary:  #e8edf5;
-  --text-muted:    #5a7490;
-  --text-label:    #3d5a78;
+  --text-primary:  #0f2044;
+  --text-muted:    #3a5a8a;
+  --text-label:    #7a9bbf;
 
-  --accent:        #00b4d8;
-  --accent-dim:    #00607a;
+  --accent:        #1a56c4;
+  --accent-dim:    #4a7de0;
 
-  --up:            #00d68f;
-  --up-bg:         rgba(0, 214, 143, 0.08);
-  --up-bg-strong:  rgba(0, 214, 143, 0.18);
-  --down:          #ff4d6d;
-  --down-bg:       rgba(255, 77, 109, 0.08);
-  --down-bg-strong:rgba(255, 77, 109, 0.18);
+  --up:            #0a8a4f;
+  --up-bg:         rgba(10, 138, 79, 0.10);
+  --up-bg-strong:  rgba(10, 138, 79, 0.20);
+  --down:          #c0182e;
+  --down-bg:       rgba(192, 24, 46, 0.08);
+  --down-bg-strong:rgba(192, 24, 46, 0.18);
 
-  --gold:          #f4c430;
-  --gold-bg:       rgba(244, 196, 48, 0.12);
+  --gold:          #b07d10;
+  --gold-bg:       rgba(176, 125, 16, 0.10);
 
   --font-mono: 'IBM Plex Mono', monospace;
   --font-sans: 'IBM Plex Sans', sans-serif;
@@ -53,6 +53,23 @@ body, .nse-root {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── TOP NAV BAR ── */
+.nse-topbar {
+  background: linear-gradient(90deg, #0f2044 0%, #1a3a6e 100%);
+  padding: 0 20px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nse-topbar .nse-logo {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.nse-topbar .nse-title { color: #ffffff; }
+.nse-topbar .nse-subtitle { color: rgba(255,255,255,0.5); }
+.nse-topbar .nse-timestamp { color: rgba(255,255,255,0.45); }
 
 /* ── DASHBOARD WRAPPER ── */
 .nse-root {
@@ -73,7 +90,7 @@ body, .nse-root {
 .nse-header-left { display: flex; align-items: center; gap: 14px; }
 .nse-logo {
   width: 36px; height: 36px;
-  background: linear-gradient(135deg, var(--accent) 0%, #0077a8 100%);
+  background: linear-gradient(135deg, #1a56c4 0%, #0f2f7a 100%);
   border-radius: var(--radius);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-mono); font-weight: 600; font-size: 14px;
@@ -532,17 +549,16 @@ def build_index_live_html(index_name: str = "NIFTY 50") -> str:
 </style>
 </head>
 <body>
-<div class="nse-root">
 
-  <!-- ── HEADER ── -->
-  <div class="nse-header">
+  <!-- ── TOP NAV BAR ── -->
+  <div class="nse-topbar">
     <div class="nse-header-left">
       <div class="nse-logo">NSE</div>
       <div>
         <div class="nse-title">{index_name}</div>
         <div class="nse-subtitle">LIVE MARKET DASHBOARD</div>
       </div>
-      <div class="nse-card-value {direction_cls}" style="font-family:var(--font-mono);font-size:20px;margin-left:12px;">
+      <div class="nse-card-value {direction_cls}" style="font-family:var(--font-mono);font-size:18px;margin-left:16px;color:{'#00c97a' if direction_cls=='positive' else '#ff5a72'};">
         {direction_arrow} {abs(p_change_val):.2f}%
       </div>
     </div>
@@ -551,6 +567,8 @@ def build_index_live_html(index_name: str = "NIFTY 50") -> str:
       {now_str}
     </div>
   </div>
+
+<div class="nse-root">
 
   <!-- ── INFO CARDS ── -->
   {_section("Index Summary", cards_html)}
