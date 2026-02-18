@@ -161,7 +161,8 @@ def create_interface():
                         value=get_fy_start(),
                         show_label=False,
                         container=False,
-                        elem_classes="hidden-field"
+                        #elem_classes="hidden-field"
+                        visible=False
                     )
                     
                     # Force refresh
