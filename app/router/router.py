@@ -138,10 +138,10 @@ def handle_screener(req: FetchRequest):
 # -------------------------------
 # Health
 # -------------------------------
-@router.get("/")
+# To this:
+@router.get("/api/health")
 def health():
     return {"status": "ok", "service": "backend alive"}
-
 # -------------------------------
 # FILE endpoint
 # -------------------------------
