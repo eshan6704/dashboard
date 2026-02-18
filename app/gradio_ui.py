@@ -99,14 +99,7 @@ def create_interface():
             font-weight: 500;
             margin-left: auto;
         }
-        .tall-btn { 
-            min-height: 42px !important; 
-            height: 42px !important;
-        }
-        .top-bar input {
-            min-height: 38px !important;
-            height: 38px !important;
-            }
+
         .status-fetching { background: #dbeafe; color: #1e40af; }
         .status-success { background: #d1fae5; color: #065f46; }
         .status-error { background: #fee2e2; color: #991b1b; }
