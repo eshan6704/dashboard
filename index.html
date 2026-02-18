@@ -3,18 +3,77 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Financial Data API Pro</title>
+<meta name="description" content="NSE Stock Dashboard - Fetch and explore Indian stock market data from NSE including stock info, indices, screeners, and historical data.">
+<meta name="theme-color" content="#2563eb">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<title>NSE Stock Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
+:root {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --border-color: #e2e8f0;
+  --border-light: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #eff6ff;
+  --accent-border: #bfdbfe;
+  --success: #059669;
+  --success-bg: #d1fae5;
+  --error: #dc2626;
+  --error-bg: #fee2e2;
+  --error-border: #fecaca;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --transition: 0.2s ease;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --bg-hover: #475569;
+  --border-color: #334155;
+  --border-light: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-soft: rgba(59,130,246,0.15);
+  --accent-border: rgba(59,130,246,0.3);
+  --success: #34d399;
+  --success-bg: rgba(52,211,153,0.15);
+  --error: #f87171;
+  --error-bg: rgba(248,113,113,0.15);
+  --error-border: rgba(248,113,113,0.3);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.5);
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
   height: 100%;
-  font-family: 'Inter', sans-serif;
-  background: #f1f5f9;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 .app {
@@ -24,30 +83,32 @@ html, body {
   position: relative;
 }
 
-/* Smart Toolbar - Auto shows on interaction */
+/* ─── Toolbar ─── */
 .toolbar {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 10px 16px;
   display: flex;
-  align-items: end;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 10px;
   flex-wrap: wrap;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md);
   z-index: 100;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
   transform: translateY(0);
+  opacity: 1;
 }
 
 .toolbar.hidden {
   transform: translateY(-100%);
+  opacity: 0;
 }
 
-/* Desktop: Top 25px trigger zone */
+/* Desktop trigger zone */
 .desktop-trigger {
   position: absolute;
   top: 0;
@@ -61,9 +122,10 @@ html, body {
 .desktop-trigger:hover + .toolbar,
 .desktop-trigger:active + .toolbar {
   transform: translateY(0) !important;
+  opacity: 1 !important;
 }
 
-/* Mobile: Swipe detection area */
+/* Mobile swipe detection */
 .swipe-area {
   position: absolute;
   top: 0;
@@ -77,61 +139,85 @@ html, body {
 .toolbar-section {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .toolbar-section-title {
   font-size: 9px;
   text-transform: uppercase;
-  color: #64748b;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
   font-weight: 700;
 }
 
 .toolbar select, .toolbar input {
-  padding: 6px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
   font-size: 12px;
-  height: 32px;
-  background: #fff;
+  font-family: inherit;
+  height: 34px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
 
-.toolbar select { min-width: 140px; }
+.toolbar select:focus, .toolbar input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.toolbar select { min-width: 140px; cursor: pointer; }
 .toolbar input { width: 100px; }
 .toolbar input.wide { width: 120px; }
 
 .source-select {
-  border-color: #2563eb !important;
-  background: #eff6ff !important;
+  border-color: var(--accent) !important;
+  background: var(--accent-soft) !important;
 }
 
 .btn {
-  padding: 6px 14px;
-  background: #2563eb;
+  padding: 6px 16px;
+  background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
-  height: 32px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
 }
 
-.btn:hover:not(:disabled) { background: #1d4ed8; }
-.btn:disabled { opacity: 0.5; }
+.btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-secondary {
-  background: #fff;
-  color: #334155;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .btn-icon {
-  width: 32px;
+  width: 34px;
   padding: 0;
   justify-content: center;
 }
@@ -144,17 +230,19 @@ html, body {
 }
 
 .status-badge {
-  padding: 4px 10px;
-  border-radius: 4px;
+  padding: 5px 12px;
+  border-radius: 20px;
   font-weight: 600;
   font-size: 11px;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: all var(--transition);
 }
 
-.idle { background: #f1f5f9; color: #64748b; }
-.fetching { background: #dbeafe; color: #2563eb; }
-.success { background: #d1fae5; color: #059669; }
-.error { background: #fee2e2; color: #dc2626; }
+.idle { background: var(--bg-tertiary); color: var(--text-muted); }
+.fetching { background: var(--accent-soft); color: var(--accent); }
+.success { background: var(--success-bg); color: var(--success); }
+.error { background: var(--error-bg); color: var(--error); }
 
 .pulse {
   width: 6px;
@@ -171,33 +259,46 @@ html, body {
   50% { opacity: 0.3; }
 }
 
-/* Hint bar */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Hint bar ─── */
 .hint-bar {
   position: absolute;
   top: 0;
   left: 50%;
   transform: translateX(-50%) translateY(-100%);
-  background: rgba(0,0,0,0.8);
-  color: #fff;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
   padding: 6px 16px;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
   font-size: 11px;
   z-index: 98;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   gap: 8px;
+  border: 1px solid var(--border-color);
+  border-top: none;
+  box-shadow: var(--shadow-sm);
 }
 
 .toolbar.hidden ~ .hint-bar {
   transform: translateX(-50%) translateY(0);
 }
 
-/* Response */
+/* ─── Response Area ─── */
 .response-wrapper {
   flex: 1;
-  padding: 8px;
-  padding-top: 12px;
+  padding: 10px;
+  padding-top: 14px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -206,24 +307,25 @@ html, body {
 }
 
 .response-box {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .response-header {
-  padding: 8px 12px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 8px 14px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .response-toolbar {
@@ -234,97 +336,198 @@ html, body {
 
 .view-toggle {
   display: flex;
-  background: #f1f5f9;
-  border-radius: 4px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
   padding: 2px;
   gap: 2px;
+  border: 1px solid var(--border-color);
 }
 
 .view-btn {
-  padding: 4px 10px;
+  padding: 4px 12px;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 11px;
-  border-radius: 3px;
+  font-family: inherit;
+  border-radius: 4px;
   cursor: pointer;
+  transition: all var(--transition);
+}
+
+.view-btn:hover {
+  color: var(--text-primary);
 }
 
 .view-btn.active {
-  background: #fff;
-  color: #1e293b;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
 }
 
 .response-actions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 }
 
 .icon-btn {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: var(--text-muted);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
+  transition: all var(--transition);
 }
 
 .icon-btn:hover {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .response-content {
   flex: 1;
   overflow: auto;
-  padding: 12px;
+  padding: 16px;
   font-size: 13px;
   line-height: 1.6;
+  color: var(--text-primary);
 }
 
 .response-content pre {
   white-space: pre-wrap;
   word-wrap: break-word;
-  font-family: 'SF Mono', Consolas, monospace;
-  background: #f8fafc;
+  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  background: var(--bg-tertiary);
   padding: 16px;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
   margin: 0;
   font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-primary);
 }
 
+/* ─── Empty State ─── */
 .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #94a3b8;
+  color: var(--text-muted);
   text-align: center;
+  animation: fadeIn 0.4s ease;
 }
 
-.empty i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.3;
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
 }
 
-.error-box {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  padding: 16px;
-  border-radius: 6px;
+.empty-icon i {
+  font-size: 32px;
+  color: var(--accent);
+}
+
+.empty h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.empty p {
   font-size: 13px;
+  line-height: 1.6;
+  max-width: 320px;
 }
 
+.empty .shortcut-hint {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.empty .shortcut-hint span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.empty .shortcut-hint kbd {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+/* ─── Loading State ─── */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ─── Error Box ─── */
+.error-box {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error);
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+.error-box i {
+  font-size: 16px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+/* ─── Compare Grid ─── */
 .compare-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -333,32 +536,33 @@ html, body {
 }
 
 .compare-panel {
-  background: #f1f5f9;
-  border-radius: 6px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
   padding: 12px;
   overflow: auto;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
 }
 
 .compare-panel h4 {
   font-size: 11px;
   text-transform: uppercase;
-  color: #64748b;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
-/* History Panel */
+/* ─── History Panel ─── */
 .history-panel {
   position: absolute;
   top: 100%;
   left: 12px;
   right: 12px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   padding: 12px;
   z-index: 101;
   display: none;
@@ -366,7 +570,10 @@ html, body {
   overflow-y: auto;
 }
 
-.history-panel.show { display: block; }
+.history-panel.show {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
 
 .history-header {
   display: flex;
@@ -374,20 +581,29 @@ html, body {
   align-items: center;
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .history-title {
   font-size: 12px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .history-clear {
   font-size: 11px;
-  color: #ef4444;
+  color: var(--error);
   cursor: pointer;
   border: none;
   background: none;
+  font-family: inherit;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background var(--transition);
+}
+
+.history-clear:hover {
+  background: var(--error-bg);
 }
 
 .history-list {
@@ -400,24 +616,26 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: #f8fafc;
-  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 12px;
+  transition: all var(--transition);
+  border: 1px solid transparent;
 }
 
-.history-item:hover { background: #eff6ff; }
+.history-item:hover { background: var(--accent-soft); }
 .history-item.active {
-  border: 1px solid #2563eb;
-  background: #eff6ff;
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
-.history-filename { font-weight: 500; }
-.history-meta { font-size: 10px; color: #64748b; }
-.history-size { font-size: 11px; color: #059669; font-weight: 600; }
+.history-filename { font-weight: 500; color: var(--text-primary); }
+.history-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.history-size { font-size: 11px; color: var(--success); font-weight: 600; }
 
-/* Floating buttons */
+/* ─── Floating Tools ─── */
 .floating-tools {
   position: fixed;
   bottom: 20px;
@@ -429,83 +647,146 @@ html, body {
 }
 
 .fab {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   border: none;
-  background: #fff;
-  color: #334155;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-lg);
   cursor: pointer;
   font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all var(--transition);
 }
 
 .fab:hover {
   transform: scale(1.1);
-  background: #2563eb;
+  background: var(--accent);
   color: #fff;
+  box-shadow: var(--shadow-xl);
 }
 
 .fab.primary {
-  background: #2563eb;
+  background: var(--accent);
   color: #fff;
 }
 
+.fab.primary:hover {
+  background: var(--accent-hover);
+}
+
+/* ─── Toast Notification ─── */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 300;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-xl);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ─── Keyboard Help ─── */
 .keyboard-help {
   position: fixed;
   bottom: 80px;
   right: 20px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   padding: 20px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   font-size: 12px;
   z-index: 201;
-  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-xl);
   max-width: 320px;
   display: none;
+  color: var(--text-primary);
 }
 
-.keyboard-help.show { display: block; }
-.keyboard-help h4 { margin-bottom: 16px; font-size: 14px; color: #2563eb; }
+.keyboard-help.show {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+.keyboard-help h4 {
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .keyboard-help kbd {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   padding: 4px 8px;
   border-radius: 4px;
-  font-family: monospace;
+  font-family: inherit;
   font-weight: 600;
   font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .key-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 10px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
 }
 
-.key-row:last-child { border-bottom: none; margin-bottom: 0; }
+.key-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
 .hidden { display: none !important; }
 
-/* Mobile optimizations */
+/* ─── Mobile ─── */
 @media (max-width: 768px) {
-  .toolbar { padding: 6px; gap: 4px; }
-  .toolbar select, .toolbar input { font-size: 11px; height: 28px; }
-  .desktop-trigger { height: 50px; } /* Larger trigger for mobile */
+  .toolbar { padding: 8px; gap: 6px; }
+  .toolbar select, .toolbar input { font-size: 11px; height: 30px; }
+  .toolbar select { min-width: 120px; }
+  .desktop-trigger { height: 50px; }
   .compare-grid { grid-template-columns: 1fr; }
   .history-panel { left: 4px; right: 4px; }
-  .floating-tools { bottom: 10px; right: 10px; }
-  .fab { width: 40px; height: 40px; }
+  .floating-tools { bottom: 12px; right: 12px; }
+  .fab { width: 42px; height: 42px; font-size: 16px; }
+  .response-wrapper { padding: 6px; padding-top: 10px; }
+  .response-content { padding: 12px; }
+  .empty-icon { width: 64px; height: 64px; }
+  .empty-icon i { font-size: 24px; }
+  .empty h3 { font-size: 16px; }
 }
 
-/* Scrollbar */
+/* ─── Scrollbar ─── */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ─── Selection ─── */
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
 </style>
 </head>
 
@@ -513,24 +794,24 @@ html, body {
 
 <div class="app">
   <!-- Desktop: Top 25px click trigger -->
-  <div class="desktop-trigger" onclick="showToolbar()" title="Click to show toolbar"></div>
-  
+  <div class="desktop-trigger" onclick="showToolbar()" title="Click to show toolbar" role="button" aria-label="Show toolbar"></div>
+
   <!-- Mobile: Swipe detection -->
-  <div class="swipe-area" id="swipeArea"></div>
-  
-  <div class="toolbar" id="toolbar">
+  <div class="swipe-area" id="swipeArea" aria-hidden="true"></div>
+
+  <div class="toolbar" id="toolbar" role="toolbar" aria-label="Data fetch controls">
     <div class="toolbar-section">
-      <div class="toolbar-section-title">Source</div>
-      <select id="source" style="min-width:160px">
-        <option value="https://nse-stock-dashboard--eshanpatel8.replit.app">🚀 Replit</option>
-        <option value="https://nsestockdashboard.onrender.com">⏳ Render</option>
-        <option value="https://eshan6704-NseStockDashboard.hf.space">🤗 HF Space</option>
+      <label class="toolbar-section-title" for="source">Source</label>
+      <select id="source" style="min-width:160px" aria-label="Data source">
+        <option value="https://nse-stock-dashboard--eshanpatel8.replit.app">Replit</option>
+        <option value="https://nsestockdashboard.onrender.com">Render</option>
+        <option value="https://eshan6704-NseStockDashboard.hf.space">HF Space</option>
       </select>
     </div>
 
     <div class="toolbar-section">
-      <div class="toolbar-section-title">Mode</div>
-      <select id="mode">
+      <label class="toolbar-section-title" for="mode">Mode</label>
+      <select id="mode" aria-label="Request mode">
         <option value="stock">Stock</option>
         <option value="index">Index</option>
         <option value="screener">Screener</option>
@@ -538,58 +819,58 @@ html, body {
     </div>
 
     <div class="toolbar-section">
-      <div class="toolbar-section-title">Type</div>
-      <select id="req_type" style="min-width:140px"></select>
+      <label class="toolbar-section-title" for="req_type">Type</label>
+      <select id="req_type" style="min-width:140px" aria-label="Request type"></select>
     </div>
 
     <div class="toolbar-section">
-      <div class="toolbar-section-title">Symbol</div>
-      <input type="text" id="name" class="wide" placeholder="e.g. ITC">
+      <label class="toolbar-section-title" for="name">Symbol</label>
+      <input type="text" id="name" class="wide" placeholder="e.g. ITC" aria-label="Stock symbol or index name" autocomplete="off">
     </div>
 
     <div class="toolbar-section">
-      <div class="toolbar-section-title">Date</div>
-      <input type="text" id="date_end" placeholder="DD-MM-YYYY">
+      <label class="toolbar-section-title" for="date_end">Date</label>
+      <input type="text" id="date_end" placeholder="DD-MM-YYYY" aria-label="End date" autocomplete="off">
     </div>
 
     <div class="toolbar-section">
       <div class="toolbar-section-title">Action</div>
       <div style="display:flex;gap:6px">
-        <button id="fetchBtn" class="btn" onclick="fetchData()">
+        <button id="fetchBtn" class="btn" onclick="fetchData()" aria-label="Fetch data">
           <i class="fas fa-download"></i> Fetch
         </button>
-        <button class="btn btn-secondary btn-icon" onclick="toggleHistory()" title="History (H)">
+        <button class="btn btn-secondary btn-icon" onclick="toggleHistory()" title="History (H)" aria-label="Toggle history panel">
           <i class="fas fa-history"></i>
         </button>
-        <button class="btn btn-secondary btn-icon" onclick="toggleCompare()" title="Compare (C)">
+        <button class="btn btn-secondary btn-icon" onclick="toggleCompare()" title="Compare (C)" aria-label="Toggle compare view">
           <i class="fas fa-columns"></i>
         </button>
-        <button class="btn btn-secondary btn-icon" onclick="toggleTheme()" title="Theme (L)">
+        <button class="btn btn-secondary btn-icon" onclick="toggleTheme()" title="Theme (L)" aria-label="Toggle dark/light theme">
           <i class="fas fa-moon" id="themeIcon"></i>
         </button>
       </div>
     </div>
 
     <div class="status-bar">
-      <span id="statusBadge" class="status-badge idle">Ready</span>
-      <span id="statusInfo" style="font-size:11px;color:#64748b"></span>
+      <span id="statusBadge" class="status-badge idle" role="status" aria-live="polite">Ready</span>
+      <span id="statusInfo" style="font-size:11px;color:var(--text-muted)"></span>
     </div>
 
-    <input type="text" id="date_start" class="hidden">
-    <input type="text" id="suffix" class="hidden">
+    <input type="text" id="date_start" class="hidden" aria-hidden="true">
+    <input type="text" id="suffix" class="hidden" aria-hidden="true">
 
-    <div class="history-panel" id="historyPanel">
+    <div class="history-panel" id="historyPanel" role="dialog" aria-label="Fetch history">
       <div class="history-header">
         <span class="history-title"><i class="fas fa-clock" style="margin-right:6px"></i>Recent Fetches</span>
-        <button class="history-clear" onclick="clearHistory()">Clear All</button>
+        <button class="history-clear" onclick="clearHistory()" aria-label="Clear all history">Clear All</button>
       </div>
-      <div class="history-list" id="historyList"></div>
+      <div class="history-list" id="historyList" role="list"></div>
     </div>
   </div>
 
-  <div class="hint-bar">
+  <div class="hint-bar" aria-hidden="true">
     <i class="fas fa-chevron-down"></i>
-    <span id="hintText">Click top or swipe down for toolbar • H for history</span>
+    <span id="hintText">Click top or swipe down for toolbar</span>
   </div>
 
   <div class="response-wrapper" id="responseWrapper">
@@ -597,50 +878,59 @@ html, body {
       <div class="response-header">
         <span><i class="fas fa-terminal" style="margin-right:6px"></i>Response</span>
         <div class="response-toolbar">
-          <div class="view-toggle">
-            <button class="view-btn active" onclick="setView('html')" id="btnHtml">HTML</button>
-            <button class="view-btn" onclick="setView('text')" id="btnText">Text</button>
-            <button class="view-btn" onclick="setView('raw')" id="btnRaw">Raw</button>
+          <div class="view-toggle" role="tablist" aria-label="Response view mode">
+            <button class="view-btn active" onclick="setView('html')" id="btnHtml" role="tab" aria-selected="true">HTML</button>
+            <button class="view-btn" onclick="setView('text')" id="btnText" role="tab" aria-selected="false">Text</button>
+            <button class="view-btn" onclick="setView('raw')" id="btnRaw" role="tab" aria-selected="false">Raw</button>
           </div>
           <div class="response-actions">
-            <button class="icon-btn" onclick="refreshData()" title="Refresh (R)"><i class="fas fa-sync-alt"></i></button>
-            <button class="icon-btn" onclick="downloadData()" title="Download"><i class="fas fa-download"></i></button>
-            <button class="icon-btn" onclick="copyResponse()" title="Copy"><i class="fas fa-copy"></i></button>
-            <button class="icon-btn" onclick="clearResponse()" title="Clear (Esc)"><i class="fas fa-trash"></i></button>
+            <button class="icon-btn" onclick="refreshData()" title="Refresh (R)" aria-label="Refresh data"><i class="fas fa-sync-alt"></i></button>
+            <button class="icon-btn" onclick="downloadData()" title="Download" aria-label="Download response"><i class="fas fa-download"></i></button>
+            <button class="icon-btn" onclick="copyResponse()" title="Copy" aria-label="Copy response to clipboard"><i class="fas fa-copy"></i></button>
+            <button class="icon-btn" onclick="clearResponse()" title="Clear (Esc)" aria-label="Clear response"><i class="fas fa-trash"></i></button>
           </div>
         </div>
       </div>
-      <div class="response-content" id="response">
+      <div class="response-content" id="response" role="main" aria-label="API response output">
         <div class="empty">
-          <i class="fas fa-chart-line"></i>
-          <p><strong>Financial Data API Pro</strong><br>
-          Fetch data or press H for history<br>
-          <small>? for keyboard shortcuts</small></p>
+          <div class="empty-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h3>NSE Stock Dashboard</h3>
+          <p>Select a source, mode, and type above, then click <strong>Fetch</strong> to retrieve financial data from the NSE API.</p>
+          <div class="shortcut-hint">
+            <span><kbd>Enter</kbd> Fetch</span>
+            <span><kbd>H</kbd> History</span>
+            <span><kbd>?</kbd> Shortcuts</span>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Toast notification -->
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
 <div class="floating-tools">
-  <button class="fab primary" onclick="fetchData()" title="Fetch (Enter)"><i class="fas fa-play"></i></button>
-  <button class="fab" onclick="toggleHistory()" title="History (H)"><i class="fas fa-history"></i></button>
-  <button class="fab" onclick="toggleHelp()" title="Help (?)"><i class="fas fa-question"></i></button>
+  <button class="fab primary" onclick="fetchData()" title="Fetch (Enter)" aria-label="Fetch data"><i class="fas fa-play"></i></button>
+  <button class="fab" onclick="toggleHistory()" title="History (H)" aria-label="Toggle history"><i class="fas fa-history"></i></button>
+  <button class="fab" onclick="toggleHelp()" title="Help (?)" aria-label="Show keyboard shortcuts"><i class="fas fa-question"></i></button>
 </div>
 
-<div class="keyboard-help" id="keyboardHelp">
+<div class="keyboard-help" id="keyboardHelp" role="dialog" aria-label="Keyboard shortcuts">
   <h4><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h4>
   <div class="key-row"><span>Fetch Data</span> <kbd>Enter</kbd></div>
   <div class="key-row"><span>Toggle History</span> <kbd>H</kbd></div>
   <div class="key-row"><span>Refresh Last</span> <kbd>R</kbd></div>
   <div class="key-row"><span>Compare Mode</span> <kbd>C</kbd></div>
   <div class="key-row"><span>Toggle Theme</span> <kbd>L</kbd></div>
-  <div class="key-row"><span>Clear/Show Toolbar</span> <kbd>Esc</kbd></div>
+  <div class="key-row"><span>Clear / Show Toolbar</span> <kbd>Esc</kbd></div>
   <div class="key-row"><span>Toggle Help</span> <kbd>?</kbd></div>
 </div>
 
 <script>
-// Data
+// ─── Data ───
 const REQ_TYPES = {
   stock: ['info','intraday','daily','nse_eq','qresult','result','balance','cashflow','dividend','split','other','stock_hist'],
   index: ['indices','open','preopen','fno','fiidii','events','index_highlow','stock_highlow','bhav','largedeals','bulkdeals','blockdeals','most_active','index_history','hlargedeals','pe_pb','total_returns'],
@@ -649,7 +939,7 @@ const REQ_TYPES = {
 
 const DEFAULT_TYPES = { stock: 'info', index: 'indices', screener: 'from_low' };
 
-// State
+// ─── State ───
 const state = {
   history: [],
   currentData: null,
@@ -660,10 +950,10 @@ const state = {
   isMobile: window.innerWidth <= 768
 };
 
-// DOM
+// ─── DOM Cache ───
 const dom = {};
 
-// Date utils
+// ─── Date Utilities ───
 const fyStart = () => {
   const d = new Date();
   const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
@@ -675,7 +965,17 @@ const today = () => {
   return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 };
 
-// Init
+// ─── Toast ───
+let toastTimer = null;
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ─── Init ───
 function init() {
   dom.source = document.getElementById('source');
   dom.mode = document.getElementById('mode');
@@ -697,20 +997,15 @@ function init() {
   dom.swipeArea = document.getElementById('swipeArea');
   dom.responseWrapper = document.getElementById('responseWrapper');
 
-  // Detect mobile
   checkMobile();
   window.addEventListener('resize', checkMobile);
 
-  // Theme
-  if (localStorage.getItem('theme') === 'dark') toggleTheme();
+  // Restore theme preference
+  if (localStorage.getItem('theme') === 'dark') applyTheme('dark');
 
-  // Events
   dom.mode.addEventListener('change', updateTypes);
-  
-  // Swipe detection for mobile
+
   initSwipeDetection();
-  
-  // Scroll detection for mobile
   dom.responseWrapper.addEventListener('scroll', handleScroll);
 
   updateTypes();
@@ -719,29 +1014,28 @@ function init() {
 
 function checkMobile() {
   state.isMobile = window.innerWidth <= 768;
-  dom.hintText.textContent = state.isMobile 
-    ? 'Swipe down for toolbar • H for history' 
-    : 'Click top 25px for toolbar • H for history';
+  dom.hintText.textContent = state.isMobile
+    ? 'Swipe down for toolbar'
+    : 'Click top area for toolbar';
 }
 
 function initSwipeDetection() {
   let touchStartY = 0;
   let touchEndY = 0;
-  
+
   dom.swipeArea.addEventListener('touchstart', (e) => {
     touchStartY = e.changedTouches[0].screenY;
   }, { passive: true });
-  
+
   dom.swipeArea.addEventListener('touchend', (e) => {
     touchEndY = e.changedTouches[0].screenY;
     handleSwipe(touchStartY, touchEndY);
   }, { passive: true });
 
-  // Also detect on response area for when content is short
   dom.responseWrapper.addEventListener('touchstart', (e) => {
     touchStartY = e.changedTouches[0].screenY;
   }, { passive: true });
-  
+
   dom.responseWrapper.addEventListener('touchend', (e) => {
     touchEndY = e.changedTouches[0].screenY;
     handleSwipe(touchStartY, touchEndY);
@@ -750,23 +1044,13 @@ function initSwipeDetection() {
 
 function handleSwipe(startY, endY) {
   const diff = endY - startY;
-  // Swipe down more than 50px shows toolbar
-  if (diff > 50) {
-    showToolbar();
-  }
-  // Swipe up hides toolbar
-  if (diff < -50 && !dom.historyPanel.classList.contains('show')) {
-    hideToolbar();
-  }
+  if (diff > 50) showToolbar();
+  if (diff < -50 && !dom.historyPanel.classList.contains('show')) hideToolbar();
 }
 
 function handleScroll() {
-  // On mobile, scrolling up (scrollTop decreasing) shows toolbar
-  if (state.isMobile) {
-    const scrollTop = dom.responseWrapper.scrollTop;
-    if (scrollTop < 10) { // Near top
-      showToolbar();
-    }
+  if (state.isMobile && dom.responseWrapper.scrollTop < 10) {
+    showToolbar();
   }
 }
 
@@ -780,20 +1064,25 @@ function hideToolbar() {
   }
 }
 
-// Theme
-function toggleTheme() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
-  dom.themeIcon.className = isDark ? 'fas fa-moon' : 'fas fa-sun';
-  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+// ─── Theme ───
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  dom.themeIcon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+  localStorage.setItem('theme', theme);
 }
 
-// Update types
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  applyTheme(isDark ? 'light' : 'dark');
+  showToast(isDark ? 'Light mode' : 'Dark mode');
+}
+
+// ─── Update request types ───
 function updateTypes() {
   const mode = dom.mode.value;
   const types = REQ_TYPES[mode];
   const defaultType = DEFAULT_TYPES[mode];
-  
+
   dom.req_type.innerHTML = '';
   types.forEach(type => {
     const opt = document.createElement('option');
@@ -818,14 +1107,14 @@ function updateTypes() {
   }
 }
 
-// Status
+// ─── Status ───
 function setStatus(status, text, info) {
   dom.statusBadge.className = `status-badge ${status}`;
   dom.statusBadge.innerHTML = status === 'fetching' ? '<span class="pulse"></span>Loading' : text;
   dom.statusInfo.textContent = info || '';
 }
 
-// Build filename
+// ─── Build filename ───
 function buildFilename() {
   const mode = dom.mode.value;
   const reqType = dom.req_type.value;
@@ -842,27 +1131,27 @@ function buildFilename() {
   return filename + '.html';
 }
 
-// Fetch
+// ─── Fetch ───
 async function fetchData() {
   const baseUrl = dom.source.value;
   const filename = buildFilename();
-  const sourceName = dom.source.options[dom.source.selectedIndex].text.split(' ')[0];
+  const sourceName = dom.source.options[dom.source.selectedIndex].text;
 
   state.lastFetch = { baseUrl, filename, sourceName };
-  
+
   setStatus('fetching', '', filename);
   dom.fetchBtn.disabled = true;
   dom.historyPanel.classList.remove('show');
   setTimeout(hideToolbar, 1000);
-  
-  dom.response.innerHTML = '<div class="empty"><div class="pulse" style="width:48px;height:48px;margin-bottom:16px"></div><p>Fetching...</p></div>';
+
+  dom.response.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><div class="loading-text">Fetching data...</div></div>';
 
   const t0 = performance.now();
 
   try {
     const res = await fetch(`${baseUrl}/file?name=${encodeURIComponent(filename)}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
     const blob = await res.blob();
     const text = await blob.text();
     const dt = Math.round(performance.now() - t0);
@@ -872,7 +1161,7 @@ async function fetchData() {
       filename,
       source: sourceName,
       data: text,
-      size: `${size}KB`,
+      size: `${size} KB`,
       time: `${dt}ms`,
       timestamp: new Date().toLocaleTimeString()
     });
@@ -880,18 +1169,19 @@ async function fetchData() {
     state.currentData = text;
     state.currentIndex = 0;
     render(text);
-    setStatus('success', 'Done', `${sourceName} • ${size}KB • ${dt}ms`);
+    setStatus('success', 'Done', `${sourceName} \u2022 ${size} KB \u2022 ${dt}ms`);
+    showToast(`Fetched ${size} KB in ${dt}ms`);
 
   } catch (err) {
     setStatus('error', 'Error', err.message);
-    dom.response.innerHTML = `<div class="error-box"><strong>Failed</strong><br>${err.message}</div>`;
+    dom.response.innerHTML = `<div class="error-box"><i class="fas fa-exclamation-circle"></i><div><strong>Request Failed</strong><br>${esc(err.message)}</div></div>`;
     showToolbar();
   } finally {
     dom.fetchBtn.disabled = false;
   }
 }
 
-// History
+// ─── History ───
 function addToHistory(item) {
   state.history = state.history.filter(h => h.filename !== item.filename);
   state.history.unshift(item);
@@ -900,13 +1190,17 @@ function addToHistory(item) {
 }
 
 function renderHistory() {
+  if (state.history.length === 0) {
+    dom.historyList.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:12px;">No recent fetches</div>';
+    return;
+  }
   dom.historyList.innerHTML = state.history.map((item, idx) => `
-    <div class="history-item ${idx === state.currentIndex ? 'active' : ''}" onclick="loadHistory(${idx})">
+    <div class="history-item ${idx === state.currentIndex ? 'active' : ''}" onclick="loadHistory(${idx})" role="listitem">
       <div class="history-info">
-        <div class="history-filename">${item.filename}</div>
-        <div class="history-meta">${item.source} • ${item.timestamp}</div>
+        <div class="history-filename">${esc(item.filename)}</div>
+        <div class="history-meta">${esc(item.source)} \u2022 ${esc(item.timestamp)}</div>
       </div>
-      <div class="history-size">${item.size}</div>
+      <div class="history-size">${esc(item.size)}</div>
     </div>
   `).join('');
 }
@@ -914,14 +1208,15 @@ function renderHistory() {
 function loadHistory(index) {
   const item = state.history[index];
   if (!item) return;
-  
+
   state.currentData = item.data;
   state.currentIndex = index;
   render(item.data);
-  setStatus('success', 'Cached', `${item.source} • ${item.size} • ${item.time}`);
+  setStatus('success', 'Cached', `${item.source} \u2022 ${item.size} \u2022 ${item.time}`);
   dom.historyPanel.classList.remove('show');
   hideToolbar();
   renderHistory();
+  showToast('Loaded from history');
 }
 
 function toggleHistory() {
@@ -937,14 +1232,28 @@ function clearHistory() {
   state.currentData = null;
   state.currentIndex = -1;
   renderHistory();
-  dom.response.innerHTML = `<div class="empty"><i class="fas fa-chart-line"></i><p>History cleared</p></div>`;
+  dom.response.innerHTML = renderEmptyState('History cleared');
   setStatus('idle', 'Ready', '');
+  showToast('History cleared');
 }
 
-// Render
+// ─── Render ───
+function renderEmptyState(title) {
+  return `<div class="empty">
+    <div class="empty-icon"><i class="fas fa-chart-line"></i></div>
+    <h3>${title || 'NSE Stock Dashboard'}</h3>
+    <p>Select a source, mode, and type above, then click <strong>Fetch</strong> to retrieve financial data.</p>
+    <div class="shortcut-hint">
+      <span><kbd>Enter</kbd> Fetch</span>
+      <span><kbd>H</kbd> History</span>
+      <span><kbd>?</kbd> Shortcuts</span>
+    </div>
+  </div>`;
+}
+
 function render(text) {
   const isHtml = text.includes('<') && text.includes('>');
-  
+
   if (state.compare) {
     dom.response.innerHTML = `
       <div class="compare-grid">
@@ -972,13 +1281,19 @@ function esc(text) {
 
 function setView(mode) {
   state.view = mode;
-  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(`btn${mode.charAt(0).toUpperCase() + mode.slice(1)}`).classList.add('active');
+  document.querySelectorAll('.view-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
+  const btn = document.getElementById(`btn${mode.charAt(0).toUpperCase() + mode.slice(1)}`);
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
   if (state.currentData) render(state.currentData);
 }
 
 function toggleCompare() {
   state.compare = !state.compare;
+  showToast(state.compare ? 'Compare mode on' : 'Compare mode off');
   if (state.currentData) render(state.currentData);
 }
 
@@ -987,14 +1302,24 @@ function refreshData() {
 }
 
 function copyResponse() {
-  navigator.clipboard.writeText(state.currentData || dom.response.innerText);
-  const btn = document.querySelector('.fa-copy');
-  btn.className = 'fas fa-check';
-  setTimeout(() => btn.className = 'fas fa-copy', 1500);
+  const text = state.currentData || dom.response.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('Copied to clipboard');
+    const icon = document.querySelector('.response-actions .fa-copy');
+    if (icon) {
+      icon.className = 'fas fa-check';
+      setTimeout(() => icon.className = 'fas fa-copy', 1500);
+    }
+  }).catch(() => {
+    showToast('Copy failed');
+  });
 }
 
 function downloadData() {
-  if (!state.currentData) return;
+  if (!state.currentData) {
+    showToast('Nothing to download');
+    return;
+  }
   const blob = new Blob([state.currentData], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1002,12 +1327,13 @@ function downloadData() {
   a.download = `data_${new Date().getTime()}.html`;
   a.click();
   URL.revokeObjectURL(url);
+  showToast('Download started');
 }
 
 function clearResponse() {
   state.currentData = null;
   state.currentIndex = -1;
-  dom.response.innerHTML = `<div class="empty"><i class="fas fa-chart-line"></i><p><strong>Ready</strong><br>Fetch data or press H for history<br><small>? for help</small></p></div>`;
+  dom.response.innerHTML = renderEmptyState('Ready');
   setStatus('idle', 'Ready', '');
   dom.historyPanel.classList.remove('show');
   showToolbar();
@@ -1018,58 +1344,71 @@ function toggleHelp() {
   dom.keyboardHelp.classList.toggle('show');
 }
 
-// Keyboard
+// ─── Keyboard Shortcuts ───
 document.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
-  
+  const inInput = e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA';
+
+  // Enter always triggers fetch (unless in a button)
   if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
     e.preventDefault();
     fetchData();
+    return;
   }
-  
-  if (key === 'h') {
-    e.preventDefault();
-    toggleHistory();
-  }
-  
-  if (key === 'r' && state.lastFetch) {
-    e.preventDefault();
-    refreshData();
-  }
-  
-  if (key === 'c') {
-    e.preventDefault();
-    toggleCompare();
-  }
-  
-  if (key === 'l') {
-    e.preventDefault();
-    toggleTheme();
-  }
-  
+
+  // Escape always works
   if (e.key === 'Escape') {
     e.preventDefault();
-    if (dom.historyPanel.classList.contains('show')) {
+    if (dom.keyboardHelp.classList.contains('show')) {
+      dom.keyboardHelp.classList.remove('show');
+    } else if (dom.historyPanel.classList.contains('show')) {
       dom.historyPanel.classList.remove('show');
     } else {
       clearResponse();
     }
+    return;
   }
-  
+
+  // Skip single-key shortcuts when typing in an input
+  if (inInput) return;
+
+  if (key === 'h') {
+    e.preventDefault();
+    toggleHistory();
+  }
+
+  if (key === 'r' && state.lastFetch) {
+    e.preventDefault();
+    refreshData();
+  }
+
+  if (key === 'c') {
+    e.preventDefault();
+    toggleCompare();
+  }
+
+  if (key === 'l') {
+    e.preventDefault();
+    toggleTheme();
+  }
+
   if (key === '?') {
     e.preventDefault();
     toggleHelp();
   }
 });
 
-// Click outside to close history
+// ─── Click outside to close panels ───
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.toolbar') && !e.target.closest('.fab')) {
     dom.historyPanel.classList.remove('show');
   }
+  if (!e.target.closest('.keyboard-help') && !e.target.closest('.fab')) {
+    dom.keyboardHelp.classList.remove('show');
+  }
 });
 
-// Init
+// ─── Init ───
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
