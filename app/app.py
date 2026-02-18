@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 
 # -------------------------------------------------------
-# Router
+# Router (Your existing router.py)
 # -------------------------------------------------------
 from app.router.router import router
 
@@ -29,12 +29,12 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # -------------------------------------------------------
-# API Routes (from router)
+# API Routes
 # -------------------------------------------------------
 app.include_router(router)
 
 # -------------------------------------------------------
-# Gradio UI Configuration
+# Gradio UI (Uses only your existing packages)
 # -------------------------------------------------------
 
 REQ_TYPES = {
@@ -67,9 +67,9 @@ def build_filename(mode, req_type, name, end_date, start_date, suffix=""):
     return filename + ".html"
 
 def fetch_data_internal(filename, force=False):
-    """Call own API internally using requests"""
+    """Call own API internally"""
     try:
-        # In HF Space, call localhost:7860 (same container)
+        # HF Space runs on port 7860
         base_url = "http://localhost:7860"
         url = f"{base_url}/file"
         params = {"name": filename}
@@ -84,42 +84,34 @@ def fetch_data_internal(filename, force=False):
         return {"success": False, "error": str(e)}
 
 def extract_tables(html_content):
-    """Extract pandas DataFrames from HTML tables"""
+    """Extract tables using pandas (you already have this)"""
     try:
         tables = pd.read_html(html_content)
         if tables:
             if len(tables) == 1:
                 return tables[0]
             else:
-                # Combine multiple tables
                 return pd.concat(tables, ignore_index=True)
     except Exception:
         pass
-    return pd.DataFrame({"Info": ["No tables found in response"]})
+    return pd.DataFrame({"Info": ["No tables found"]})
 
 # -------------------------------------------------------
-# Build Gradio Interface
+# Gradio Interface
 # -------------------------------------------------------
 
 with gr.Blocks(
     title="NSE Stock Dashboard",
-    theme=gr.themes.Soft(primary_hue="indigo", secondary_hue="blue"),
-    css="""
-    .gradio-container { max-width: 95% !important; }
-    .output-html { min-height: 600px; }
-    """
+    theme=gr.themes.Soft(primary_hue="indigo"),
+    css=".gradio-container { max-width: 95% !important; }"
 ) as demo:
     
-    gr.Markdown("""
-    # 📈 NSE Stock Dashboard
+    gr.Markdown("# 📈 NSE Stock Dashboard")
     
-    **HuggingFace Space Deployment** | FastAPI Backend + Gradio Frontend
-    """)
-    
-    # Input Panel
     with gr.Row():
-        with gr.Column(scale=1, min_width=300):
-            gr.Markdown("### 🔧 Configuration")
+        # Left panel - Controls
+        with gr.Column(scale=1):
+            gr.Markdown("### 🔧 Request")
             
             mode = gr.Radio(
                 label="Mode",
@@ -128,199 +120,102 @@ with gr.Blocks(
             )
             
             req_type = gr.Dropdown(
-                label="Request Type",
+                label="Type",
                 choices=REQ_TYPES["stock"],
                 value="info"
             )
             
-            name = gr.Textbox(
-                label="Symbol / Name",
-                value="ITC",
-                placeholder="e.g., ITC, RELIANCE, NIFTY 50"
-            )
+            name = gr.Textbox(label="Symbol/Name", value="ITC")
             
             with gr.Row():
-                date_end = gr.Textbox(
-                    label="End Date",
-                    placeholder="DD-MM-YYYY",
-                    scale=1
-                )
-                date_start = gr.Textbox(
-                    label="Start Date", 
-                    placeholder="DD-MM-YYYY",
-                    scale=1
-                )
+                date_end = gr.Textbox(label="End Date", placeholder="DD-MM-YYYY")
+                date_start = gr.Textbox(label="Start Date", placeholder="DD-MM-YYYY")
             
             with gr.Row():
                 btn_fy = gr.Button("📅 FY", size="sm")
                 btn_today = gr.Button("📆 Today", size="sm")
             
-            force_refresh = gr.Checkbox(
-                label="⚡ Force Refresh (ignore cache)",
-                value=False
-            )
+            force = gr.Checkbox(label="⚡ Force Refresh", value=False)
             
             with gr.Row():
-                btn_fetch = gr.Button("🚀 Fetch Data", variant="primary", scale=2)
-                btn_clear = gr.Button("🗑️ Clear", scale=1)
+                btn_fetch = gr.Button("🚀 Fetch", variant="primary")
+                btn_clear = gr.Button("🗑️ Clear")
             
-            # Presets
-            gr.Markdown("### ⚡ Quick Presets")
+            gr.Markdown("### ⚡ Presets")
             with gr.Row():
-                preset_itc = gr.Button("ITC", size="sm")
-                preset_reliance = gr.Button("RELIANCE", size="sm")
-                preset_nifty = gr.Button("NIFTY 50", size="sm")
-            with gr.Row():
-                preset_fno = gr.Button("F&O Today", size="sm")
-                preset_fiidii = gr.Button("FII/DII", size="sm")
-                preset_preopen = gr.Button("Pre-Open", size="sm")
+                p1 = gr.Button("ITC", size="sm")
+                p2 = gr.Button("RELIANCE", size="sm")
+                p3 = gr.Button("NIFTY", size="sm")
         
-        # Output Panel
+        # Right panel - Output
         with gr.Column(scale=3):
-            status_text = gr.Textbox(
-                label="Status",
-                value="Ready to fetch data...",
-                interactive=False
-            )
+            status = gr.Textbox(label="Status", value="Ready", interactive=False)
             
             with gr.Tabs():
-                with gr.TabItem("📊 Rendered HTML"):
-                    html_output = gr.HTML(
-                        show_label=False,
-                        min_height=600
-                    )
-                
-                with gr.TabItem("📋 Data Table"):
-                    table_output = gr.DataFrame(
-                        show_label=False,
-                        interactive=False,
-                        height=600
-                    )
-                
-                with gr.TabItem("📝 Raw HTML"):
-                    raw_output = gr.Code(
-                        language="html",
-                        show_label=False,
-                        min_height=600
-                    )
+                with gr.TabItem("📊 Rendered"):
+                    html_out = gr.HTML(min_height=600)
+                with gr.TabItem("📋 Table"):
+                    table_out = gr.DataFrame(height=600)
+                with gr.TabItem("📝 Raw"):
+                    raw_out = gr.Code(language="html", min_height=600)
     
-    # -------------------------------------------------------
-    # Event Handlers
-    # -------------------------------------------------------
-    
-    # Update request types when mode changes
-    def update_types(selected_mode):
-        return gr.Dropdown(
-            choices=REQ_TYPES[selected_mode],
-            value=DEFAULT_TYPES[selected_mode]
-        )
-    
+    # Events
     mode.change(
-        update_types,
+        lambda m: gr.Dropdown(choices=REQ_TYPES[m], value=DEFAULT_TYPES[m]),
         inputs=mode,
         outputs=req_type
     )
     
-    # Date helpers
-    btn_fy.click(
-        lambda: (get_fy_start(), get_today()),
-        outputs=[date_start, date_end]
-    )
+    btn_fy.click(lambda: (get_fy_start(), get_today()), outputs=[date_start, date_end])
+    btn_today.click(lambda: ("", get_today()), outputs=[date_start, date_end])
     
-    btn_today.click(
-        lambda: ("", get_today()),
-        outputs=[date_start, date_end]
-    )
-    
-    # Main fetch function
-    def handle_fetch(m, rt, n, de, ds, force):
+    def do_fetch(m, rt, n, de, ds, f):
         filename = build_filename(m, rt, n, de, ds)
-        
-        # Update UI to loading state
         yield {
-            status_text: f"⏳ Fetching: {filename}",
-            html_output: "<div style='text-align:center; padding:50px;'><div style='font-size:48px;'>🔄</div><p>Loading data...</p></div>",
-            raw_output: "",
-            table_output: pd.DataFrame()
+            status: f"Fetching {filename}...",
+            html_out: "<div style='text-align:center;padding:40px;'>🔄 Loading...</div>",
+            raw_out: "",
+            table_out: pd.DataFrame()
         }
         
-        # Fetch data
-        result = fetch_data_internal(filename, force)
+        result = fetch_data_internal(filename, f)
         
         if result["success"]:
-            content = result["content"]
-            tables = extract_tables(content)
-            
+            tables = extract_tables(result["content"])
             yield {
-                status_text: f"✅ Success | {result['size']:,} chars | {len(tables)} rows",
-                html_output: content,
-                raw_output: content,
-                table_output: tables
+                status: f"✅ Success ({result['size']} chars)",
+                html_out: result["content"],
+                raw_out: result["content"],
+                table_out: tables
             }
         else:
-            error_html = f"<div style='color:red; padding:20px;'><h3>Error</h3><p>{result.get('error', 'Unknown error')}</p></div>"
             yield {
-                status_text: f"❌ Error: {result.get('error', 'Unknown')}",
-                html_output: error_html,
-                raw_output: str(result),
-                table_output: pd.DataFrame({"Error": [result.get("error", "Unknown")]})
+                status: f"❌ {result['error']}",
+                html_out: f"<pre>Error: {result['error']}</pre>",
+                raw_out: str(result),
+                table_out: pd.DataFrame({"Error": [result["error"]]})
             }
     
     btn_fetch.click(
-        handle_fetch,
-        inputs=[mode, req_type, name, date_end, date_start, force_refresh],
-        outputs=[status_text, html_output, raw_output, table_output]
+        do_fetch,
+        inputs=[mode, req_type, name, date_end, date_start, force],
+        outputs=[status, html_out, raw_out, table_out]
     )
     
-    # Clear function
-    def handle_clear():
-        return {
-            status_text: "Ready",
-            html_output: "<div style='text-align:center; padding:50px; color:#9ca3af;'><div style='font-size:64px; margin-bottom:20px;'>📈</div><h3>NSE Stock Dashboard</h3><p>Select parameters and click Fetch Data</p></div>",
-            raw_output: "",
-            table_output: pd.DataFrame()
-        }
-    
     btn_clear.click(
-        handle_clear,
-        outputs=[status_text, html_output, raw_output, table_output]
+        lambda: {
+            status: "Ready",
+            html_out: "<div style='text-align:center;padding:40px;color:#9ca3af;'><div style='font-size:48px;'>📈</div><p>Ready</p></div>",
+            raw_out: "",
+            table_out: pd.DataFrame()
+        },
+        outputs=[status, html_out, raw_out, table_out]
     )
     
     # Presets
-    preset_itc.click(
-        lambda: ("stock", "info", "ITC", "", ""),
-        outputs=[mode, req_type, name, date_end, date_start]
-    )
-    
-    preset_reliance.click(
-        lambda: ("stock", "info", "RELIANCE", "", ""),
-        outputs=[mode, req_type, name, date_end, date_start]
-    )
-    
-    preset_nifty.click(
-        lambda: ("index", "indices", "NIFTY 50", "", ""),
-        outputs=[mode, req_type, name, date_end, date_start]
-    )
-    
-    preset_fno.click(
-        lambda: ("index", "fno", "", get_today(), ""),
-        outputs=[mode, req_type, name, date_end, date_start]
-    )
-    
-    preset_fiidii.click(
-        lambda: ("index", "fiidii", "", "", ""),
-        outputs=[mode, req_type, name, date_end, date_start]
-    )
-    
-    preset_preopen.click(
-        lambda: ("index", "preopen", "NIFTY 50", "", ""),
-        outputs=[mode, req_type, name, date_end, date_start]
-    )
+    p1.click(lambda: ("stock", "info", "ITC", "", ""), outputs=[mode, req_type, name, date_end, date_start])
+    p2.click(lambda: ("stock", "info", "RELIANCE", "", ""), outputs=[mode, req_type, name, date_end, date_start])
+    p3.click(lambda: ("index", "indices", "NIFTY 50", "", ""), outputs=[mode, req_type, name, date_end, date_start])
 
-# -------------------------------------------------------
-# Mount Gradio at ROOT (so HF Space shows UI immediately)
-# -------------------------------------------------------
+# Mount at root - HF Space shows this UI
 app = gr.mount_gradio_app(app, demo, path="/")
-
-# Note: API routes from router are still accessible at their paths
-# /file endpoint works for both Gradio internal calls and external API calls
