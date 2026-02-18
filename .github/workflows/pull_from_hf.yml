@@ -1,0 +1,25 @@
+name: Pull from HuggingFace Space
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitHub repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Pull from HF Space and push to GitHub
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git remote add hfspace https://huggingface.co/spaces/eshan6704/NseStockDashboard
+          git fetch hfspace main
+
+          git merge hfspace/main --allow-unrelated-histories -m "sync: pull from HuggingFace Space"
+
+          git push origin main
